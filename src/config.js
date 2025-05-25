@@ -1,4 +1,18 @@
-const db = require('./utils/Database.js'); // Adjust path as needed
+const db = require('./lib/Database.js'); // Adjust path as needed
+
+const ConfigOption = Object.freeze({
+  CONFIG_ID: 'id',
+  BASE_URL: 'base_url',
+  DISCORD_BOT_CLIENT_ID: 'client_id',
+  DISCORD_BOT_TOKEN: 'token',
+  DISCORD_LOG_CHANNEL: 'discord_log_channel_id',
+  DISCORD_ERROR_CHANNEL: 'discord_error_channel_id',
+  DISCORD_SERVER_CHANNEL: 'discord_server_channel_id',
+  DISCORD_SUPPORT_SERVER: 'discord_support_server_id',
+  TOP_GG_TOKEN: 'top_gg_token', // <--- ADD THIS
+  UPTIME_KUMA_URL: 'uptime_kuma_url', // <--- ADD THIS (Example)
+  ENVIRONMENT: 'env',
+});
 
 class Config {
   constructor() {
@@ -20,7 +34,7 @@ class Config {
       return;
     }
 
-    const environment = process.env.NODE_ENV || 'development';
+    const environment = process.env.ENVIRONMENT || 'dev';
     console.log(`Loading configuration for environment: ${environment}`);
 
     try {
@@ -45,7 +59,7 @@ class Config {
 
   /**
    * Gets a configuration value by its key.
-   * @param {string} key - The configuration key (matches a column name in `configs`).
+   * @param {ConfigOption} key - The configuration key (matches a column name in `configs`).
    * @param {any} [defaultValue=null] - A value to return if the key isn't found.
    * @returns {any} The configuration value.
    */
@@ -55,7 +69,7 @@ class Config {
       // Optionally try process.env first for very early needs, but it's risky
       // return process.env[key.toUpperCase()] || defaultValue; 
       // Better to throw or warn:
-       throw new Error("Configuration accessed before initialization is complete.");
+      throw new Error("Configuration accessed before initialization is complete.");
     }
     return this.settings.hasOwnProperty(key) ? this.settings[key] : defaultValue;
   }
@@ -65,8 +79,8 @@ class Config {
    * @returns {object}
    */
   getAll() {
-     if (!this.isInitialized) {
-       throw new Error("Configuration accessed before initialization is complete.");
+    if (!this.isInitialized) {
+      throw new Error("Configuration accessed before initialization is complete.");
     }
     return { ...this.settings }; // Return a copy
   }
@@ -74,4 +88,4 @@ class Config {
 
 // Export a single instance (Singleton Pattern)
 const configInstance = new Config();
-module.exports = configInstance;
+module.exports = { config: configInstance, ConfigOption };
