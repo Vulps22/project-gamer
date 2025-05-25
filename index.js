@@ -1,31 +1,50 @@
-const { AutoPoster } = require('topgg-autoposter');
+// Load .env variables FIRST
+require('dotenv').config();
+
+// Core Node/External Libs
 const { ShardingManager } = require('discord.js');
+const { AutoPoster } = require('topgg-autoposter');
+const axios = require('axios');
+const retry = require('async-retry');
 
+// Your Custom Libs
+const { config, ConfigOption } = require('./src/Config.js');
 
+// --- Main Application Logic ---
+
+/**
+ * Main function to initialize and start the bot.
+ */
 async function main() {
-    const db = new Database();
-    try {
-        const data = await db.get('config', process.env['ENVIRONMENT_KEY']);
-        global.my = data;
-        console.log(my);
-    } catch (error) {
-        console.error('Error loading config from database:', error);
-        return;  // Exit if configuration loading fails
+    console.log('Starting Sharding Manager...');
+
+    // 1. Load configuration from DB (MUST be first after imports/dotenv)
+    await config.init();
+    console.log('Configuration loaded.');
+
+    // 2. Get necessary config values
+    const token = config.get(ConfigOption.DISCORD_BOT_TOKEN);
+    const environment = config.get(ConfigOption.ENVIRONMENT, 'dev');
+
+    if (!token) {
+        console.error('FATAL ERROR: Discord token not found in configuration.');
+        process.exit(1);
     }
 
-
-
-    const manager = new ShardingManager('./bot.js', {
-        token: my.secret,
-        totalShards: my.environment === 'dev' ? 2 : 'auto' // Force 2 shards in dev, auto in prod
+    // 3. Initialize the Sharding Manager
+    const manager = new ShardingManager('./src/bot.js', {
+        token: token,
+        totalShards: environment === 'dev' ? 1 : 'auto',
     });
-
 
     manager.on('shardCreate', shard => console.log(`Launched shard ${shard.id}`));
 
-    manager.spawn();
+    // 4. Spawn shards
+    await manager.spawn();
+    console.log('All shards launched.');
 
-    
+    // 5. Setup auxiliary services (pass manager/config if needed,
+    //    but preferably they should import config themselves)
     setupVoteServer();
     scheduleDailyCleanup();
     syncGG(manager);
@@ -33,46 +52,86 @@ async function main() {
     uptimeKuma();
 }
 
-main().catch(error => {
-    console.error('Failed to start the shard manager:', error);
-});
+// --- Auxiliary Functions ---
 
+/**
+ * Pings Uptime Kuma for monitoring.
+ */
 async function uptimeKuma() {
+    const uptimeUrl = config.get(ConfigOption.UPTIME_KUMA_URL);
 
-    console.log('Pre-release version: UptimeKuma Disabled')
-    return;
+    if (!uptimeUrl) {
+        console.log('UptimeKuma Pinging Disabled (URL not configured).');
+        return;
+    }
 
-    //Uptime-kuma ping
-        const axios = require('axios');
-        const retry = require('async-retry'); // You might need to install async-retry via npm
-    
-        setInterval(async () => {
-            try {
-                await retry(async () => {
-                    const response = await axios.get('');
-                }, {
-                    retries: 3, // Retry up to 3 times
-                    minTimeout: 1000, // Wait 1 second between retries
-                });
-                console.log('Ping succeeded');
-            } catch (error) {
-                console.error('Ping failed after retries:', error.message);
-            }
-        }, 60000); // Ping every 60 seconds
+    console.log(`Setting up UptimeKuma ping for: ${uptimeUrl}`);
+
+    setInterval(async () => {
+        try {
+            await retry(async () => {
+                await axios.get(uptimeUrl);
+            }, {
+                retries: 3,
+                minTimeout: 1000,
+            });
+            console.log('UptimeKuma Ping succeeded');
+        } catch (error) {
+            console.error('UptimeKuma Ping failed after retries:', error.message);
+        }
+    }, 60000);
 }
 
 /**
- * Function to sync the bot's stats with top.gg
- * @param {ShardingManager} manager 
+ * Sets up automatic posting to Top.gg.
+ * @param {ShardingManager} manager
  */
-function syncGG(manager){
-    console.log("Pre-release version: SyncGG disabled");
+function syncGG(manager) {
+    const topGgToken = config.get(ConfigOption.TOP_GG_TOKEN);
+
+    if (!topGgToken) {
+        console.log('Top.gg AutoPoster Disabled (Token not configured).');
+        return;
+    }
+
+    console.log('Setting up Top.gg AutoPoster...');
     try {
-        const ap = AutoPoster(my.top_gg_token, manager);
-        ap.on('posted', () => {
-            console.log('Updated bot stats on top.gg');
+        const poster = AutoPoster(topGgToken, manager);
+
+        poster.on('posted', (stats) => {
+            console.log(`Posted stats to Top.gg | ${stats.serverCount} servers`);
         });
+
+        poster.on('error', (err) => {
+            console.error('Top.gg AutoPoster Error:', err);
+        });
+
     } catch (error) {
-        console.error('Error updating bot stats on top.gg:', error);
+        console.error('Failed to initialize Top.gg AutoPoster:', error);
     }
 }
+
+/** Placeholder: Sets up a server for handling vote webhooks. */
+function setupVoteServer() {
+    console.log('Setup Vote Server (Placeholder - Needs Implementation)');
+    // This function would now import 'config' if it needs settings.
+}
+
+/** Placeholder: Schedules a daily cleanup task. */
+function scheduleDailyCleanup() {
+    console.log('Schedule Daily Cleanup (Placeholder - Needs Implementation)');
+    // This function would now import 'config' if it needs settings.
+}
+
+/** Placeholder: Schedules a top.gg update (if AutoPoster isn't used). */
+function scheduleTopGGUpdate() {
+    console.log('Schedule Top.gg Update (Placeholder - Handled by AutoPoster for now)');
+    // This function would now import 'config' if it needs settings.
+}
+
+
+// --- Start the application ---
+main().catch(error => {
+    console.error('Failed to start the shard manager:', error);
+    process.exit(1);
+});
