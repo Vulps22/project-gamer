@@ -41,3 +41,6 @@ The bot is considered "MVP" when the following features have been implemented:
 The initial scope _removes_ the original steam API integration and any pre-existing web-interfaces. The following are planned features for implementation _after_ the initial release:
 - `Steam API Integration`:
 - - `/link` - present the user with a URL to log into their steam accounts. When _linked_ the bot will periodically sync their steam libraries with the bot's library, automatically adding any games it finds
+- `/set channel-for-game <searchable:game> <channel>` - If set, when a player joins a community with the specified game, or adds the specified game to their library, automatically add the user to that channel.
+- - This approach bypasses the limits to the number of roles a discord server can have
+- `/set auto-role-management <true|false>` - If enabled, Automatically add and remove roles from users if they own a game with a registered role
