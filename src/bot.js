@@ -39,7 +39,7 @@ async function startShard() {
         // }
     });
 
-    console.log(`Shard ${process.env.DISCORD_SHARD_ID || 'N/A'}: Setup complete, waiting for ShardingManager connection.`);
+    client.login(config.get(ConfigOption.DISCORD_BOT_TOKEN));
 
 }
 
