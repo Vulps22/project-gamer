@@ -2,8 +2,6 @@
 const { Events, Interaction } = require('discord.js');
 const { logger } = require('../lib/logger.js');
 
-let logInteraction = '';
-
 module.exports = {
     name: Events.InteractionCreate,
     /**
@@ -49,7 +47,7 @@ async function handleCommandInteraction(interaction) {
         }
 
 
-        logInteraction = `**Command**: ${interaction.commandName} | **Server**: ${interaction.guildId} | **User**: ${interaction.user.username} - ${interaction.user.id} ||`;
+        const logInteraction = `**Command**: ${interaction.commandName} | **Server**: ${interaction.guildId} | **User**: ${interaction.user.username} - ${interaction.user.id} ||`;
         interaction.logInteraction = logInteraction;
 
         interaction.logMessage = await logger.log(logInteraction);
