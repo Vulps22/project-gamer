@@ -16,10 +16,10 @@ It will do this by keeping a record of the games that each user owns, and search
 The bot is considered "MVP" when the following features have been implemented:
 - `/lfg <searchable:game>` - The user can use this command to see a multi-select dropdown of all the users in that discord community who have the same game. Upon choosing 1 or more users, the bot will post an `LFG Message`, tagging the chosen users
 - - There must be an `open invitation` option
-- `/add game <url>` - When used, The bot will scrape the chosen URL. If the URL is a `Registered Game Store`, the bot will use the metadata to determine the game's full name and add it to the database.
+- `/register game <url>` - When used, The bot will scrape the chosen URL. If the URL is a `Registered Game Store`, the bot will use the metadata to determine the game's full name and add it to the database.
 - - The bot will also register the game with the user's game library
   - If the URL is not a recognised game store, The bot will ask a team of approved bot administrators to verify the game submission
-- `/register game <searchable:name>` - The bot will present the user with a searchable list of games in the library. The user can use this command to add a known game to their library
+- `/add game <searchable:name>` - The bot will present the user with a searchable list of games in the library. The user can use this command to add a known game to their library
 - `/forget game <searchable:game>` - The user will use this command to _remove_ a game from their library
 - `/sharing On|Off` - The User will use these commands to enable and disable their game library in each server they are a member of. This setting is unique to each Discord Server
 - `/set` - This serves as the base command for the bot's server-wide settings:
