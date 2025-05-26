@@ -4,7 +4,6 @@
  * It relies on the ShardingManager (in main.js/index.js) to spawn it.
  */
 
-require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 const { Client, GatewayIntentBits } = require('discord.js');

@@ -1,6 +1,3 @@
-// Load .env variables FIRST
-require('dotenv').config();
-
 // Core Node/External Libs
 const { ShardingManager } = require('discord.js');
 const { AutoPoster } = require('topgg-autoposter');
@@ -8,7 +5,7 @@ const axios = require('axios');
 const retry = require('async-retry');
 
 // Your Custom Libs
-const { config, ConfigOption } = require('./src/Config.js');
+const { config, ConfigOption } = require('./src/config.js');
 
 // --- Main Application Logic ---
 
