@@ -134,6 +134,7 @@ async function sendEdit(channelId, messageId, messageOptions) {
                     }
                 } catch (error) {
                     console.error(`Error editing message in shard ${client.shard.ids[0]}:`, error);
+                    return false;
                 }
             }
             return false;
