@@ -3,7 +3,7 @@ const { MessageCreateOptions, Channel, Snowflake } = require('discord.js');
 const { config, ConfigOption } = require('../config.js');
 const { getClient } = require('../provider/clientProvider.js');
 
-logger = {
+const logger = {
 
     /**
      * Logs a message to the log channel across shards.
