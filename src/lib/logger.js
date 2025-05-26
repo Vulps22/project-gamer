@@ -120,7 +120,7 @@ async function sendEdit(channelId, messageId, messageOptions) {
         return null;
     }
 
-    return client.shard.broadcastEval(
+    const results = client.shard.broadcastEval(
         // eslint-disable-next-line no-shadow
         async (client, { channelId, messageId, messageOptions }) => {
             const channel = client.channels.cache.get(channelId);
@@ -140,4 +140,6 @@ async function sendEdit(channelId, messageId, messageOptions) {
         },
         { context: { channelId, messageId, messageOptions } },
     );
+
+    return results.some(success => success === true);
 }
