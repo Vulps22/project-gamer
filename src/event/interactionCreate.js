@@ -85,7 +85,7 @@ function getCommand(client, commandName) {
     const command = client.commands.get(commandName);
 
     if (!command) {
-        Logger.log('Interaction', `Command ${commandName} does not exist.`);
+        logger.log('Interaction', `Command ${commandName} does not exist.`);
         return;
     }
 
@@ -103,7 +103,7 @@ function shouldExecute(interaction, command) {
 
     // Check for Administrator role for commands that require it
     if (command.administrator && !interaction.member.permissions.has('Administrator')) {
-        logger.editLog(`${logInteraction} || Interaction Aborted: User was not Administrator`);
+        logger.editLog(interaction.logMessage, `${logInteraction} || Interaction Aborted: User was not Administrator`);
         interaction.reply('You need the Administrator role to use this command.');
         return false;
     }
