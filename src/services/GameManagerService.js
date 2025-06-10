@@ -13,7 +13,7 @@ const gameStatus = {
 
 
 class GameManagerService {
-    constructor() {
+    async init() {
         if (GameManagerService.instance) {
             return GameManagerService.instance;
         }
@@ -26,6 +26,8 @@ class GameManagerService {
             // 1. Scrape the URL to get the core data
             const gameDataFromStore = await storeManager.fetchGameDataFromUrl(url);
 
+            console.log(`GameManagerService: Scraped data for URL <${url}>:`, gameDataFromStore);
+
             if (gameDataFromStore.error) {
                 // We only need a URL for a submission, not a title.
                 // But if the scraper itself throws an error (e.g., invalid URL), we should stop.
@@ -35,7 +37,7 @@ class GameManagerService {
             }
 
             // Destructure all data. Title is still needed for the "approved store" workflow.
-            const { title, storeName, storeUrl, storeGameId } = gameDataFromStore;
+            const { storeName, storeUrl, error, title, storeGameId } = gameDataFromStore;
 
             // 2. Check if the store is recognized
             const [store] = await db.query('SELECT id FROM store WHERE name = ?', [storeName]);
@@ -73,18 +75,18 @@ class GameManagerService {
                 let gameId;
 
                 const [existingLink] = await db.query(
-                    'SELECT gameId FROM gameStore WHERE storeId = ? AND storeGameId = ?',
-                    [storeId, storeGameId]
+                    'SELECT gameId FROM gameStore WHERE storeId = :storeId AND storeGameId = :storeGameId',
+                    {storeId: storeId, storeGameId: storeGameId}
                 );
 
                 if (existingLink) {
                     gameId = existingLink.gameId;
                 } else {
-                    const [existingGame] = await db.query('SELECT id FROM games WHERE name = ?', [title]);
+                    const [existingGame] = await db.query('SELECT id FROM game WHERE name = ?', [title]);
                     if (existingGame) {
                         gameId = existingGame.id;
                     } else {
-                        gameId = await db.insert('games', { name: title, imageUrl: imageUrl, status: 'APPROVED' });
+                        gameId = await db.insert('game', { name: title, status: 'APPROVED' });
                     }
                     await db.insert('gameStore', { gameId, storeId, storeGameId, url: storeUrl, status: 'APPROVED' });
                 }
