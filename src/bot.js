@@ -47,7 +47,7 @@ startShard().catch(error => {
 });
 
 function loadEvents(client) {
-    const eventsPath = path.join(__dirname, 'event');
+    const eventsPath = path.join(__dirname, 'events');
     const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
     eventFiles.forEach(file => {
 
@@ -61,7 +61,7 @@ function loadEvents(client) {
 }
 
 function loadCommands(client, type) {
-    const commandsPath = path.join(__dirname, `command/${type}`);
+    const commandsPath = path.join(__dirname, `commands/${type}`);
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
     client.commands = client.commands || new Map();
