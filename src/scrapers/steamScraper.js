@@ -9,7 +9,7 @@
 async function scrape($, url) {
     const data = {
         title: $('#appHubAppName').text().trim() || null,
-        storeSpecificId: null,
+        storeGameId: null,
     };
 
     console.log("Steam Scraper: Scrapped:", data);

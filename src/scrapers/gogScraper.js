@@ -9,11 +9,7 @@
 async function scrape($, url) {
     const data = {
         title: null,
-        description: null,
-        imageUrl: null,
-        developer: null,
-        publisher: null,
-        storeSpecificId: null,
+        storeGameId: null,
     };
 
     // Prioritize JSON-LD
@@ -30,12 +26,8 @@ async function scrape($, url) {
             for (const item of items) {
                 if (item['@type'] === 'Product' || item['@type'] === 'VideoGame') {
                     data.title = item.name || data.title;
-                    data.description = item.description || data.description;
-                    data.imageUrl = item.image || data.imageUrl;
-                    if (item.brand && item.brand.name) data.developer = item.brand.name;
-                    if (item.manufacturer && item.manufacturer.name) data.publisher = item.manufacturer.name;
                     // GOG might use 'sku' for product ID, or sometimes 'mpn'.
-                    data.storeSpecificId = item.sku || item.mpn || data.storeSpecificId;
+                    data.storeGameId = item.sku || item.mpn || data.storeGameId;
                     // If we found the main product, we can often break
                     if (data.title && item['@type'] === 'VideoGame') break;
                 }
