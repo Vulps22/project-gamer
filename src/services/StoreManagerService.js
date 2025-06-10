@@ -21,7 +21,7 @@ class StoreManagerService {
     async _initializeStoreMatchers() {
         try {
             const activeStores = await db.query(
-                'SELECT scraper_key, base_hostname FROM stores WHERE is_scrapable = TRUE ORDER BY LENGTH(base_hostname) DESC'
+                'SELECT scraper_key, base_hostname FROM store WHERE is_scrapable = TRUE ORDER BY LENGTH(base_hostname) DESC'
                 // Ordering by length DESC helps match more specific hostnames first, e.g., 'store.epicgames.com' before 'epicgames.com' if both existed for different scrapers.
             );
             this.storeMatchers = activeStores.map(store => ({
@@ -107,7 +107,7 @@ class StoreManagerService {
      * }>} A promise that resolves to the scraped game data.
     */
     async fetchGameDataFromUrl(url) {
-        const storeName = this.getStoreNameFromUrl(url); // This now uses the DB-backed logic
+        let storeName = this.getStoreNameFromUrl(url); // This now uses the DB-backed logic
         let scrapedData = {};
         let errorMsg = null;
 
@@ -119,10 +119,18 @@ class StoreManagerService {
         // For simplicity here, we assume _initializeStoreMatchers has run or is running.
         // A more robust solution might involve a promise for initialization.
         if (this.storeMatchers.length === 0 && storeName === 'Unknown Store') {
-            console.warn(`StoreManagerService: Attempting to fetch data for ${url}, but store matchers are not loaded from DB. I expect this to break everything for now.`);
+            console.warn(`StoreManagerService: Attempting to fetch data for ${url}, but store matchers are not loaded from DB.`);
+            storeName = 'Unknown Store'; // Fallback to generic if matchers are empty}
         }
 
-
+        if (storeName == 'Unknown Store') {
+            return {
+                storeName: 'Unknown Store',
+                storeUrl: url,
+                error: null, // No error for unknown stores, just no data
+                title: null,
+            };
+        }
         try {
             const { $ } = await this._downloadAndLoadHtml(url);
             // The key for this.scrapers should match the scraper_key from the database
