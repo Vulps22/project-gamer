@@ -115,31 +115,36 @@ async function sendEdit(channelId, messageId, messageOptions) {
     }
 
     const client = getClient();
+
     if (!client) {
         console.error('Client instance is not available. Ensure it is set in the provider.');
         return null;
     }
 
     const results = client.shard.broadcastEval(
-        // eslint-disable-next-line no-shadow
-        async (client, { channelId, messageId, messageOptions }) => {
-            const channel = client.channels.cache.get(channelId);
-            // eslint-disable-next-line curly
-            if (channel && channel.isTextBased()) {
-                try {
-                    const message = await channel.messages.fetch(messageId);
-                    if (message) {
-                        await message.edit(messageOptions);
-                        return true;
-                    }
-                } catch (error) {
-                    console.error(`Error editing message in shard ${client.shard.ids[0]}:`, error);
-                    return false;
-                }
-            }
-            return false;
-        },
-        { context: { channelId, messageId, messageOptions } },
+        async (client, {
+            channelId, messageId, messageOptions }) => {
+        const channel = client.channels.cache.get(channelId);
+
+        if (!channel || !channel.isTextBased()) {
+          return false;
+        }
+
+        try {
+          const message = await channel.messages.fetch(messageId);
+
+          if (message) {
+            await message.edit(messageOptions);
+          }
+        } catch (error) {
+          console.error(`Error editing message in shard ${client.shard.ids[0]}:`, error);
+          return false;
+        }
+
+        return true;
+      }, {
+        context: { channelId, messageId, messageOptions }
+      },
     );
 
     return results.some(success => success === true);
