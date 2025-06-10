@@ -35,6 +35,8 @@ class Database {
             waitForConnections: true,
             connectionLimit: 10,
             queueLimit: 0,
+            namedPlaceholders: true // <-- ADD THIS LINE
+
             // Add timezone or other settings if needed
         });
 
