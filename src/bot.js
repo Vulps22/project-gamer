@@ -9,6 +9,8 @@ const fs = require('fs');
 const { Client, GatewayIntentBits } = require('discord.js');
 const { config, ConfigOption } = require('./config.js');
 const { setClient } = require('./provider/clientProvider.js');
+const storeManagerInstance = require('./services/StoreManagerService.js');
+const { gameManager } = require('./services/GameManagerService.js');
 
 /**
  * Initializes and starts a single shard.
@@ -17,6 +19,9 @@ async function startShard() {
     console.log('Shard starting... Attempting to load config.');
 
     await config.init();
+    await storeManagerInstance.init();
+    await gameManager.init();
+
     console.log(`Shard ${process.env.DISCORD_SHARD_ID || 'N/A'}: Config loaded.`, config.getAll());
 
     // 2. Create a new client instance
