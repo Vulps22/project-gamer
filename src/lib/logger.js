@@ -121,7 +121,7 @@ async function sendEdit(channelId, messageId, messageOptions) {
         return null;
     }
 
-    const results = client.shard.broadcastEval(
+    const results = await client.shard.broadcastEval(
         async (client, {
             channelId, messageId, messageOptions }) => {
         const channel = client.channels.cache.get(channelId);
