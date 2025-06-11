@@ -1,0 +1,176 @@
+// src/services/GameManagerService.js
+
+const db = require('../lib/database'); // Your database singleton
+const { logger } = require('../lib/logger');
+const storeManager = require('./StoreManagerService'); // Import the StoreManagerService
+// const { logger } = require('../lib/logger'); // If you want to use your logger
+
+const gameStatus = {
+    APPROVED: 'approved',
+    PENDING: 'pending',
+    REJECTED: 'rejected',
+}
+
+
+class GameManagerService {
+    async init() {
+        if (GameManagerService.instance) {
+            return GameManagerService.instance;
+        }
+        GameManagerService.instance = this;
+        console.log('GameManagerService initialized.');
+    }
+
+    async registerGameFromUrl(url, userId) {
+        try {
+            // 1. Scrape the URL to get the core data
+            const gameDataFromStore = await storeManager.fetchGameDataFromUrl(url);
+
+            console.log(`GameManagerService: Scraped data for URL <${url}>:`, gameDataFromStore);
+
+            if (gameDataFromStore.error) {
+                // We only need a URL for a submission, not a title.
+                // But if the scraper itself throws an error (e.g., invalid URL), we should stop.
+                const errorMessage = gameDataFromStore.error;
+                logger.error(`GameManagerService: Failed to process URL <${url}>. Reason: ${errorMessage}`);
+                return { submission: null, error: errorMessage };
+            }
+
+            // Destructure all data. Title is still needed for the "approved store" workflow.
+            const { storeName, storeUrl, error, title, storeGameId } = gameDataFromStore;
+
+            // 2. Check if the store is recognized
+            const [store] = await db.query('SELECT id FROM store WHERE name = ?', [storeName]);
+
+            if (!store) {
+                // --- The store is unrecognized. Add ONLY the URL and user to the submissions queue. ---
+                logger.log(`Unrecognized store "${storeName}" from URL <${url}>. Creating a pending submission.`);
+
+                await db.insert('gameSubmissions', {
+                    url: url,
+                    submittedBy: userId,
+                    // 'status' will default to 'pending' in the database.
+                });
+
+                // Return an object that accurately reflects what happened.
+                return {
+                    submission: {
+                        url: storeUrl,
+                        status: gameStatus.PENDING, // Use the constant for clarity
+                    },
+                    error: null,
+                };
+
+            } else {
+                // --- The store is supported, proceed with the original, robust logic ---
+                if (!title) {
+                    // If the store is supported, we MUST have a title to proceed.
+                    const errorMessage = 'Could not determine game title from a supported store URL.';
+                    logger.error(`GameManagerService: ${errorMessage} (URL: <${url}>)`);
+                    return { submission: null, error: errorMessage };
+                }
+
+                const storeId = store.id;
+                const { imageUrl } = gameDataFromStore; // Get image only if needed
+                let gameId;
+
+                const [existingLink] = await db.query(
+                    'SELECT gameId FROM gameStore WHERE storeId = :storeId AND storeGameId = :storeGameId',
+                    {storeId: storeId, storeGameId: storeGameId}
+                );
+
+                if (existingLink) {
+                    gameId = existingLink.gameId;
+                } else {
+                    const [existingGame] = await db.query('SELECT id FROM game WHERE name = ?', [title]);
+                    if (existingGame) {
+                        gameId = existingGame.id;
+                    } else {
+                        gameId = await db.insert('game', { name: title, status: 'APPROVED' });
+                    }
+                    await db.insert('gameStore', { gameId, storeId, storeGameId, url: storeUrl, status: 'APPROVED' });
+                }
+
+                return {
+                    submission: { // Use a consistent return shape
+                        url: storeUrl,
+                        status: 'APPROVED',
+                        gameId: gameId,
+                    },
+                    error: null,
+                };
+            }
+        } catch (error) {
+            logger.error(`Critical error in registerGameFromUrl for URL <${url}>:`);
+            console.error(error);
+            return { submission: null, error: 'An unexpected internal error occurred.' };
+        }
+    }
+
+    async addGameToUserLibrary(userId, gameId) {
+        try {
+            // Use camelCase for table and column names
+            const [existingLink] = await db.query(
+                'SELECT id FROM userGames WHERE userId = ? AND gameId = ?',
+                [userId, gameId]
+            );
+            if (existingLink) {
+                logger.info(`User ${userId} already has game ${gameId} in their library.`);
+                return existingLink.id;
+            }
+            const result = await db.insert('userGames', {
+                userId: userId,
+                gameId: gameId,
+            });
+            logger.info(`Added game ${gameId} to user ${userId}'s library.`);
+            return result; // Assumes this returns the new ID
+        } catch (error) {
+            logger.error(`Error adding game ${gameId} for user ${userId}:`, error);
+            return null;
+        }
+    }
+
+    // Stub other methods as their implementation will depend more on your specific DB schema
+    // and other parts of your application.
+
+    async removeGameFromUserLibrary(userId, gameIdOrName) {
+        console.log('removeGameFromUserLibrary called with:', userId, gameIdOrName);
+        // 1. Find gameId if name is given
+        // 2. db.delete('user_games', 'user_id = ? AND game_id = ?', [userId, gameId]);
+        return false; // Placeholder
+    }
+
+    async findGamesByName(query, guildId = null) {
+        console.log('findGamesByName called with:', query, guildId);
+        // const searchTerm = `%${query}%`;
+        // let sql = 'SELECT id, name FROM games WHERE name LIKE ?'; // Basic search
+        // Add whitelist/blacklist logic if guildId is provided
+        // return db.query(sql, [searchTerm]);
+        return []; // Placeholder
+    }
+
+    async getUsersForGame(gameId, guildId) {
+        console.log('getUsersForGame called with:', gameId, guildId);
+        // const sql = `
+        //     SELECT ug.user_id FROM user_games ug
+        //     JOIN server_user_sharing sus ON ug.user_id = sus.user_id AND sus.guild_id = ?
+        //     WHERE ug.game_id = ? AND sus.sharing_enabled = TRUE
+        // `;
+        // const users = await db.query(sql, [guildId, gameId]);
+        // return users.map(u => u.user_id);
+        return []; // Placeholder
+    }
+
+    async getStoreUrlsForGame(gameId) {
+        console.log('getStoreUrlsForGame called with:', gameId);
+        // const sql = 'SELECT store_name, url FROM game_stores WHERE game_id = ? AND is_verified_by_admin = TRUE';
+        // return db.query(sql, [gameId]);
+        return []; // Placeholder
+    }
+}
+
+const gameManagerInstance = new GameManagerService();
+module.exports = {
+    gameManager: gameManagerInstance,
+    gameStatus: gameStatus,
+};

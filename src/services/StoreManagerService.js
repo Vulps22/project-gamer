@@ -6,22 +6,25 @@ const scraperRegistry = require('../scrapers');
 const db = require('../lib/database'); // Assuming your DB connection is here
 
 class StoreManagerService {
-    constructor() {
+    async init() {
         if (StoreManagerService.instance) {
             return StoreManagerService.instance;
         }
+        
+        console.log('StoreManagerService initializing...');
+
         this.scrapers = scraperRegistry;
         this.storeMatchers = []; // Will hold { scraper_key, base_hostname }
-        this._initializeStoreMatchers(); // Load store data from DB
+        await this._initializeStoreMatchers(); // Load store data from DB
 
         StoreManagerService.instance = this;
-        console.log('StoreManagerService initializing...');
+        console.log(`StoreManagerService initialized with ${this.storeMatchers.length} stores.`);
     }
 
     async _initializeStoreMatchers() {
         try {
             const activeStores = await db.query(
-                'SELECT scraper_key, base_hostname FROM stores WHERE is_scrapable = TRUE ORDER BY LENGTH(base_hostname) DESC'
+                'SELECT scraper_key, base_hostname FROM store WHERE is_scrapable = TRUE ORDER BY LENGTH(base_hostname) DESC'
                 // Ordering by length DESC helps match more specific hostnames first, e.g., 'store.epicgames.com' before 'epicgames.com' if both existed for different scrapers.
             );
             this.storeMatchers = activeStores.map(store => ({
@@ -81,9 +84,14 @@ class StoreManagerService {
             }
 
             for (const matcher of this.storeMatchers) {
+                console.log(`Checking matcher`, matcher
+                    , `against hostname`, currentHostname
+                );
                 if (currentHostname.includes(matcher.baseHostname)) {
+                    console.log(`StoreManagerService: Matched URL ${url} to store ${matcher.scraperKey}`);
                     return matcher.scraperKey;
                 }
+                console.log(`StoreManagerService: No match for ${matcher.baseHostname} in ${currentHostname}`);
             }
             return 'Unknown Store'; // For valid URLs that don't match known stores in DB
         } catch (e) {
@@ -107,7 +115,7 @@ class StoreManagerService {
      * }>} A promise that resolves to the scraped game data.
     */
     async fetchGameDataFromUrl(url) {
-        const storeName = this.getStoreNameFromUrl(url); // This now uses the DB-backed logic
+        let storeName = this.getStoreNameFromUrl(url); // This now uses the DB-backed logic
         let scrapedData = {};
         let errorMsg = null;
 
@@ -119,18 +127,27 @@ class StoreManagerService {
         // For simplicity here, we assume _initializeStoreMatchers has run or is running.
         // A more robust solution might involve a promise for initialization.
         if (this.storeMatchers.length === 0 && storeName === 'Unknown Store') {
-            console.warn(`StoreManagerService: Attempting to fetch data for ${url}, but store matchers are not loaded from DB. I expect this to break everything for now.`);
+            console.warn(`StoreManagerService: Attempting to fetch data for ${url}, but store matchers are not loaded from DB.`);
+            storeName = 'Unknown Store'; // Fallback to generic if matchers are empty}
         }
 
-
+        if (storeName == 'Unknown Store') {
+            return {
+                storeName: 'Unknown Store',
+                storeUrl: url,
+                error: null, // No error for unknown stores, just no data
+                title: null,
+            };
+        }
         try {
             const { $ } = await this._downloadAndLoadHtml(url);
             // The key for this.scrapers should match the scraper_key from the database
-            const scraperModule = this.scrapers[storeName] || this.scrapers['Generic'];
+            const scraperModule = this.scrapers[storeName];
 
             if (scraperModule && typeof scraperModule.scrape === 'function') {
                 console.log(`StoreManagerService: Using '${storeName === 'Unknown Store' ? 'Generic' : storeName}' scraper for ${url}`);
                 scrapedData = await scraperModule.scrape($, url);
+                console.log(`StoreManagerService: Scraped data for ${url}:`, scrapedData);
             } else {
                 console.warn(`StoreManagerService: No valid scraper module found for resolved store key '${storeName}'. This might indicate a mismatch between 'stores' table scraper_key and 'scraperRegistry.js' keys, or a missing 'Generic' scraper in the registry.`);
                 errorMsg = `Scraper configuration error for store key: ${storeName}.`;
@@ -141,20 +158,31 @@ class StoreManagerService {
                 errorMsg = errorMsg || 'Could not extract a valid title using the selected scraper.';
             }
 
-        } catch (error) {
-            console.error(`StoreManagerService: Error processing URL ${url} with resolved store key ${storeName}:`, error.message);
-            errorMsg = error.message;
-            if ((!scrapedData || !scrapedData.title) && storeName !== 'Generic' && this.scrapers['Generic']) {
-                console.warn(`StoreManagerService: Specific scraper for ${storeName} failed. Passing to moderator for manual verification.`);
-
-            }
-
             return {
                 storeName, // This is now the scraper_key from your DB or "Unknown Store"
                 storeUrl: url,
                 ...scrapedData,
                 error: errorMsg,
             };
+
+        } catch (error) {
+            console.error(`StoreManagerService: Error processing URL ${url} with resolved store key ${storeName}:`, error.message);
+            errorMsg = error.message;
+            if ((!scrapedData || !scrapedData.title) && storeName !== 'Generic' && this.scrapers['Generic']) {
+                console.warn(`StoreManagerService: Specific scraper for ${storeName} failed. Passing to moderator for manual verification.`);
+            }
+
+            returnData = {
+                storeName, // This is now the scraper_key from your DB or "Unknown Store"
+                storeUrl: url,
+                ...scrapedData,
+                error: errorMsg,
+            };
+
+            console.log(`StoreManagerService: Returning data for ${url}:`, returnData);
+            return returnData;
+
+
         }
     }
 }

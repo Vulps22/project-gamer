@@ -9,6 +9,8 @@ const fs = require('fs');
 const { Client, GatewayIntentBits } = require('discord.js');
 const { config, ConfigOption } = require('./config.js');
 const { setClient } = require('./provider/clientProvider.js');
+const storeManagerInstance = require('./services/StoreManagerService.js');
+const { gameManager } = require('./services/GameManagerService.js');
 
 /**
  * Initializes and starts a single shard.
@@ -17,6 +19,9 @@ async function startShard() {
     console.log('Shard starting... Attempting to load config.');
 
     await config.init();
+    await storeManagerInstance.init();
+    await gameManager.init();
+
     console.log(`Shard ${process.env.DISCORD_SHARD_ID || 'N/A'}: Config loaded.`, config.getAll());
 
     // 2. Create a new client instance
@@ -47,7 +52,7 @@ startShard().catch(error => {
 });
 
 function loadEvents(client) {
-    const eventsPath = path.join(__dirname, 'event');
+    const eventsPath = path.join(__dirname, 'events');
     const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
     eventFiles.forEach(file => {
 
@@ -61,7 +66,7 @@ function loadEvents(client) {
 }
 
 function loadCommands(client, type) {
-    const commandsPath = path.join(__dirname, `command/${type}`);
+    const commandsPath = path.join(__dirname, `commands/${type}`);
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
     client.commands = client.commands || new Map();
