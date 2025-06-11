@@ -131,9 +131,14 @@ async function saveUser(interaction){
         return false;
     }
 
-    userManagerServiceInstance.getOrCreateUser(userId);
+    user = await userManagerServiceInstance.getOrCreateUser(userId);
+
+    if(!user){
+        return;
+    }
+
+    await userManagerServiceInstance.addUserToServer(userId, interaction.guildId);
 
     return true;
-
-
+    
 }
