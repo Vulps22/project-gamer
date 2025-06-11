@@ -1,6 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 const { Events, Interaction } = require('discord.js');
 const { logger } = require('../lib/logger.js');
+const userManagerServiceInstance = require('../services/UserManagerService.js');
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -10,6 +11,12 @@ module.exports = {
      * @returns
      */
     async execute(interaction) {
+
+        if(!await saveUser(interaction)) {
+            logger.error('No userId found in interaction: Aborting interaction.');
+            interaction.reply('An error occurred while processing your interaction. Please try again later.');
+            return;
+        }
 
         if (interaction.isAutocomplete()) {
             console.log('Autocomplete interaction received:', interaction.commandName, interaction.options.data);
@@ -109,4 +116,24 @@ function shouldExecute(interaction, command) {
     }
 
     return true;
+}
+
+/**
+ * Check the user Id exists in the database, if not create a new user.
+ * @param {*} interaction 
+ * @return {boolean} Returns true if the user was saved or already exists, false if no userId was found.
+ */
+async function saveUser(interaction){
+    const userId = interaction.user.id;
+    
+    if (!userId) {
+        console.error('No user ID found in interaction:', interaction);
+        return false;
+    }
+
+    userManagerServiceInstance.getOrCreateUser(userId);
+
+    return true;
+
+
 }
