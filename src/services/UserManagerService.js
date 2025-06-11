@@ -52,7 +52,8 @@ class UserManagerService {
     async getOrCreateUser(userId) {
         try {
             let user = await this.getUserById(userId);
-            if (!user) {
+            
+            if (!user || user.length === 0) {
                 user = await this.createUser(userId);
             }
             return user;
@@ -65,7 +66,7 @@ class UserManagerService {
     async addUserToServer(userId, serverId) {
         try {
             const [existingLink] = await db.query(
-                'SELECT id FROM userServers WHERE userId = :userId AND serverId = :serverId',
+                "SELECT * FROM serverUser WHERE userId = ':userId' AND serverId = ':serverId'",
                 [userId, serverId]
             );
 
@@ -77,6 +78,12 @@ class UserManagerService {
                 userId: userId,
                 serverId: serverId,
             });
+        }
+        catch (error) {
+            console.error(`Error adding user ${userId} to server ${serverId}:`, error);
+            throw error;
+        }
+    }
 }
 
 const userManagerServiceInstance = new UserManagerService();
