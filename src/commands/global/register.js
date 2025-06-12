@@ -17,6 +17,7 @@ module.exports = {
         ),
     administrator: false,
     async execute(interaction) {
+        interaction.deferReply({ MessageFlags: MessageFlags.Ephemeral });
         const url = interaction.options.getString('url');
         const userId = interaction.user.id;
 
@@ -25,7 +26,7 @@ module.exports = {
         const result = await gameManager.registerGameFromUrl(url, userId);
 
         if (result.error) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: `Error registering game: ${result.error}`,
                 flags: MessageFlags.Ephemeral,
             });
@@ -34,13 +35,13 @@ module.exports = {
         console.log("Submission result:", result);
 
         if (result.submission.status === gameStatus.PENDING) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: 'We do not recognize this store yet. The game has been registered but must be approved by an administrator before it can be used.\n You will be DM\'d automatically when it is approved.',
                 flags: MessageFlags.Ephemeral,
             });
         }
 
-        return interaction.reply({
+        return interaction.editReply({
             content: `Game registered successfully!`,
             flags: MessageFlags.Ephemeral,
         });
