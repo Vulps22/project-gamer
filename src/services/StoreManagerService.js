@@ -61,6 +61,9 @@ class StoreManagerService {
         // Conditionally add the age gate cookies for Steam URLs
         if (url.includes('store.steampowered.com')) {
             headers['Cookie'] = 'birthtime=252460800; lastagecheckage=1-January-1978';
+        }else if (url.includes('gog.com')) {
+            headers['Cookie'] = 'gog_wantsmaturecontent=18';
+
         }
 
         const response = await axios.get(url, {
