@@ -48,31 +48,36 @@ class StoreManagerService {
 
 
     async _downloadAndLoadHtml(url) {
-
-        if (!url || typeof url !== 'string') {
-            return;
-        }
-
-        try {
-            const response = await axios.get(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                },
-                timeout: 10000,
-            });
-
-            const html = response.data;
-            const $ = cheerio.load(html);
-
-            return { html, $ };
-
-        } catch (error) {
-            console.error(`StoreManagerService: Failed to download URL ${url}: ${error.message}`);
-
-            throw new Error(`Failed to download page content from ${url}.`);
-        }
+    if (!url || typeof url !== 'string') {
+        return;
     }
+
+    try {
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+        };
+
+        // Conditionally add the age gate cookies for Steam URLs
+        if (url.includes('store.steampowered.com')) {
+            headers['Cookie'] = 'birthtime=252460800; lastagecheckage=1-January-1978';
+        }
+
+        const response = await axios.get(url, {
+            headers: headers,
+            timeout: 10000,
+        });
+
+        const html = response.data;
+        const $ = cheerio.load(html);
+
+        return { html, $ };
+
+    } catch (error) {
+        console.error(`StoreManagerService: Failed to download URL ${url}: ${error.message}`);
+        throw new Error(`Failed to download page content from ${url}.`);
+    }
+}
 
 
     /**
