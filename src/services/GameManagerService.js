@@ -66,7 +66,7 @@ class GameManagerService {
                 // --- The store is supported, proceed with the original, robust logic ---
 
                 if (!title) {
-                    
+
                     const errorMessage = 'Could not determine game title from a supported store URL.';
                     logger.error(`GameManagerService: ${errorMessage} (URL: <${url}>)`);
 
@@ -78,7 +78,7 @@ class GameManagerService {
 
                 const [existingLink] = await db.query(
                     'SELECT gameId FROM gameStore WHERE storeId = :storeId AND storeGameId = :storeGameId',
-                    {storeId: storeId, storeGameId: storeGameId}
+                    { storeId: storeId, storeGameId: storeGameId }
                 );
 
                 if (existingLink) {
@@ -130,7 +130,7 @@ class GameManagerService {
             });
 
             logger.info(`Added game ${gameId} to user ${userId}'s library.`);
-            
+
             return result; // Assumes this returns the new ID
         } catch (error) {
             logger.error(`Error adding game ${gameId} for user ${userId}:`, error);
@@ -146,15 +146,6 @@ class GameManagerService {
         // 1. Find gameId if name is given
         // 2. db.delete('user_games', 'user_id = ? AND game_id = ?', [userId, gameId]);
         return false; // Placeholder
-    }
-
-    async findGamesByName(query, guildId = null) {
-        console.log('findGamesByName called with:', query, guildId);
-        // const searchTerm = `%${query}%`;
-        // let sql = 'SELECT id, name FROM games WHERE name LIKE ?'; // Basic search
-        // Add whitelist/blacklist logic if guildId is provided
-        // return db.query(sql, [searchTerm]);
-        return []; // Placeholder
     }
 
     async getUsersForGame(gameId, guildId) {
@@ -175,6 +166,29 @@ class GameManagerService {
         // return db.query(sql, [gameId]);
         return []; // Placeholder
     }
+
+    async searchGamesByName(name) {
+        console.log('searchGamesByName (by popularity) called with:', name);
+        const sql = `
+        SELECT
+            g.id,
+            g.name,
+            COUNT(ul.id) AS popularity
+        FROM
+            game AS g
+        LEFT JOIN gameStore AS gs ON g.id = gs.gameId
+        LEFT JOIN userLibrary AS ul ON gs.id = ul.gameStoreId
+        WHERE
+            g.name LIKE :name
+        GROUP BY
+            g.id, g.name
+        ORDER BY
+            popularity DESC, g.name ASC
+        LIMIT 20;`;
+
+        return await db.query(sql, { name: `%${name}%` });
+    }
+
 }
 
 const gameManagerInstance = new GameManagerService();
