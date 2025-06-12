@@ -23,23 +23,25 @@ class GameManagerService {
 
     async registerGameFromUrl(url, userId) {
         try {
-            // 1. Scrape the URL to get the core data
+
             const gameDataFromStore = await storeManager.fetchGameDataFromUrl(url);
 
             console.log(`GameManagerService: Scraped data for URL <${url}>:`, gameDataFromStore);
 
             if (gameDataFromStore.error) {
+
                 // We only need a URL for a submission, not a title.
                 // But if the scraper itself throws an error (e.g., invalid URL), we should stop.
                 const errorMessage = gameDataFromStore.error;
+
                 logger.error(`GameManagerService: Failed to process URL <${url}>. Reason: ${errorMessage}`);
+
                 return { submission: null, error: errorMessage };
             }
 
             // Destructure all data. Title is still needed for the "approved store" workflow.
             const { storeName, storeUrl, error, title, storeGameId } = gameDataFromStore;
 
-            // 2. Check if the store is recognized
             const [store] = await db.query('SELECT id FROM store WHERE name = ?', [storeName]);
 
             if (!store) {
@@ -52,7 +54,6 @@ class GameManagerService {
                     // 'status' will default to 'pending' in the database.
                 });
 
-                // Return an object that accurately reflects what happened.
                 return {
                     submission: {
                         url: storeUrl,
@@ -63,15 +64,16 @@ class GameManagerService {
 
             } else {
                 // --- The store is supported, proceed with the original, robust logic ---
+
                 if (!title) {
-                    // If the store is supported, we MUST have a title to proceed.
+                    
                     const errorMessage = 'Could not determine game title from a supported store URL.';
                     logger.error(`GameManagerService: ${errorMessage} (URL: <${url}>)`);
+
                     return { submission: null, error: errorMessage };
                 }
 
                 const storeId = store.id;
-                const { imageUrl } = gameDataFromStore; // Get image only if needed
                 let gameId;
 
                 const [existingLink] = await db.query(
@@ -83,6 +85,7 @@ class GameManagerService {
                     gameId = existingLink.gameId;
                 } else {
                     const [existingGame] = await db.query('SELECT id FROM game WHERE name = ?', [title]);
+
                     if (existingGame) {
                         gameId = existingGame.id;
                     } else {
@@ -102,27 +105,32 @@ class GameManagerService {
             }
         } catch (error) {
             logger.error(`Critical error in registerGameFromUrl for URL <${url}>:`);
+
             console.error(error);
+
             return { submission: null, error: 'An unexpected internal error occurred.' };
         }
     }
 
     async addGameToUserLibrary(userId, gameId) {
         try {
-            // Use camelCase for table and column names
             const [existingLink] = await db.query(
                 'SELECT id FROM userGames WHERE userId = ? AND gameId = ?',
                 [userId, gameId]
             );
+
             if (existingLink) {
                 logger.info(`User ${userId} already has game ${gameId} in their library.`);
                 return existingLink.id;
             }
+
             const result = await db.insert('userGames', {
                 userId: userId,
                 gameId: gameId,
             });
+
             logger.info(`Added game ${gameId} to user ${userId}'s library.`);
+            
             return result; // Assumes this returns the new ID
         } catch (error) {
             logger.error(`Error adding game ${gameId} for user ${userId}:`, error);

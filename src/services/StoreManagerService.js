@@ -6,6 +6,7 @@ const scraperRegistry = require('../scrapers');
 const db = require('../lib/database'); // Assuming your DB connection is here
 
 class StoreManagerService {
+
     async init() {
         if (StoreManagerService.instance) {
             return StoreManagerService.instance;
@@ -15,7 +16,7 @@ class StoreManagerService {
 
         this.scrapers = scraperRegistry;
         this.storeMatchers = []; // Will hold { scraper_key, base_hostname }
-        await this._initializeStoreMatchers(); // Load store data from DB
+        await this._initializeStoreMatchers(); 
 
         StoreManagerService.instance = this;
         console.log(`StoreManagerService initialized with ${this.storeMatchers.length} stores.`);
@@ -25,24 +26,27 @@ class StoreManagerService {
         try {
             const activeStores = await db.query(
                 'SELECT scraper_key, base_hostname FROM store WHERE is_scrapable = TRUE ORDER BY LENGTH(base_hostname) DESC'
-                // Ordering by length DESC helps match more specific hostnames first, e.g., 'store.epicgames.com' before 'epicgames.com' if both existed for different scrapers.
             );
+
             this.storeMatchers = activeStores.map(store => ({
-                scraperKey: store.scraper_key, // Ensure your DB column name matches
-                baseHostname: store.base_hostname // Ensure your DB column name matches
+                scraperKey: store.scraper_key,
+                baseHostname: store.base_hostname
             }));
+
             console.log(`StoreManagerService: Initialized with ${this.storeMatchers.length} store matchers from DB.`);
+
             if (this.storeMatchers.length === 0) {
                 console.warn('StoreManagerService: No scrapable stores found in the database. Store identification will rely on "Unknown Store".');
             }
+
         } catch (error) {
             console.error('StoreManagerService: Failed to initialize store matchers from database:', error);
-            // Decide on fallback behavior - perhaps retry or operate without DB matchers
-            this.storeMatchers = []; // Ensure it's an array
+
+            this.storeMatchers = [];
         }
     }
 
-    // _downloadAndLoadHtml method remains the same...
+
     async _downloadAndLoadHtml(url) {
 
         if (!url || typeof url !== 'string') {
@@ -57,11 +61,15 @@ class StoreManagerService {
                 },
                 timeout: 10000,
             });
+
             const html = response.data;
             const $ = cheerio.load(html);
+
             return { html, $ };
+
         } catch (error) {
             console.error(`StoreManagerService: Failed to download URL ${url}: ${error.message}`);
+
             throw new Error(`Failed to download page content from ${url}.`);
         }
     }
@@ -87,12 +95,15 @@ class StoreManagerService {
                 console.log(`Checking matcher`, matcher
                     , `against hostname`, currentHostname
                 );
+
                 if (currentHostname.includes(matcher.baseHostname)) {
                     console.log(`StoreManagerService: Matched URL ${url} to store ${matcher.scraperKey}`);
                     return matcher.scraperKey;
                 }
+
                 console.log(`StoreManagerService: No match for ${matcher.baseHostname} in ${currentHostname}`);
             }
+
             return 'Unknown Store'; // For valid URLs that don't match known stores in DB
         } catch (e) {
             return 'Invalid URL'; // If new URL(url) throws
@@ -123,12 +134,9 @@ class StoreManagerService {
             return { storeName, storeUrl: url, error: 'The provided URL is invalid.' };
         }
 
-        // If storeMatchers haven't loaded yet, we might want to wait or handle it.
-        // For simplicity here, we assume _initializeStoreMatchers has run or is running.
-        // A more robust solution might involve a promise for initialization.
         if (this.storeMatchers.length === 0 && storeName === 'Unknown Store') {
             console.warn(`StoreManagerService: Attempting to fetch data for ${url}, but store matchers are not loaded from DB.`);
-            storeName = 'Unknown Store'; // Fallback to generic if matchers are empty}
+            storeName = 'Unknown Store';
         }
 
         if (storeName == 'Unknown Store') {
@@ -141,6 +149,7 @@ class StoreManagerService {
         }
         try {
             const { $ } = await this._downloadAndLoadHtml(url);
+            
             // The key for this.scrapers should match the scraper_key from the database
             const scraperModule = this.scrapers[storeName];
 
