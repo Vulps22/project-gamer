@@ -1,4 +1,4 @@
-const { MessageFlags, ContainerBuilder, Snowflake, TextDisplayBuilder, SeparatorBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, SectionBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { MessageFlags, ContainerBuilder, Snowflake, TextDisplayBuilder, SeparatorBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, SectionBuilder, ButtonBuilder, ButtonStyle, SeparatorSpacingSize } = require("discord.js");
 
 /**
  * 
@@ -11,7 +11,7 @@ function LFGMessage(game, links, requestor, taggables){
  
     let titleComponent = new TextDisplayBuilder().setContent(`## <@${requestor}> is looking for players to play **${game.name}** with`);
     
-    let separatorComponent = new SeparatorBuilder();
+    let separatorComponent = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
 
     let tagTextComponent = new TextDisplayBuilder().setContent(`${taggables.map(user => `- <@${user}>`).join('\n')}`);
 
