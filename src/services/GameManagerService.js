@@ -1,10 +1,8 @@
 // src/services/GameManagerService.js
 const { Snowflake } = require('discord.js'); // Import Snowflake type for userId
-const db = require('../lib/database'); // Your database singleton
-const { logger } = require('../lib/logger');
+const { db, logger } = require('../lib');
 const clientProvider = require('../provider/clientProvider');
 const storeManager = require('./StoreManagerService'); // Import the StoreManagerService
-// const { logger } = require('../lib/logger'); // If you want to use your logger
 
 const gameStatus = {
     APPROVED: 'approved',

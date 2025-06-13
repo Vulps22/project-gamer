@@ -42,7 +42,9 @@ const logger = {
 
 };
 
-module.exports = { logger };
+module.exports = {
+    logger
+};
 
 /**
      * Sends a message to a specific channel of the support server across shards.

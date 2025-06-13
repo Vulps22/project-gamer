@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-unused-vars
 const { Events, Interaction } = require('discord.js');
-const { logger } = require('../lib/logger.js');
+const { logger } = require('../lib');
 const userManagerServiceInstance = require('../services/UserManagerService.js');
 const clientProvider = require('../provider/clientProvider.js');
 const { BotInteraction, BotButtonInteraction } = require('../structures');
@@ -15,7 +15,7 @@ module.exports = {
     async execute(interaction) {
 
         if (!await saveUser(interaction)) {
-            logger.error('No userId found in interaction: Aborting interaction.');
+            await logger.error('No userId found in interaction: Aborting interaction.');
             interaction.reply('An error occurred while processing your interaction. Please try again later.');
             return;
         }

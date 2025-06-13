@@ -1,4 +1,4 @@
-const db = require('./lib/database.js');
+const { db } = require('./lib');
 
 const ConfigOption = Object.freeze({
     CONFIG_ID: 'id',

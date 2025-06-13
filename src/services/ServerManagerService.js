@@ -1,5 +1,5 @@
 
-const db = require('../lib/database'); // Assuming your DB connection is here
+const { db } = require('../lib');
 
 class ServerManagerService {
   async init() {

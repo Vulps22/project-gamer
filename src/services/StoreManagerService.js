@@ -4,7 +4,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const scraperRegistry = require('../scrapers');
-const db = require('../lib/database'); // Assuming your DB connection is here
+const { db } = require('../lib');
 
 class StoreManagerService {
 
