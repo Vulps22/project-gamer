@@ -189,6 +189,16 @@ class GameManagerService {
         return await db.query(sql, { name: `%${name}%` });
     }
 
+    async getStoresForGame(gameId) {
+        console.log('getStoresForGame called with:', gameId);
+        const sql = `
+            SELECT gs.storeId AS id, s.name AS name
+            FROM gameStore AS gs
+            JOIN store AS s ON gs.storeId = s.id
+            WHERE gs.gameId = ?
+        `;
+        return await db.query(sql, [gameId]);
+    }
 }
 
 const gameManagerInstance = new GameManagerService();

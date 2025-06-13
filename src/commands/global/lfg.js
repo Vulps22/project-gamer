@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags } = require('discord.js');
 const { gameManager} = require('../../services/GameManagerService');
-const { LFGMessage } = require('../../messages/lfgMessage');
-const { choosePlayersMessage } = require('../../messages/choosePlayersMessage');
+//const { LFGMessage } = require('../../messages/lfgMessage');
+//const { choosePlayersMessage } = require('../../messages/choosePlayersMessage');
 
 
 module.exports = {

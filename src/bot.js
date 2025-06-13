@@ -42,7 +42,7 @@ async function startShard() {
     await loadEvents(client);
 
     await loadCommands(client, 'global');
-    await loadCommands(client, 'mod');
+    //await loadCommands(client, 'mod');
 
     client.login(config.get(ConfigOption.DISCORD_BOT_TOKEN));
 
