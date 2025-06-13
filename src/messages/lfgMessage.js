@@ -7,23 +7,19 @@ const { MessageFlags, ContainerBuilder, Snowflake, TextDisplayBuilder, Separator
  * @param {Snowflake} requestor The user who requested the LFG
  * @param {Snowflake[]} taggables The users who can be tagged in the LFG message
  */
-function LFGMessage(game, links, requestor, taggables){
- 
-    let titleComponent = new TextDisplayBuilder().setContent(`## <@${requestor}> is looking for players to play **${game.name}** with`);
+function LFGMessage(game, links, requestor, taggables, openInvitation = false) {
+
+    let titleComponent = new TextDisplayBuilder().setContent(`## <@${requestor}> is looking for players to play **${game.name}**`);
+
+    let separatorComponent = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
     
-    let separatorComponent = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
+    let tagTextComponent;
+    if( !openInvitation) {
+        tagTextComponent = new TextDisplayBuilder().setContent(`${taggables.map(user => `- <@${user}>`).join('\n')}`);
+    }
 
-    let tagTextComponent = new TextDisplayBuilder().setContent(`${taggables.map(user => `- <@${user}>`).join('\n')}`);
+    let linksContent = links.map((link, index) => { return `- [${link.name}](<${link.url}>)`; }).join(' \n');
 
-    let linksContent = links.map((link, index) => {
-        if (index === 0) {
-            // For the first element, return the link WITHOUT angle brackets to allow a preview.
-            return `- [${link.name}](${link.url})`;
-        } else {
-            // For all other links, return them WITH angle brackets to suppress the preview.
-            return `- [${link.name}](<${link.url}>)`;
-        }
-    }).join(' \n'); // Join them all into a single string
     let linksComponent = new TextDisplayBuilder().setContent(`**Available on:** \n ${linksContent}`);
 
     let availableSectionComponent = new SectionBuilder()
@@ -32,7 +28,7 @@ function LFGMessage(game, links, requestor, taggables){
             .setLabel("I have this game")
             .setStyle(ButtonStyle.Success)
             .setCustomId(`lfg_addGame_id:${game.id}`)
-    )
+        );
 
     let imageComponent = new MediaGalleryBuilder()
         .addItems([new MediaGalleryItemBuilder()
@@ -43,12 +39,18 @@ function LFGMessage(game, links, requestor, taggables){
     const containerComponent = new ContainerBuilder()
         .addTextDisplayComponents(titleComponent)
         .addSeparatorComponents(separatorComponent)
-        .addTextDisplayComponents(tagTextComponent)
-        .addSeparatorComponents(separatorComponent)
+
+    if (!openInvitation) {
+        containerComponent
+            .addTextDisplayComponents(tagTextComponent)
+            .addSeparatorComponents(separatorComponent)
+    }
+
+    containerComponent
         .addSectionComponents(availableSectionComponent)
         .addSeparatorComponents(separatorComponent)
         .addMediaGalleryComponents(imageComponent);
-    
+
     const message = {
         flags: MessageFlags.IsComponentsV2,
         components: [containerComponent],
