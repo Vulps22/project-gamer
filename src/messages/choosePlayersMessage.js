@@ -14,6 +14,14 @@ function choosePlayersMessage(name, players, gameId){
             value: `${gameId}_${player.id}`,
         }));
 
+
+        if (playerArray.length === 0) {
+            playerArray.push({
+                label: "No players found",
+                value: "none",
+            });
+        }
+
         console.log("Player array:", playerArray);
 
     let titleComponent = new TextDisplayBuilder().setContent(`## Who would you like to play **${name}** with?`);
@@ -27,7 +35,7 @@ function choosePlayersMessage(name, players, gameId){
     console.log("Player select component:", playerSelectComponent.toJSON());
 
     const anyoneButton = new ButtonBuilder()
-        .setCustomId(`lfg_anyone_${gameId}`)
+        .setCustomId(`lfg_anyone_id:${gameId}`)
         .setLabel('Anyone')
         .setStyle(ButtonStyle.Success);
 

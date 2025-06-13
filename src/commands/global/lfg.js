@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags } = require('discord.js');
 const { gameManager} = require('../../services/GameManagerService');
 const { choosePlayersMessage } = require('../../messages/choosePlayersMessage');
+const { BotInteraction } = require('../../structures/botInteraction');
 
 
 module.exports = {
@@ -32,6 +33,11 @@ module.exports = {
         interaction.respond(games.map(game => ({ name: game.name, value: String(game.id) })));
         
     },
+    /**
+     * 
+     * @param {BotInteraction} interaction 
+     * @returns 
+     */
     async execute(interaction) {
 
         const gameId = interaction.options.getString('game');
