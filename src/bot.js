@@ -38,7 +38,7 @@ async function startShard() {
     await loadCommands(client, 'global');
     //await loadCommands(client, 'mod');
     await loadSelectMenus(client);
-    await loadbuttons(client);
+    await loadButtons(client);
     //await patchInteraction();
 
     client.login(config.get(ConfigOption.DISCORD_BOT_TOKEN));
@@ -98,7 +98,7 @@ function loadSelectMenus(client) {
     });
 }
 
-function loadbuttons(client) {
+function loadButtons(client) {
     const buttonsPath = path.join(__dirname, 'buttons');
     const buttonFiles = fs.readdirSync(buttonsPath).filter(file => file.endsWith('.js'));
 

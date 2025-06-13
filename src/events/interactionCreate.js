@@ -34,7 +34,7 @@ module.exports = {
         }
 
         if (interaction.isAnySelectMenu()) {
-            botInteraction = new BotInteraction(interaction);
+            const botInteraction = new BotInteraction(interaction);
             await handleSelectMenuInteraction(botInteraction);
             return;
         }
@@ -84,7 +84,7 @@ async function handleCommandInteraction(interaction) {
 
 /**
  * Handles select menu interactions.
- * @param {botInteraction} interaction
+ * @param {BotInteraction} interaction
  * @returns
  */
 async function handleSelectMenuInteraction(interaction) {
