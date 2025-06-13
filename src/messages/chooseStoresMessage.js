@@ -19,7 +19,7 @@ function chooseStoresMessage(stores) {
     console.log("Store list:", storeList);
 
     const messageText = new TextDisplayBuilder()
-        .setContent('Please select whhere you own this game (you can select multiple stores):')
+        .setContent('Please select where you own this game (you can select multiple stores):')
 
     const stringSelectComponent = new StringSelectMenuBuilder()
         .setCustomId('storeSelect')

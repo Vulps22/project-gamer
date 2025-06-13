@@ -44,6 +44,6 @@ module.exports = {
 
         const storesMessage = chooseStoresMessage(stores);
 
-        interaction.ephemeralReply(null, storesMessage);
+        await interaction.ephemeralReply(null, storesMessage);
     },
 };

@@ -108,7 +108,7 @@ async function handleSelectMenuInteraction(interaction) {
         logger.editLog(interaction.logMessage, `${logInteraction} Executing Select Response`);
         await menu.execute(interaction);
     } catch (error) {
-        console.error(`Error executing ${interaction.commandName}`);
+        console.error(`Error executing select menu with ID ${interaction.customId}`);
         console.error(error);
         interaction.ephemeralReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
 
