@@ -9,6 +9,7 @@ const ConfigOption = Object.freeze({
     DISCORD_ERROR_CHANNEL: 'discord_error_channel_id',
     DISCORD_SERVER_CHANNEL: 'discord_server_channel_id',
     DISCORD_SUPPORT_SERVER: 'discord_support_server_id',
+    DISCORD_SUPPORT_SERVER_URL: 'discord_support_server_url',
     TOP_GG_TOKEN: 'top_gg_token',
     UPTIME_KUMA_URL: 'uptime_kuma_url',
     ENVIRONMENT: 'env',
