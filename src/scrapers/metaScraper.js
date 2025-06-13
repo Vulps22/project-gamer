@@ -24,9 +24,7 @@ async function scrape($, url) {
     }
 
     // Get the image URL
-    if (!data.imageURL) {
-        data.imageURL = $('meta[name="og:image"]').attr('content') || null;
-    }
+    data.imageURL = $('meta[name="og:image"]').attr('content') || null;
 
     // Get the store ID
     if (!data.storeGameId) {
