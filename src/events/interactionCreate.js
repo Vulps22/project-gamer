@@ -3,7 +3,7 @@ const { Events, Interaction } = require('discord.js');
 const { logger } = require('../lib/logger.js');
 const userManagerServiceInstance = require('../services/UserManagerService.js');
 const clientProvider = require('../provider/clientProvider.js');
-const { BotInteraction } = require('../structures/botInteraction.js');
+const { BotInteraction } = require('../structures');
 
 module.exports = {
     name: Events.InteractionCreate,
