@@ -31,7 +31,7 @@ function LFGMessage(game, links, requestor, taggables){
         .setButtonAccessory(new ButtonBuilder()
             .setLabel("I have this game")
             .setStyle(ButtonStyle.Success)
-            .setCustomId(`lfg_add_game_${game.id}`)
+            .setCustomId(`lfg_addGame_id:${game.id}`)
     )
 
     let imageComponent = new MediaGalleryBuilder()
