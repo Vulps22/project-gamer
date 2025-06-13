@@ -129,7 +129,7 @@ class StoreManagerService {
      * storeUrl: string,
      * error: string | null,
      * title?: string | null,
-     * imageUrl?: string | null,
+     * imageURL?: string | null,
      * storeSpecificId?: string | null
      * }>} A promise that resolves to the scraped game data.
     */

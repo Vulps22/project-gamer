@@ -12,7 +12,7 @@ async function scrape($, url) {
     const data = {
         title: null,
         storeGameId: null,
-        imageUrl: null,
+        imageURL: null,
     };
 
     // Prioritize JSON-LD for all data, including the image
@@ -29,10 +29,10 @@ async function scrape($, url) {
                 if (item['@type'] === 'Product' || item['@type'] === 'VideoGame') {
                     data.title = item.name || data.title;
                     // --- NEW: Also get the image from JSON-LD if available ---
-                    data.imageUrl = item.image || data.imageUrl;
+                    data.imageURL = item.image || data.imageURL;
                     data.storeGameId = item.sku || item.mpn || data.storeGameId;
                     // Once we find the main VideoGame item, we can often stop.
-                    if (data.title && data.imageUrl && item['@type'] === 'VideoGame') break;
+                    if (data.title && data.imageURL && item['@type'] === 'VideoGame') break;
                 }
             }
         } catch (e) {
@@ -41,10 +41,10 @@ async function scrape($, url) {
     });
 
     // --- UPDATED: Fallback to og:image meta tag if not found in JSON-LD ---
-    if (!data.imageUrl) {
+    if (!data.imageURL) {
         const imageMetaTag = $('meta[property="og:image"]');
         if (imageMetaTag) {
-            data.imageUrl = imageMetaTag.attr('content');
+            data.imageURL = imageMetaTag.attr('content');
         }
     }
 
