@@ -40,8 +40,10 @@ module.exports = {
         
         //get a list of the stores this game is available on
         const gameId = interaction.options.getString('game');
-        const stores = await gameManager.getStoresForGame(gameId);
+        const stores = await gameManager.getStoresForGame(gameId, interaction.user.id);
 
-        interaction.ephemeralReply(chooseStoresMessage(stores));
+        const storesMessage = chooseStoresMessage(stores);
+
+        interaction.ephemeralReply(null, storesMessage);
     },
 };
