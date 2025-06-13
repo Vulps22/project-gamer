@@ -1,7 +1,6 @@
 // At the top of your file
 const { StringSelectMenuInteraction } = require('discord.js');
-const { gameManager } = require('../services/GameManagerService');
-
+const { gameManager } = require('../services');
 
 module.exports = {
     data: {

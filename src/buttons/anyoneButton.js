@@ -1,7 +1,7 @@
 // At the top of your file
 
 const { LFGMessage } = require('../messages');
-const { gameManager } = require('../services/GameManagerService');
+const { gameManager } = require('../services');
 const { BotButtonInteraction } = require('../structures');
 
 module.exports = {

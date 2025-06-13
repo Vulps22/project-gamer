@@ -2,7 +2,7 @@
 const { Events, Client, Guild } = require('discord.js');
 const { logger } = require('../lib');
 
-const serverManagerServiceInstance = require('../services/ServerManagerService.js');
+const { serverManagerServiceInstance } = require('../services');
 
 module.exports = {
     name: Events.GuildDelete,
@@ -13,6 +13,5 @@ module.exports = {
 
         await logger.log(`Left Server ${guild.id} - ${guild.name} (${guild.memberCount} members)`);
         await serverManagerServiceInstance.deleteServer(guild.id);
-
     },
 };
