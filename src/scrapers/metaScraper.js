@@ -9,44 +9,37 @@
 async function scrape($, url) {
     const data = {
         title: null,
-        imageURL: null, // Using your preferred casing
+        imageURL: null,
         storeGameId: null,
     };
 
-    // --- FIX: Target the 'name' attribute instead of 'property' ---
-    if (!data.title) {
-        data.title = $('meta[name="og:title"]').attr('content') || null;
+    // --- Get the raw title from the meta tag ---
+    let rawTitle = $('meta[name="og:title"]').attr('content') || null;
+
+    // --- NEW: Clean up the title if it was found ---
+    if (rawTitle) {
+        // This removes " on Meta Quest" ONLY if it's at the very end of the string.
+        // The .trim() at the end removes any leftover whitespace.
+        data.title = rawTitle.replace(/ on Meta Quest$/, '').trim();
     }
 
+    // Get the image URL
     if (!data.imageURL) {
         data.imageURL = $('meta[name="og:image"]').attr('content') || null;
     }
 
-    // For the store ID, the URL is the most reliable source.
-    // In your scraper's scrape function...
-if (!data.storeGameId) {
-    const urlParts = url.split('/');
-    
-    // Get the last part of the path. It might be empty if the URL has a trailing slash.
-    let potentialId = urlParts[urlParts.length - 1];
+    // Get the store ID
+    if (!data.storeGameId) {
+        const urlParts = url.split('/');
+        let potentialId = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
+        const idRegex = /^\d+$/;
 
-    // If the last part was empty, get the second-to-last part.
-    if (!potentialId) {
-        potentialId = urlParts[urlParts.length - 2];
+        if (potentialId && idRegex.test(potentialId)) {
+            data.storeGameId = potentialId;
+        } else {
+            data.storeGameId = null;
+        }
     }
-    
-    // The Regex pattern to test for a string containing only digits.
-    const idRegex = /^\d+$/;
-
-    // .test() returns true if the string matches the pattern, false otherwise.
-    if (potentialId && idRegex.test(potentialId)) {
-        console.log(`Validated store ID: ${potentialId}`);
-        data.storeGameId = potentialId;
-    } else {
-        console.log(`Could not validate a numeric ID from path segment: "${potentialId}"`);
-        data.storeGameId = null;
-    }
-}
 
     return data;
 }
