@@ -87,27 +87,33 @@ function loadCommands(client, type) {
 
 async function patchInteraction() {
     // Patch the interaction prototype to include a custom method
-    BaseInteraction.prototype.ephemeralReply = async function (content) {
+    BaseInteraction.prototype.ephemeralReply = async function (content, options = {}) {
+        const existingFlags = options.flags || 0;
+
+        // This combines the flags without overriding any existing ones.
+        const combinedFlags = existingFlags | MessageFlags.Ephemeral;
+
+        const finalOptions = {
+            ...options, // Keep all other options (embeds, components, etc.)
+            flags: combinedFlags, // Use our newly combined flags
+        };
+
         return this.sendReply(
             content,
-            {
-                flags: MessageFlags.Ephemeral
-            }
+            finalOptions
         );
     };
 
     BaseInteraction.prototype.sendReply = async function (content, options = {}) {
 
+        if (typeof content === 'string' && content.length > 0) {
+            options.content = content;
+        }
+
         if (this.deferred || this.replied) {
-            return this.editReply({
-                content: content,
-                ...options,
-            });
+            return this.editReply(options);
         } else {
-            return this.reply({
-                content: content,
-                ...options,
-            });
+            return this.reply(options);
         }
 
     };
