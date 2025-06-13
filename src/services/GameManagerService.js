@@ -1,7 +1,7 @@
 // src/services/GameManagerService.js
 const { Snowflake } = require('discord.js'); // Import Snowflake type for userId
 const { db, logger } = require('../lib');
-const clientProvider = require('../provider/clientProvider');
+const { clientProvider } = require('../provider');
 const storeManager = require('./StoreManagerService'); // Import the StoreManagerService
 
 const gameStatus = {
