@@ -49,7 +49,7 @@ function LFGMessage(game, links, requestor, taggables){
         .addSeparatorComponents(separatorComponent)
         .addMediaGalleryComponents(imageComponent);
     
-    message = {
+    const message = {
         flags: MessageFlags.IsComponentsV2,
         components: [containerComponent],
     }
