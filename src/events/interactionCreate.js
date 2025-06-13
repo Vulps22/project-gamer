@@ -3,6 +3,7 @@ const { Events, Interaction } = require('discord.js');
 const { logger } = require('../lib/logger.js');
 const userManagerServiceInstance = require('../services/UserManagerService.js');
 const clientProvider = require('../provider/clientProvider.js');
+const { BotInteraction } = require('../structures/botInteraction.js');
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -38,7 +39,8 @@ module.exports = {
 
         if (interaction.isCommand()) {
             console.log('Command interaction received:', interaction.commandName, interaction.user.id);
-            await handleCommandInteraction(interaction);
+            const botInteraction = new BotInteraction(interaction);
+            await handleCommandInteraction(botInteraction);
             return;
         }
 
@@ -58,7 +60,6 @@ async function handleCommandInteraction(interaction) {
             logger.error(`No command matching ${interaction.commandName} was found.`);
             return;
         }
-
 
         const logInteraction = `**Command**: ${interaction.commandName} | **Server**: ${interaction.guildId} | **User**: ${interaction.user.username} - ${interaction.user.id} ||`;
         interaction.logInteraction = logInteraction;
