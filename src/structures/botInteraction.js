@@ -21,6 +21,7 @@ class BotInteraction {
     get commandName() { return this._interaction.commandName; }
     get id() { return this._interaction.id; }
     get guildId() { return this._interaction.guildId; }
+    get values() { return this._interaction.values; }
     
     // --- PROXY METHODS ---
     reply(options) { return this._interaction.reply(options); }
