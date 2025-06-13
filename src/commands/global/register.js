@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
+const { BotInteraction } = require('../../structures/botInteraction');
 
 
 
@@ -16,6 +17,11 @@ module.exports = {
             )
         ),
     administrator: false,
+    /**
+     * 
+     * @param {BotInteraction} interaction 
+     * @returns 
+     */
     async execute(interaction) {
         interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const url = interaction.options.getString('url');

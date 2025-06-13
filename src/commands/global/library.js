@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
 const { gameManager } = require('../../services/GameManagerService');
 const { chooseStoresMessage } = require('../../messages/chooseStoresMessage');
+const { BotInteraction } = require('../../structures/botInteraction');
 
 
 module.exports = {
@@ -36,6 +37,10 @@ module.exports = {
         interaction.respond(games.map(game => ({ name: game.name, value: String(game.id) })));
         
     },
+    /**
+     * 
+     * @param {BotInteraction} interaction 
+     */
     async execute(interaction) {
         
         //get a list of the stores this game is available on
