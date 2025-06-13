@@ -9,7 +9,7 @@ function choosePlayersMessage(name, players, gameId){
  
     console.log("Choose players message called with players:", players, players.length, "name:", name);
 
-    playerArray = players.map(player => ({
+    const playerArray = players.map(player => ({
             label: player.username,
             value: `${gameId}_${player.id}`,
         }));
@@ -44,7 +44,7 @@ function choosePlayersMessage(name, players, gameId){
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
         .addSectionComponents(anyoneSectionComponent);
     
-    message = {
+    const message = {
         flags: MessageFlags.IsComponentsV2,
         components: [containerComponent],
     }
