@@ -38,10 +38,11 @@ async function startShard() {
     });
 
     setClient(client);
-
+    
     await loadEvents(client);
     await loadCommands(client, 'global');
     //await loadCommands(client, 'mod');
+    await loadSelectMenus(client);
     await patchInteraction();
 
     client.login(config.get(ConfigOption.DISCORD_BOT_TOKEN));
@@ -82,6 +83,22 @@ function loadCommands(client, type) {
         else
             console.warn(`[WARNING] The command at ${filePath} is missing a required 'data' or 'execute' property`);
 
+    });
+}
+
+function loadSelectMenus(client) {
+    const selectMenusPath = path.join(__dirname, 'selectMenus');
+    const selectMenuFiles = fs.readdirSync(selectMenusPath).filter(file => file.endsWith('.js'));
+
+    client.selectMenus = client.selectMenus || new Map();
+
+    selectMenuFiles.forEach(file => {
+        const filePath = path.join(selectMenusPath, file);
+        const selectMenu = require(filePath);
+        if (selectMenu.data && selectMenu.execute)
+            client.selectMenus.set(selectMenu.data.id, selectMenu);
+        else
+            console.warn(`[WARNING] The select menu at ${filePath} is missing a required 'data' or 'execute' property`);
     });
 }
 
