@@ -27,7 +27,7 @@ function createHelpMessage(commands, officialServerUrl) {
             "1. **Add Games to your Library**: Use the `/library add` command to add games from various stores to your library.\n" +
             "2. **Share Your Library**: Use the `/sharing` command to allow others to see which games you own.\n" +
             "3. **Find Gamers**: Use the `/lfg` command to discover other players who share your interests.\n\n" +
-            "Cant find your game in the store you bought it from? " +
+            "Can't find your game in the store you bought it from? " +
             "Use the `/register game` command to add it manually.\n\n");
 
     const commandListString = Array.from(commands.values()).map(command => {
