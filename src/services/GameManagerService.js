@@ -1,5 +1,5 @@
 // src/services/GameManagerService.js
-
+const { Snowflake } = require('discord.js'); // Import Snowflake type for userId
 const db = require('../lib/database'); // Your database singleton
 const { logger } = require('../lib/logger');
 const storeManager = require('./StoreManagerService'); // Import the StoreManagerService
@@ -66,7 +66,7 @@ class GameManagerService {
                 // --- The store is supported, proceed with the original, robust logic ---
 
                 if (!title) {
-                    
+
                     const errorMessage = 'Could not determine game title from a supported store URL.';
                     logger.error(`GameManagerService: ${errorMessage} (URL: <${url}>)`);
 
@@ -78,7 +78,7 @@ class GameManagerService {
 
                 const [existingLink] = await db.query(
                     'SELECT gameId FROM gameStore WHERE storeId = :storeId AND storeGameId = :storeGameId',
-                    {storeId: storeId, storeGameId: storeGameId}
+                    { storeId: storeId, storeGameId: storeGameId }
                 );
 
                 if (existingLink) {
@@ -112,29 +112,44 @@ class GameManagerService {
         }
     }
 
-    async addGameToUserLibrary(userId, gameId) {
+    /**
+     * 
+     * @param {Snowflake} userId 
+     * @param {number} gameStoreId 
+     * @returns {Promise<boolean>} - Returns true if the game was added successfully, false otherwise.
+     */
+    async addGameToUserLibrary(userId, gameStoreId) {
+
+        console.log('addGameToUserLibrary called with:', userId, gameStoreId);
+
         try {
             const [existingLink] = await db.query(
-                'SELECT id FROM userGames WHERE userId = ? AND gameId = ?',
-                [userId, gameId]
+                'SELECT id FROM userLibrary WHERE userId = ? AND gameStoreId = ?',
+                [userId, gameStoreId]
             );
 
             if (existingLink) {
-                logger.info(`User ${userId} already has game ${gameId} in their library.`);
-                return existingLink.id;
+                logger.log(`User ${userId} already has game ${gameStoreId} in their library.`);
+                return true
             }
 
-            const result = await db.insert('userGames', {
+            const result = await db.insert('userLibrary', {
                 userId: userId,
-                gameId: gameId,
+                gameStoreId: gameStoreId,
             });
 
-            logger.info(`Added game ${gameId} to user ${userId}'s library.`);
-            
-            return result; // Assumes this returns the new ID
+            if (!result) {
+                logger.error(`Failed to add game ${gameStoreId} for user ${userId}.`);
+                return false;
+            }
+
+            logger.log(`Added game ${gameStoreId} to user ${userId}'s library.`);
+
+            return true; // Assumes this returns the new ID
         } catch (error) {
-            logger.error(`Error adding game ${gameId} for user ${userId}:`, error);
-            return null;
+            logger.error(`Error adding game ${gameStoreId} for user ${userId}:`);
+            console.error(`Error adding game ${gameStoreId} for user ${userId}:`, error);
+            return false; // Return an error status
         }
     }
 
@@ -146,15 +161,6 @@ class GameManagerService {
         // 1. Find gameId if name is given
         // 2. db.delete('user_games', 'user_id = ? AND game_id = ?', [userId, gameId]);
         return false; // Placeholder
-    }
-
-    async findGamesByName(query, guildId = null) {
-        console.log('findGamesByName called with:', query, guildId);
-        // const searchTerm = `%${query}%`;
-        // let sql = 'SELECT id, name FROM games WHERE name LIKE ?'; // Basic search
-        // Add whitelist/blacklist logic if guildId is provided
-        // return db.query(sql, [searchTerm]);
-        return []; // Placeholder
     }
 
     async getUsersForGame(gameId, guildId) {
@@ -174,6 +180,62 @@ class GameManagerService {
         // const sql = 'SELECT store_name, url FROM game_stores WHERE game_id = ? AND is_verified_by_admin = TRUE';
         // return db.query(sql, [gameId]);
         return []; // Placeholder
+    }
+
+    async searchGamesByName(name) {
+        console.log('searchGamesByName (by popularity) called with:', name);
+        const sql = `
+        SELECT
+            g.id,
+            g.name,
+            COUNT(ul.id) AS popularity
+        FROM
+            game AS g
+        LEFT JOIN gameStore AS gs ON g.id = gs.gameId
+        LEFT JOIN userLibrary AS ul ON gs.id = ul.gameStoreId
+        WHERE
+            g.name LIKE :name
+        GROUP BY
+            g.id, g.name
+        ORDER BY
+            popularity DESC, g.name ASC
+        LIMIT 20;`;
+
+        return await db.query(sql, { name: `%${name}%` });
+    }
+
+    /**
+ * Gets all stores for a given game that the user does not already have in their library.
+ * @param {string} gameId The ID of the game.
+ * @param {string} userId The ID of the user to check against.
+ * @returns {Promise<Array<object>>} A filtered array of store objects.
+ */
+    async getStoresForGame(gameId, userId) {
+        console.log(`getStoresForGame called for gameId: ${gameId}, excluding stores for userId: ${userId}`);
+
+        // The ? placeholders are positional. The first '?' will be userId, the second will be gameId.
+        const sql = `
+        SELECT
+            gs.id,
+            s.name
+        FROM
+            gameStore AS gs
+        INNER JOIN
+            store AS s ON gs.storeId = s.id
+        LEFT JOIN
+            userLibrary AS ul ON gs.id = ul.gameStoreId AND ul.userId = ?
+        WHERE
+            gs.gameId = ? AND ul.id IS NULL;
+    `;
+
+        // The order of parameters in this array MUST match the order of the '?' in the SQL.
+        const results = await db.query(sql, [userId, gameId]);
+
+        if (!results || results.length === 0) {
+            return [];
+        }
+
+        return results;
     }
 }
 

@@ -2,6 +2,7 @@
 const { Events, Interaction } = require('discord.js');
 const { logger } = require('../lib/logger.js');
 const userManagerServiceInstance = require('../services/UserManagerService.js');
+const clientProvider = require('../provider/clientProvider.js');
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -12,7 +13,7 @@ module.exports = {
      */
     async execute(interaction) {
 
-        if(!await saveUser(interaction)) {
+        if (!await saveUser(interaction)) {
             logger.error('No userId found in interaction: Aborting interaction.');
             interaction.reply('An error occurred while processing your interaction. Please try again later.');
             return;
@@ -27,6 +28,11 @@ module.exports = {
         if (interaction.isButton()) {
             console.log('Button interaction received:', interaction.customId, interaction.user.id);
             // await handleButtonInteraction(interaction);
+            return;
+        }
+
+        if (interaction.isAnySelectMenu()) {
+            await handleSelectMenuInteraction(interaction);
             return;
         }
 
@@ -70,6 +76,43 @@ async function handleCommandInteraction(interaction) {
         else interaction.editReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
 
         logger.error(`\nCommand: ${interaction.commandName}\nError: ${error.message}`);
+    }
+}
+
+/**
+ * Handles select menu interactions.
+ * @param {Interaction} interaction
+ * @returns
+ */
+async function handleSelectMenuInteraction(interaction) {
+
+    console.log('Select Menu interaction received:', interaction.customId, interaction.user.id);
+
+
+    try {
+        const menu = clientProvider.getClient().selectMenus.get(interaction.customId);
+        console.log('Select Menu:', menu);
+
+
+        if (!menu) {
+            logger.error(`No select matching ${interaction.customId} was found.`);
+            return;
+        }
+
+
+        const logInteraction = `**Select**: ${interaction.customId} | **Server**: ${interaction.guildId} | **User**: ${interaction.user.username} - ${interaction.user.id} ||`;
+        interaction.logInteraction = logInteraction;
+
+        interaction.logMessage = await logger.log(logInteraction);
+
+        logger.editLog(interaction.logMessage, `${logInteraction} Executing Select Response`);
+        await menu.execute(interaction);
+    } catch (error) {
+        console.error(`Error executing select menu with ID ${interaction.customId}`);
+        console.error(error);
+        interaction.ephemeralReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
+
+        logger.error(`\nSelect: ${interaction.customId}\nError: ${error.message}`);
     }
 }
 
@@ -123,9 +166,9 @@ function shouldExecute(interaction, command) {
  * @param {*} interaction 
  * @return {boolean} Returns true if the user was saved or already exists, false if no userId was found.
  */
-async function saveUser(interaction){
+async function saveUser(interaction) {
     const userId = interaction.user.id;
-    
+
     if (!userId) {
         console.error('No user ID found in interaction:', interaction);
         return false;
@@ -133,12 +176,12 @@ async function saveUser(interaction){
 
     user = await userManagerServiceInstance.getOrCreateUser(userId);
 
-    if(!user){
+    if (!user) {
         return;
     }
 
     await userManagerServiceInstance.addUserToServer(userId, interaction.guildId);
 
     return true;
-    
+
 }

@@ -1,4 +1,7 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags } = require('discord.js');
+const { gameManager} = require('../../services/GameManagerService');
+//const { LFGMessage } = require('../../messages/lfgMessage');
+//const { choosePlayersMessage } = require('../../messages/choosePlayersMessage');
 
 
 module.exports = {
@@ -18,14 +21,17 @@ module.exports = {
 	 * @param {AutocompleteInteraction} interaction
 	 */
     async autoComplete(interaction) {
-        interaction.respond([
-            { name: 'This command is not yet implemented', value: 'not_implemented' }
-        ]);
-        /*
         const name = interaction.options.getFocused();
-        const games = await Game.search(name);
+        const games = await gameManager.searchGamesByName(name);
+
+        console.log('Autocomplete games:', games);
+
+        if (!games || games.length === 0) {
+            return interaction.respond([{ name: 'No games found', value: 'none' }]);
+        }
+
         interaction.respond(games.map(game => ({ name: game.name, value: String(game.id) })));
-        */
+        
     },
     async execute(interaction) {
         interaction.reply({
