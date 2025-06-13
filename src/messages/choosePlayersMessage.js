@@ -1,4 +1,4 @@
-const { MessageFlags, ContainerBuilder, Snowflake, TextDisplayBuilder, ActionRowBuilder, StringSelectMenuBuilder, UserSelectMenuBuilder } = require("discord.js");
+const { MessageFlags, ContainerBuilder, Snowflake, TextDisplayBuilder, ActionRowBuilder, StringSelectMenuBuilder, UserSelectMenuBuilder, ButtonBuilder, ButtonStyle, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize } = require("discord.js");
 
 /**
  * 
@@ -16,7 +16,7 @@ function choosePlayersMessage(name, players, gameId){
 
         console.log("Player array:", playerArray);
 
-    let titleComponent = new TextDisplayBuilder().setContent(`Who would you like to play **${name}** with?`);
+    let titleComponent = new TextDisplayBuilder().setContent(`## Who would you like to play **${name}** with?`);
     
     console.log("Title component:", titleComponent.toJSON());
 
@@ -26,13 +26,23 @@ function choosePlayersMessage(name, players, gameId){
 
     console.log("Player select component:", playerSelectComponent.toJSON());
 
+    const anyoneButton = new ButtonBuilder()
+        .setCustomId(`lfg_anyone_${gameId}`)
+        .setLabel('Anyone')
+        .setStyle(ButtonStyle.Success);
 
-    let actionRowComponent = new ActionRowBuilder()
-    .addComponents(playerSelectComponent);
+    let playerActionRowComponent = new ActionRowBuilder()
+    .addComponents([playerSelectComponent]);
+
+    const anyoneSectionComponent = new SectionBuilder()
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Or open it up to"))
+        .setButtonAccessory(anyoneButton);
 
     const containerComponent = new ContainerBuilder()
         .addTextDisplayComponents(titleComponent)
-        .addActionRowComponents(actionRowComponent);
+        .addActionRowComponents(playerActionRowComponent)
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
+        .addSectionComponents(anyoneSectionComponent);
     
     message = {
         flags: MessageFlags.IsComponentsV2,
