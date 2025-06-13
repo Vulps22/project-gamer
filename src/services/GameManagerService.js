@@ -2,6 +2,7 @@
 const { Snowflake } = require('discord.js'); // Import Snowflake type for userId
 const db = require('../lib/database'); // Your database singleton
 const { logger } = require('../lib/logger');
+const clientProvider = require('../provider/clientProvider');
 const storeManager = require('./StoreManagerService'); // Import the StoreManagerService
 // const { logger } = require('../lib/logger'); // If you want to use your logger
 
@@ -22,95 +23,88 @@ class GameManagerService {
     }
 
     async registerGameFromUrl(url, userId) {
-        try {
+    try {
+        const gameDataFromStore = await storeManager.fetchGameDataFromUrl(url);
+        console.log(`GameManagerService: Scraped data for URL <${url}>:`, gameDataFromStore);
 
-            const gameDataFromStore = await storeManager.fetchGameDataFromUrl(url);
+        if (gameDataFromStore.error && !gameDataFromStore.title) {
+            const errorMessage = gameDataFromStore.error;
+            logger.error(`GameManagerService: Failed to process URL <${url}>. Reason: ${errorMessage}`);
+            return { submission: null, error: errorMessage };
+        }
 
-            console.log(`GameManagerService: Scraped data for URL <${url}>:`, gameDataFromStore);
+        // --- CHANGE 1: Destructure imageURL from the scraped data ---
+        const { storeName, storeUrl, error, title, storeGameId, imageURL } = gameDataFromStore;
 
-            if (gameDataFromStore.error) {
+        const [store] = await db.query('SELECT id FROM store WHERE name = ?', [storeName]);
 
-                // We only need a URL for a submission, not a title.
-                // But if the scraper itself throws an error (e.g., invalid URL), we should stop.
-                const errorMessage = gameDataFromStore.error;
-
-                logger.error(`GameManagerService: Failed to process URL <${url}>. Reason: ${errorMessage}`);
-
+        if (!store) {
+            // Unrecognized store logic remains the same...
+            logger.log(`Unrecognized store "${storeName}" from URL <${url}>. Creating a pending submission.`);
+            await db.insert('gameSubmissions', { url: url, submittedBy: userId });
+            return {
+                submission: { url: storeUrl, status: gameStatus.PENDING },
+                error: null,
+            };
+        } else {
+            // The store is supported...
+            if (!title) {
+                const errorMessage = 'Could not determine game title from a supported store URL.';
+                logger.error(`GameManagerService: ${errorMessage} (URL: <${url}>)`);
                 return { submission: null, error: errorMessage };
             }
 
-            // Destructure all data. Title is still needed for the "approved store" workflow.
-            const { storeName, storeUrl, error, title, storeGameId } = gameDataFromStore;
+            const storeId = store.id;
+            let gameId;
 
-            const [store] = await db.query('SELECT id FROM store WHERE name = ?', [storeName]);
+            const [existingLink] = await db.query(
+                'SELECT gameId FROM gameStore WHERE storeId = :storeId AND storeGameId = :storeGameId',
+                { storeId: storeId, storeGameId: storeGameId }
+            );
 
-            if (!store) {
-                // --- The store is unrecognized. Add ONLY the URL and user to the submissions queue. ---
-                logger.log(`Unrecognized store "${storeName}" from URL <${url}>. Creating a pending submission.`);
-
-                await db.insert('gameSubmissions', {
-                    url: url,
-                    submittedBy: userId,
-                    // 'status' will default to 'pending' in the database.
-                });
-
-                return {
-                    submission: {
-                        url: storeUrl,
-                        status: gameStatus.PENDING, // Use the constant for clarity
-                    },
-                    error: null,
-                };
-
+            if (existingLink) {
+                gameId = existingLink.gameId;
             } else {
-                // --- The store is supported, proceed with the original, robust logic ---
+                const [existingGame] = await db.query('SELECT id, imageURL FROM game WHERE name = ?', [title]);
 
-                if (!title) {
-
-                    const errorMessage = 'Could not determine game title from a supported store URL.';
-                    logger.error(`GameManagerService: ${errorMessage} (URL: <${url}>)`);
-
-                    return { submission: null, error: errorMessage };
-                }
-
-                const storeId = store.id;
-                let gameId;
-
-                const [existingLink] = await db.query(
-                    'SELECT gameId FROM gameStore WHERE storeId = :storeId AND storeGameId = :storeGameId',
-                    { storeId: storeId, storeGameId: storeGameId }
-                );
-
-                if (existingLink) {
-                    gameId = existingLink.gameId;
-                } else {
-                    const [existingGame] = await db.query('SELECT id FROM game WHERE name = ?', [title]);
-
-                    if (existingGame) {
-                        gameId = existingGame.id;
-                    } else {
-                        gameId = await db.insert('game', { name: title, status: 'APPROVED' });
+                if (existingGame) {
+                    gameId = existingGame.id;
+                    
+                    // --- CHANGE 2: If the game exists but is missing an imageURL, update it. ---
+                    if (!existingGame.imageURL && imageURL) {
+                        logger.log(`GameManagerService: Found existing game "${title}" (ID: ${gameId}) and updating its missing imageURL.`);
+                        await db.query('UPDATE game SET imageURL = ? WHERE id = ?', [imageURL, gameId]);
                     }
-                    await db.insert('gameStore', { gameId, storeId, storeGameId, url: storeUrl, status: 'APPROVED' });
-                }
 
-                return {
-                    submission: { // Use a consistent return shape
-                        url: storeUrl,
+                } else {
+                    // --- CHANGE 3: When inserting a NEW game, include the imageURL. ---
+                    logger.log(`GameManagerService: Creating new game entry for "${title}" with imageURL.`);
+                    gameId = await db.insert('game', {
+                        name: title,
                         status: 'APPROVED',
-                        gameId: gameId,
-                    },
-                    error: null,
-                };
+                        imageURL: imageURL // Using your casing
+                    });
+                }
+                
+                // This part remains the same
+                await db.insert('gameStore', { gameId, storeId, storeGameId, url: storeUrl, status: 'APPROVED' });
             }
-        } catch (error) {
-            logger.error(`Critical error in registerGameFromUrl for URL <${url}>:`);
 
-            console.error(error);
-
-            return { submission: null, error: 'An unexpected internal error occurred.' };
+            return {
+                submission: {
+                    url: storeUrl,
+                    status: 'APPROVED',
+                    gameId: gameId,
+                },
+                error: null,
+            };
         }
+    } catch (error) {
+        logger.error(`Critical error in registerGameFromUrl for URL <${url}>:`);
+        console.error(error);
+        return { submission: null, error: 'An unexpected internal error occurred.' };
     }
+}
 
     /**
      * 
@@ -165,23 +159,70 @@ class GameManagerService {
 
     async getUsersForGame(gameId, guildId) {
         console.log('getUsersForGame called with:', gameId, guildId);
-        // const sql = `
-        //     SELECT ug.user_id FROM user_games ug
-        //     JOIN server_user_sharing sus ON ug.user_id = sus.user_id AND sus.guild_id = ?
-        //     WHERE ug.game_id = ? AND sus.sharing_enabled = TRUE
-        // `;
-        // const users = await db.query(sql, [guildId, gameId]);
-        // return users.map(u => u.user_id);
-        return []; // Placeholder
+        const sql = `SELECT DISTINCT
+                u.id
+            FROM
+                user AS u
+            INNER JOIN
+                serverUser AS su ON u.id = su.userId
+            INNER JOIN
+                userLibrary AS ul ON u.id = ul.userId
+            INNER JOIN
+                gameStore AS gs ON ul.gameStoreId = gs.id
+            WHERE
+                su.serverId = :serverId
+                AND gs.gameId = :gameId;`;
+
+        let ids = await db.query(sql, { serverId: guildId, gameId: gameId });
+
+        const client = clientProvider.getClient();
+        if (!client) {
+            console.error('Client instance is not available.');
+            return [];
+        }
+
+        const users = ids.map(row => {
+            const user = client.users.cache.get(row.id);
+            return {
+                id: row.id,
+                username: user ? user.username : 'Unknown User',
+            }
+        });
+        console.log('getUsersForGame found users:', users);
+
+        return users;
+
+    }
+
+    async getGameById(gameId) {
+        console.log('getGameById called with:', gameId);
+        const sql = 'SELECT * FROM game WHERE id = ?';
+        const results = await db.query(sql, [gameId]);
+        console.log('getGameById results:', results[0]);
+        return results[0] || null; // Return the first result or null if not found
     }
 
     async getStoreUrlsForGame(gameId) {
         console.log('getStoreUrlsForGame called with:', gameId);
-        // const sql = 'SELECT store_name, url FROM game_stores WHERE game_id = ? AND is_verified_by_admin = TRUE';
-        // return db.query(sql, [gameId]);
-        return []; // Placeholder
+        const sql = `
+        SELECT
+            s.name,
+            gs.url
+        FROM
+            gameStore AS gs
+        INNER JOIN
+            store AS s ON gs.storeId = s.id
+        WHERE
+            gs.gameId = ?;
+    `;
+        return await db.query(sql, [gameId]);
     }
 
+    /**
+     * Searches for games by name, ordered by popularity limited to 25 results.
+     * @param {string} name 
+     * @returns 
+     */
     async searchGamesByName(name) {
         console.log('searchGamesByName (by popularity) called with:', name);
         const sql = `

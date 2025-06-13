@@ -9,15 +9,19 @@
 async function scrape($, url) {
     const data = {
         title: $('#appHubAppName').text().trim() || null,
+        // Use the more reliable og:image meta tag to get the image URL
+        imageURL: $('meta[property="og:image"]').attr('content') || null,
         storeGameId: null,
     };
 
-    console.log("Steam Scraper: Scrapped:", data);
+    console.log("Steam Scraper: Scraped:", data);
 
+    // Get the app ID from the URL using a regular expression
     const appIdMatch = url.match(/app\/(\d+)/);
     if (appIdMatch && appIdMatch[1]) {
         data.storeGameId = appIdMatch[1];
     }
+    
     return data;
 }
 
