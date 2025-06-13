@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags } = require('discord.js');
 const { gameManager} = require('../../services/GameManagerService');
-const { choosePlayersMessage } = require('../../messages/choosePlayersMessage');
+const { choosePlayersMessage } = require('../../messages');
 const { BotInteraction } = require('../../structures/botInteraction');
 
 
