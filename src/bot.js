@@ -6,7 +6,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, BaseInteraction, MessageFlags } = require('discord.js');
 const { config, ConfigOption } = require('./config.js');
 const { setClient } = require('./provider/clientProvider.js');
 const storeManagerInstance = require('./services/StoreManagerService.js');
@@ -40,9 +40,9 @@ async function startShard() {
     setClient(client);
 
     await loadEvents(client);
-
     await loadCommands(client, 'global');
     //await loadCommands(client, 'mod');
+    await patchInteraction();
 
     client.login(config.get(ConfigOption.DISCORD_BOT_TOKEN));
 
@@ -83,4 +83,32 @@ function loadCommands(client, type) {
             console.warn(`[WARNING] The command at ${filePath} is missing a required 'data' or 'execute' property`);
 
     });
+}
+
+async function patchInteraction() {
+    // Patch the interaction prototype to include a custom method
+    BaseInteraction.prototype.ephemeralReply = async function (content) {
+        return this.sendReply(
+            content,
+            {
+                flags: MessageFlags.Ephemeral
+            }
+        );
+    };
+
+    BaseInteraction.prototype.sendReply = async function (content, options = {}) {
+
+        if (this.deferred || this.replied) {
+            return this.editReply({
+                content: content,
+                ...options,
+            });
+        } else {
+            return this.reply({
+                content: content,
+                ...options,
+            });
+        }
+
+    };
 }
