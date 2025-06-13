@@ -25,7 +25,7 @@ module.exports = {
         const links = await gameManager.getStoreUrlsForGame(gameId);
 
         const message = LFGMessage(game, links, userId, [], true);
-        await interaction.ephemeralReply(null, message);
+        await interaction.channel.send(message);
 
     },
 };
