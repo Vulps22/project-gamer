@@ -1,7 +1,6 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags } = require('discord.js');
 const { gameManager} = require('../../services/GameManagerService');
-//const { LFGMessage } = require('../../messages/lfgMessage');
-//const { choosePlayersMessage } = require('../../messages/choosePlayersMessage');
+const { choosePlayersMessage } = require('../../messages/choosePlayersMessage');
 
 
 module.exports = {
@@ -34,9 +33,23 @@ module.exports = {
         
     },
     async execute(interaction) {
-        interaction.reply({
-            content: 'This command is not yet implemented. Please check back later!',
-            flags: MessageFlags.Ephemeral
-        });
+
+        const gameId = interaction.options.getString('game');
+        const userId = interaction.user.id;
+
+        const game = await gameManager.getGameById(gameId);
+        
+        console.log('LFG Game found:', game);
+
+        if (!game) {
+            return interaction.ephemeralReply({ content: 'Game not found.'});
+        }
+
+        const message = choosePlayersMessage(game.name, await gameManager.getUsersForGame(gameId, interaction.guildId), gameId);
+
+        //const message = await LFGMessage(gameId, [], userId, [userId]);
+
+        interaction.ephemeralReply(null, message);
+
     },
 };

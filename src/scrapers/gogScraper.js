@@ -12,11 +12,10 @@ async function scrape($, url) {
     const data = {
         title: null,
         storeGameId: null,
-        description: null, // Added for completeness from your example
-        imageUrl: null,    // Added for completeness from your example
+        imageUrl: null,
     };
 
-    // Prioritize JSON-LD
+    // Prioritize JSON-LD for all data, including the image
     const gogJsonLdScripts = $('script[type="application/ld+json"]');
     gogJsonLdScripts.each((i, el) => {
         const scriptContent = $(el).html();
@@ -29,8 +28,11 @@ async function scrape($, url) {
             for (const item of items) {
                 if (item['@type'] === 'Product' || item['@type'] === 'VideoGame') {
                     data.title = item.name || data.title;
+                    // --- NEW: Also get the image from JSON-LD if available ---
+                    data.imageUrl = item.image || data.imageUrl;
                     data.storeGameId = item.sku || item.mpn || data.storeGameId;
-                    if (data.title && item['@type'] === 'VideoGame') break;
+                    // Once we find the main VideoGame item, we can often stop.
+                    if (data.title && data.imageUrl && item['@type'] === 'VideoGame') break;
                 }
             }
         } catch (e) {
@@ -38,21 +40,25 @@ async function scrape($, url) {
         }
     });
 
-    // Fallbacks if JSON-LD fails or is incomplete
-    if (!data.title) data.title = $('[class*="productcard-basics__title"]').text().trim() || $('h1.product-card__title').text().trim() || null;
+    // --- UPDATED: Fallback to og:image meta tag if not found in JSON-LD ---
+    if (!data.imageUrl) {
+        const imageMetaTag = $('meta[property="og:image"]');
+        if (imageMetaTag) {
+            data.imageUrl = imageMetaTag.attr('content');
+        }
+    }
 
-    // ===================================================================
-    // NEW: Final cleanup step to decode HTML entities from the title
-    // ===================================================================
+    // Fallbacks for title if JSON-LD fails or is incomplete
+    if (!data.title) {
+        data.title = $('[class*="productcard-basics__title"]').text().trim() || $('h1.product-card__title').text().trim() || null;
+    }
+
+    // Final cleanup step to decode HTML entities from the title
     if (data.title) {
-        // This ensures that if the title came from JSON-LD with HTML
-        // entities (like &#039;), it gets decoded to its plain text
-        // representation (like ').
         const tempCheerio = cheerio.load(data.title);
         data.title = tempCheerio.root().text();
     }
-    // ===================================================================
-
+    
     return data;
 }
 

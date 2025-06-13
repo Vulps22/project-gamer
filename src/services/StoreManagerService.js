@@ -189,7 +189,7 @@ class StoreManagerService {
                 console.warn(`StoreManagerService: Specific scraper for ${storeName} failed. Passing to moderator for manual verification.`);
             }
 
-            returnData = {
+            const returnData = {
                 storeName, // This is now the scraper_key from your DB or "Unknown Store"
                 storeUrl: url,
                 ...scrapedData,
