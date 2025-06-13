@@ -3,7 +3,7 @@ const { Events, Interaction } = require('discord.js');
 const { logger } = require('../lib/logger.js');
 const userManagerServiceInstance = require('../services/UserManagerService.js');
 const clientProvider = require('../provider/clientProvider.js');
-const { BotInteraction } = require('../structures');
+const { BotInteraction, BotButtonInteraction } = require('../structures');
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -28,7 +28,8 @@ module.exports = {
 
         if (interaction.isButton()) {
             console.log('Button interaction received:', interaction.customId, interaction.user.id);
-            // await handleButtonInteraction(interaction);
+            const buttonInteraction = new BotButtonInteraction(interaction);
+            await handleButtonInteraction(buttonInteraction);
             return;
         }
 
@@ -114,6 +115,42 @@ async function handleSelectMenuInteraction(interaction) {
         interaction.ephemeralReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
 
         logger.error(`\nSelect: ${interaction.customId}\nError: ${error.message}`);
+    }
+}
+
+/**
+ * Handles Button interactions.
+ * @param {BotButtonInteraction} interaction
+ * @returns
+ */
+async function handleButtonInteraction(interaction) {
+
+    console.log('Button interaction received:', interaction.baseId, interaction.user.id);
+
+    try {
+        const button = clientProvider.getClient().buttons.get(interaction.baseId);
+        console.log('Buttton:', button);
+
+
+        if (!button) {
+            logger.error(`No button matching ${interaction.baseId} was found.`);
+            return;
+        }
+
+
+        const logInteraction = `**Button**: ${interaction.customId} | **Server**: ${interaction.guildId} | **User**: ${interaction.user.username} - ${interaction.user.id} ||`;
+        interaction.logInteraction = logInteraction;
+
+        interaction.logMessage = await logger.log(logInteraction);
+
+        logger.editLog(interaction.logMessage, `${logInteraction} Executing Button Response`);
+        await button.execute(interaction);
+    } catch (error) {
+        console.error(`Error executing button with ID ${interaction.customId}`);
+        console.error(error);
+        interaction.ephemeralReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
+
+        logger.error(`\button: ${interaction.customId}\nError: ${error.message}`);
     }
 }
 
