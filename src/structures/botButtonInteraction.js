@@ -15,41 +15,44 @@ class BotButtonInteraction extends BotInteraction {
     }
 
     //NOTE: Keep these in alphabetical order for consistency
-
+    get action() { return this._buttonData.action; }
     get baseId() { return this._baseId; }
     get buttonData() { return this._buttonData; }
     get customIdRaw() { return this._interaction.customId; }
+    /**
+     * @returns {Map<string, string>} The parameters extracted from the custom ID.
+     */
+    get params() { return this._buttonData.params; }
+    get prefix() { return this._buttonData.prefix; }
+
+
+
+    // ... your _parseCustomId method remains the same ...
     // In your BotButtonInteraction class
 
     _parseCustomId() {
         const parts = this._interaction.customId.split('_');
         const prefix = parts[0] || null;
         const action = parts[1] || null;
-
-        // Get all parameter parts of the ID
         const paramParts = parts.slice(2);
 
+        // Initialize buttonData. params will ALWAYS be a Map.
         this._buttonData = {
-            prefix: prefix,
-            action: action,
-            params: {},
+            prefix,
+            action,
+            params: new Map(),
         };
 
-        let hasNamedParams = false;
-
-        // Loop through the parameter parts to check for key:value pairs
+        // Loop through the parameter parts and enforce the key:value format.
         for (const part of paramParts) {
             // Check if the part contains our key-value separator ':'
             if (part.includes(':')) {
-                hasNamedParams = true;
-                const [key, value] = part.split(':');
-                this._buttonData.params[key] = value;
+                const [key, value] = part.split(':', 2); // Split only on the first ':'
+                this._buttonData.params.set(key, value);
+            } else {
+                // If a part is not in key:value format, it's an error.
+                throw new Error(`Invalid customId format. Parameter "${part}" is missing a key. Expected format 'key:value'.`);
             }
-        }
-
-        // If no key:value pairs were found, assume the original positional style
-        if (!hasNamedParams) {
-            this._buttonData.params = paramParts;
         }
 
         // Set the baseId as before
