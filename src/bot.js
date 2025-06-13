@@ -1,18 +1,13 @@
-/**
- * This file is the entry point for each individual bot shard.
- * It sets up the client and its event listeners.
- * It relies on the ShardingManager (in main.js/index.js) to spawn it.
- */
-
+const { Client, GatewayIntentBits, BaseInteraction, MessageFlags } = require('discord.js');
+const serverManagerServiceInstance = require('./services/ServerManagerService.js');
+const userManagerServiceInstance = require('./services/UserManagerService.js');
+const storeManagerInstance = require('./services/StoreManagerService.js');
+const { gameManager } = require('./services/GameManagerService.js');
+const { setClient } = require('./provider/clientProvider.js');
+const { config, ConfigOption } = require('./config.js');
 const path = require('path');
 const fs = require('fs');
-const { Client, GatewayIntentBits, BaseInteraction, MessageFlags } = require('discord.js');
-const { config, ConfigOption } = require('./config.js');
-const { setClient } = require('./provider/clientProvider.js');
-const storeManagerInstance = require('./services/StoreManagerService.js');
-const userManagerServiceInstance = require('./services/UserManagerService.js');
-const { gameManager } = require('./services/GameManagerService.js');
-const serverManagerServiceInstance = require('./services/ServerManagerService.js');
+
 
 /**
  * Initializes and starts a single shard.
@@ -43,7 +38,8 @@ async function startShard() {
     await loadCommands(client, 'global');
     //await loadCommands(client, 'mod');
     await loadSelectMenus(client);
-    await patchInteraction();
+    await loadbuttons(client);
+    //await patchInteraction();
 
     client.login(config.get(ConfigOption.DISCORD_BOT_TOKEN));
 
@@ -102,8 +98,31 @@ function loadSelectMenus(client) {
     });
 }
 
+function loadbuttons(client) {
+    const buttonsPath = path.join(__dirname, 'buttons');
+    const buttonFiles = fs.readdirSync(buttonsPath).filter(file => file.endsWith('.js'));
+
+    client.buttons = client.buttons || new Map();
+
+    buttonFiles.forEach(file => {
+        const filePath = path.join(buttonsPath, file);
+        const button = require(filePath);
+        if (button.id && button.execute)
+            client.buttons.set(button.id, button);
+        else
+            console.warn(`[WARNING] The Button at ${filePath} is missing a required 'id' or 'execute' property`);
+    });
+}
+
 async function patchInteraction() {
     // Patch the interaction prototype to include a custom method
+
+    /**
+     * @deprecated Use BotInteraction instead
+     * @param {*} content 
+     * @param {*} options 
+     * @returns 
+     */
     BaseInteraction.prototype.ephemeralReply = async function (content, options = {}) {
         const existingFlags = options.flags || 0;
 
@@ -121,6 +140,12 @@ async function patchInteraction() {
         );
     };
 
+    /**
+     * @deprecated Use BotInteraction instead
+     * @param {*} content 
+     * @param {*} options 
+     * @returns 
+     */
     BaseInteraction.prototype.sendReply = async function (content, options = {}) {
 
         if (typeof content === 'string' && content.length > 0) {
