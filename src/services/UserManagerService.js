@@ -84,6 +84,25 @@ class UserManagerService {
             throw error;
         }
     }
+
+    async setSharing(userId, serverId, enabled) {
+        try {
+            const [existingLink] = await db.query(
+                "SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId",
+                { userId: userId, serverId: serverId }
+            );
+
+            if (!existingLink) {
+                throw new Error(`User ${userId} is not linked to server ${serverId}`);
+            }
+
+            await db.update('serverUser', { sharing: enabled }, 'serverId = ? AND userId = ?', [ serverId, userId ]);
+
+        } catch (error) {
+            console.error(`Error setting sharing for user ${userId} on server ${serverId}:`, error);
+            throw error;
+        }
+    }
 }
 
 const userManagerServiceInstance = new UserManagerService();
