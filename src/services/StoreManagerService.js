@@ -2,6 +2,7 @@
 
 const axios = require('axios');
 const cheerio = require('cheerio');
+const puppeteer = require('puppeteer');
 const scraperRegistry = require('../scrapers');
 const db = require('../lib/database'); // Assuming your DB connection is here
 
@@ -11,12 +12,12 @@ class StoreManagerService {
         if (StoreManagerService.instance) {
             return StoreManagerService.instance;
         }
-        
+
         console.log('StoreManagerService initializing...');
 
         this.scrapers = scraperRegistry;
         this.storeMatchers = []; // Will hold { scraper_key, base_hostname }
-        await this._initializeStoreMatchers(); 
+        await this._initializeStoreMatchers();
 
         StoreManagerService.instance = this;
         console.log(`StoreManagerService initialized with ${this.storeMatchers.length} stores.`);
@@ -46,41 +47,70 @@ class StoreManagerService {
         }
     }
 
-
+    // In your StoreManagerService class...
     async _downloadAndLoadHtml(url) {
-    if (!url || typeof url !== 'string') {
-        return;
-    }
-
-    try {
-        const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-        };
-
-        // Conditionally add the age gate cookies for Steam URLs
-        if (url.includes('store.steampowered.com')) {
-            headers['Cookie'] = 'birthtime=252460800; lastagecheckage=1-January-1978';
-        }else if (url.includes('gog.com')) {
-            headers['Cookie'] = 'gog_wantsmaturecontent=18';
-
+        if (!url || typeof url !== 'string') {
+            return { error: 'Invalid URL provided.' };
         }
 
-        const response = await axios.get(url, {
-            headers: headers,
-            timeout: 10000,
-        });
+        // --- META-SPECIFIC LOGIC (using Headless Browser) ---
+        if (url.includes('meta.com')) {
+            console.log('StoreManagerService: Using lean Puppeteer for Meta URL.');
+            let browser = null;
+            try {
+                browser = await puppeteer.launch({ headless: 'new' });
+                const page = await browser.newPage();
+                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36');
 
-        const html = response.data;
-        const $ = cheerio.load(html);
+                // Navigate and wait only for the initial HTML document to be ready.
+                // This is faster than waiting for all images and frames ('networkidle2').
+                await page.goto(url, { waitUntil: 'domcontentloaded' });
 
-        return { html, $ };
+                // We no longer need to click any buttons or reload the page.
+                // We just grab the content immediately.
+                const html = await page.content();
+                const $ = cheerio.load(html);
+                return { $, html };
 
-    } catch (error) {
-        console.error(`StoreManagerService: Failed to download URL ${url}: ${error.message}`);
-        throw new Error(`Failed to download page content from ${url}.`);
+            } catch (e) {
+                console.error(`StoreManagerService: Puppeteer failed for URL ${url}:`, e);
+                throw new Error(`Puppeteer failed to get page content from ${url}.`);
+            } finally {
+                if (browser) {
+                    await browser.close();
+                }
+            }
+        }
+
+        // --- EXISTING LOGIC for other, simpler stores (Steam, GOG, etc.) ---
+        try {
+            const parsedUrl = new URL(url);
+            const cleanUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}`;
+
+            const headers = {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            };
+
+            if (cleanUrl.includes('store.steampowered.com')) {
+                headers['Cookie'] = 'birthtime=252460800; lastagecheckage=1-January-1978';
+            } else if (cleanUrl.includes('gog.com')) {
+                // Note: I found a more reliable GOG cookie
+                headers['Cookie'] = 'gog_wants_mature_content=1';
+            }
+
+            const response = await axios.get(cleanUrl, { headers, timeout: 10000 });
+            const html = response.data;
+            const $ = cheerio.load(html);
+            return { $, html };
+
+        } catch (error) {
+            console.error(`StoreManagerService: Axios failed for URL ${url}:`, error.message);
+            throw new Error(`Failed to download page content from ${url}.`);
+        }
     }
-}
 
 
     /**
@@ -157,7 +187,7 @@ class StoreManagerService {
         }
         try {
             const { $ } = await this._downloadAndLoadHtml(url);
-            
+
             // The key for this.scrapers should match the scraper_key from the database
             const scraperModule = this.scrapers[storeName];
 
