@@ -1,5 +1,5 @@
 // /structures/BotButtonInteraction.js
-const { BotInteraction } = require('./botInteraction');
+const { BotInteraction } = require('./');
 
 class BotButtonInteraction extends BotInteraction {
     /**

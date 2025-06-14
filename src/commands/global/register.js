@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
-const { BotInteraction } = require('../../structures/botInteraction');
+const { BotInteraction } = require('../../structures');
 
 
 
