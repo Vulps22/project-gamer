@@ -36,8 +36,8 @@ jobs:
           push: true
           # IMPORTANT: Use your Docker Hub username here
           tags: |
-            your-docker-username/project-gamer:${{ env.VERSION }}
-            your-docker-username/project-gamer:latest
+            vulps23/project-gamer:${{ env.VERSION }}
+            vulps23/project-gamer:latest
 
   deploy:
     name: Deploy to Production Server
