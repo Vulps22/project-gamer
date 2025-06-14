@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-unused-vars
 const { Events, Interaction } = require('discord.js');
-const { logger } = require('../lib/logger.js');
-const userManagerServiceInstance = require('../services/UserManagerService.js');
-const clientProvider = require('../provider/clientProvider.js');
+const { logger } = require('../lib');
+const { userManagerServiceInstance } = require('../services');
+const { clientProvider } = require('../provider');
 const { BotInteraction, BotButtonInteraction } = require('../structures');
 
 module.exports = {

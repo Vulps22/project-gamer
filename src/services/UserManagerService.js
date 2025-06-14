@@ -1,6 +1,5 @@
 const { Snowflake } = require('discord.js');
-const db = require('../lib/database');
-const { logger } = require('../lib/logger'); 
+const { db, logger } = require('../lib');
 
 class UserManagerService {
     async init() {

@@ -3,8 +3,8 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
-const scraperRegistry = require('../scrapers');
-const db = require('../lib/database'); // Assuming your DB connection is here
+const scrapers = require('../scrapers');
+const { db } = require('../lib');
 
 class StoreManagerService {
 
@@ -15,7 +15,7 @@ class StoreManagerService {
 
         console.log('StoreManagerService initializing...');
 
-        this.scrapers = scraperRegistry;
+        this.scrapers = scrapers;
         this.storeMatchers = []; // Will hold { scraper_key, base_hostname }
         await this._initializeStoreMatchers();
 
@@ -189,7 +189,7 @@ class StoreManagerService {
             const { $ } = await this._downloadAndLoadHtml(url);
 
             // The key for this.scrapers should match the scraper_key from the database
-            const scraperModule = this.scrapers[storeName];
+            const scraperModule = this.scrapers.findScraperByName(storeName);
 
             if (scraperModule && typeof scraperModule.scrape === 'function') {
                 console.log(`StoreManagerService: Using '${storeName === 'Unknown Store' ? 'Generic' : storeName}' scraper for ${url}`);
@@ -215,7 +215,7 @@ class StoreManagerService {
         } catch (error) {
             console.error(`StoreManagerService: Error processing URL ${url} with resolved store key ${storeName}:`, error.message);
             errorMsg = error.message;
-            if ((!scrapedData || !scrapedData.title) && storeName !== 'Generic' && this.scrapers['Generic']) {
+            if ((!scrapedData || !scrapedData.title) && storeName !== 'Generic' && this.scrapers.generic) {
                 console.warn(`StoreManagerService: Specific scraper for ${storeName} failed. Passing to moderator for manual verification.`);
             }
 

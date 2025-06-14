@@ -1,8 +1,7 @@
 // At the top of your file
 
-const { chooseStoresMessage } = require('../messages/chooseStoresMessage');
-const { LFGMessage } = require('../messages/lfgMessage');
-const { gameManager } = require('../services/GameManagerService');
+const { LFGMessage } = require('../messages');
+const { gameManager } = require('../services');
 const { BotButtonInteraction } = require('../structures');
 
 module.exports = {
