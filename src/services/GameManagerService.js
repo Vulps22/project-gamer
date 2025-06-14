@@ -169,7 +169,8 @@ class GameManagerService {
                 gameStore AS gs ON ul.gameStoreId = gs.id
             WHERE
                 su.serverId = :serverId
-                AND gs.gameId = :gameId;`;
+                AND gs.gameId = :gameId
+                AND su.sharing = 1;`;
 
         let ids = await db.query(sql, { serverId: guildId, gameId: gameId });
 

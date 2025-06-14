@@ -1,5 +1,5 @@
 const { Snowflake } = require('discord.js');
-const { db, logger} = require('../lib');
+const { db, logger } = require('../lib');
 
 class UserManagerService {
     async init() {
@@ -64,16 +64,21 @@ class UserManagerService {
     }
 
     async addUserToServer(userId, serverId) {
+
+        console.log(`Adding user ${userId} to server ${serverId}`);
+
         try {
-            const [existingLink] = await db.query(
+            const existingLink = await db.query(
                 "SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId",
                 {userId: userId, serverId: serverId}
             );
             console.log("serverUser query result:", existingLink);
-            if (existingLink || existingLink === undefined) {
+            if (existingLink === undefined || existingLink.length > 0) {
+                console.log(`User ${userId} is already linked to server ${serverId}`);
                 return;
             }
 
+        console.log(`User ${userId} is not linked to server ${serverId}, adding...`);
             await db.insert('serverUser', {
                 userId: userId,
                 serverId: serverId,
@@ -81,6 +86,25 @@ class UserManagerService {
         }
         catch (error) {
             console.error(`Error adding user ${userId} to server ${serverId}:`, error);
+            throw error;
+        }
+    }
+
+    async setSharing(userId, serverId, enabled) {
+        try {
+            const [existingLink] = await db.query(
+                "SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId",
+                { userId: userId, serverId: serverId }
+            );
+
+            if (!existingLink) {
+                throw new Error(`User ${userId} is not linked to server ${serverId}`);
+            }
+
+            await db.update('serverUser', { sharing: enabled }, 'serverId = ? AND userId = ?', [ serverId, userId ]);
+
+        } catch (error) {
+            console.error(`Error setting sharing for user ${userId} on server ${serverId}:`, error);
             throw error;
         }
     }
