@@ -15,7 +15,7 @@ module.exports = {
     async execute(interaction) {
 
         if (!await saveUser(interaction)) {
-            await logger.error('No userId found in interaction: Aborting interaction.');
+            logger.error('No userId found in interaction: Aborting interaction.');
             interaction.reply('An error occurred while processing your interaction. Please try again later.');
             return;
         }

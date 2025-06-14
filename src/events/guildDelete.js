@@ -11,7 +11,7 @@ module.exports = {
      */
     async execute(guild) {
 
-        await logger.log(`Left Server ${guild.id} - ${guild.name} (${guild.memberCount} members)`);
+        logger.log(`Left Server ${guild.id} - ${guild.name} (${guild.memberCount} members)`);
         await serverManagerServiceInstance.deleteServer(guild.id);
     },
 };
