@@ -10,7 +10,7 @@ module.exports = {
     steam,
     gog,
     meta,
-    fundScraperByName(name) {
+    findScraperByName(name) {
         switch (name.toLowerCase()) {
             case "generic":
                 return generic;

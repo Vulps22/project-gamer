@@ -189,7 +189,7 @@ class StoreManagerService {
             const { $ } = await this._downloadAndLoadHtml(url);
 
             // The key for this.scrapers should match the scraper_key from the database
-            const scraperModule = this.scrapers.fundScraperByName(storeName);
+            const scraperModule = this.scrapers.findScraperByName(storeName);
 
             if (scraperModule && typeof scraperModule.scrape === 'function') {
                 console.log(`StoreManagerService: Using '${storeName === 'Unknown Store' ? 'Generic' : storeName}' scraper for ${url}`);
