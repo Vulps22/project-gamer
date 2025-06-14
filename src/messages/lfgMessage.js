@@ -10,16 +10,15 @@ const { MessageFlags, ContainerBuilder, Snowflake, TextDisplayBuilder, Separator
 function LFGMessage(game, links, requestor, taggables, openInvitation = false) {
 
     let titleComponent = new TextDisplayBuilder().setContent(`## <@${requestor}> is looking for players to play **${game.name}**`);
-
     let separatorComponent = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
     
     let tagTextComponent;
+
     if( !openInvitation) {
         tagTextComponent = new TextDisplayBuilder().setContent(`${taggables.map(user => `- <@${user}>`).join('\n')}`);
     }
 
     let linksContent = links.map((link, index) => { return `- [${link.name}](<${link.url}>)`; }).join(' \n');
-
     let linksComponent = new TextDisplayBuilder().setContent(`**Available on:** \n ${linksContent}`);
 
     let availableSectionComponent = new SectionBuilder()
@@ -55,11 +54,23 @@ function LFGMessage(game, links, requestor, taggables, openInvitation = false) {
         flags: MessageFlags.IsComponentsV2,
         components: [containerComponent],
     }
-    console.log("LFG message in builder:", message.components);
-    return message;
 
+    return message;
+}
+
+function getSuccessMessage() {
+    const containerBuilder = new ContainerBuilder();
+    const textBuilder = new TextDisplayBuilder().setContent("## Successfully Submitted LFG.");
+
+    containerBuilder.addTextDisplayComponents(textBuilder);
+
+    return {
+        flags: MessageFlags.IsComponentsV2,
+        components: [ containerBuilder ]
+    };
 }
 
 module.exports = {
-    LFGMessage
+    LFGMessage,
+    getSuccessMessage
 };

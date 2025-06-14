@@ -1,7 +1,7 @@
 // At the top of your file
-const { StringSelectMenuInteraction } = require('discord.js');
-const { gameManager } = require('../services');
-const { LFGMessage } = require('../messages');
+const { StringSelectMenuInteraction, TextDisplayBuilder, ContainerBuilder} = require('discord.js');
+const { gameManager } = require('../services/GameManagerService');
+const { LFGMessage, getSuccessMessage } = require('../messages/lfgMessage');
 
 module.exports = {
     data: {
@@ -13,14 +13,11 @@ module.exports = {
      * @param {StringSelectMenuInteraction} interaction 
      */
     async execute(interaction) {
-
         const selectedPlayers = interaction.values;
 
         if (selectedPlayers[0] === 'none') {
             return;
         }
-
-        console.log('Selected players:', selectedPlayers);
 
         const [gameId, _] = selectedPlayers[0].split('_');
 
@@ -32,22 +29,16 @@ module.exports = {
             return parts[1];
         });
 
-        console.log('User IDs:', userIds);
-
         const game = await gameManager.getGameById(gameId);
+
         if (!game) {
             return interaction.ephemeralReply('Game not found.');
         }
 
-        console.log('Game found:', game);
-
         const links = await gameManager.getStoreUrlsForGame(gameId);
-        console.log('Store links:', links);
         const lfgMessage = LFGMessage(game, links, interaction.user.id, userIds);
 
-        console.log('LFG message:', lfgMessage);
-
-        // 5. Send the final, detailed reply.
         await interaction.channel.send(lfgMessage);
+        await interaction.update(getSuccessMessage());
     },
 };
