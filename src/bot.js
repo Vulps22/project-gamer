@@ -1,9 +1,5 @@
+const { gameManager, serverManagerServiceInstance, userManagerServiceInstance, storeManagerInstance } = require('./services')
 const { Client, GatewayIntentBits, BaseInteraction, MessageFlags } = require('discord.js');
-const {
-    gameManager,
-    serverManagerServiceInstance,
-    userManagerServiceInstance, storeManagerInstance
-} = require('./services')
 const { clientProvider } = require('./provider');
 const { config, ConfigOption } = require('./config.js');
 const path = require('path');

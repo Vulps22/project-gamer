@@ -1,4 +1,4 @@
-const { db } = require('./lib');
+const db = require('./lib/database'); // note: explicitly import the database module to avoid circular dependencies
 
 const ConfigOption = Object.freeze({
     CONFIG_ID: 'id',

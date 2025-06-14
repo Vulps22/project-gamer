@@ -2,7 +2,7 @@
 const { Snowflake } = require('discord.js'); // Import Snowflake type for userId
 const { db, logger } = require('../lib');
 const { clientProvider } = require('../provider');
-const { storeManager } = require('./'); // Import the StoreManagerService
+const storeManager = require('./StoreManagerService'); // Import the StoreManagerService
 
 const gameStatus = {
     APPROVED: 'approved',
