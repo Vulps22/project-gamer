@@ -2,6 +2,7 @@
 const { LFGMessage } = require('../messages/lfgMessage');
 const { gameManager } = require('../services/GameManagerService');
 const { BotButtonInteraction } = require('../structures');
+const {ContainerBuilder, TextDisplayBuilder} = require("discord.js");
 
 module.exports = {
     id: 'lfg_anyone',
@@ -24,17 +25,12 @@ module.exports = {
 
         const message = LFGMessage(game, links, userId, [], true);
         await interaction.channel.send(message);
-        await interaction.update({ components: [
-                {
-                    "type": 17, // Embed Container
-                    "components": [
-                        {
-                            "type": 10, // Text
-                            "content": "## Successfully Submitted LFG.",
-                        }
-                    ]
-                },
-            ]
-        });
+
+        const containerBuilder = new ContainerBuilder();
+        const textBuilder = new TextDisplayBuilder().setContent("## Successfully Submitted LFG.");
+
+        containerBuilder.addTextDisplayComponents(textBuilder);
+
+        await interaction.update({ components: [ containerBuilder ] });
     },
 };

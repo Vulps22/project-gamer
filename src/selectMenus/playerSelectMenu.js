@@ -1,5 +1,5 @@
 // At the top of your file
-const { StringSelectMenuInteraction } = require('discord.js');
+const { StringSelectMenuInteraction, TextDisplayBuilder, ContainerBuilder} = require('discord.js');
 const { gameManager } = require('../services/GameManagerService');
 const { LFGMessage } = require('../messages/lfgMessage');
 
@@ -51,17 +51,12 @@ module.exports = {
 
         // 5. Send the final, detailed reply.
         await interaction.channel.send(lfgMessage);
-        await interaction.update({ components: [ // Deprecated, find another solution maybe.
-                {
-                    "type": 17, // Embed Container
-                    "components": [
-                        {
-                            "type": 10, // Text
-                            "content": "## Successfully Submitted LFG.",
-                        }
-                    ]
-                },
-            ]
-        });
+
+        const containerBuilder = new ContainerBuilder();
+        const textBuilder = new TextDisplayBuilder().setContent("## Successfully Submitted LFG.");
+
+        containerBuilder.addTextDisplayComponents(textBuilder);
+
+        await interaction.update({ components: [ containerBuilder ] });
     },
 };
