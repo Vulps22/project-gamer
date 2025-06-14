@@ -65,16 +65,21 @@ class UserManagerService {
     }
 
     async addUserToServer(userId, serverId) {
+
+        console.log(`Adding user ${userId} to server ${serverId}`);
+
         try {
-            const [existingLink] = await db.query(
+            const existingLink = await db.query(
                 "SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId",
                 {userId: userId, serverId: serverId}
             );
             console.log("serverUser query result:", existingLink);
-            if (existingLink || existingLink === undefined) {
+            if (existingLink === undefined || existingLink.length > 0) {
+                console.log(`User ${userId} is already linked to server ${serverId}`);
                 return;
             }
 
+        console.log(`User ${userId} is not linked to server ${serverId}, adding...`);
             await db.insert('serverUser', {
                 userId: userId,
                 serverId: serverId,
