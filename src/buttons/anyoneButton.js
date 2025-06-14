@@ -11,7 +11,6 @@ module.exports = {
      * @param {BotButtonInteraction} interaction 
      */
     async execute(interaction) {
-        console.log("LFG Add Game Button Interaction:", interaction.buttonData, "User ID:", interaction.user.id);
         const gameId = interaction.params.get('id');
         const userId = interaction.user.id;
 
@@ -21,10 +20,9 @@ module.exports = {
         }
 
         const links = await gameManager.getStoreUrlsForGame(gameId);
-
         const message = LFGMessage(game, links, userId, [], true);
-        await interaction.channel.send(message);
 
+        await interaction.channel.send(message);
         await interaction.update(getSuccessMessage());
     },
 };
