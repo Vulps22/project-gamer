@@ -99,10 +99,11 @@ class UserManagerService {
             );
 
             if (!existingLink) {
-                throw new Error(`User ${userId} is not linked to server ${serverId}`);
+                return false;
             }
 
             await db.update('serverUser', { sharing: enabled }, 'serverId = ? AND userId = ?', [ serverId, userId ]);
+            return true;
 
         } catch (error) {
             console.error(`Error setting sharing for user ${userId} on server ${serverId}:`, error);
