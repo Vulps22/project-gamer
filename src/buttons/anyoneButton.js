@@ -1,6 +1,4 @@
 // At the top of your file
-
-const { chooseStoresMessage } = require('../messages/chooseStoresMessage');
 const { LFGMessage } = require('../messages/lfgMessage');
 const { gameManager } = require('../services/GameManagerService');
 const { BotButtonInteraction } = require('../structures');
@@ -26,6 +24,17 @@ module.exports = {
 
         const message = LFGMessage(game, links, userId, [], true);
         await interaction.channel.send(message);
-
+        await interaction.update({ components: [
+                {
+                    "type": 17, // Embed Container
+                    "components": [
+                        {
+                            "type": 10, // Text
+                            "content": "## Successfully Submitted LFG.",
+                        }
+                    ]
+                },
+            ]
+        });
     },
 };

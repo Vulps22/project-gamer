@@ -47,7 +47,21 @@ module.exports = {
 
         console.log('LFG message:', lfgMessage);
 
+        console.log(interaction)
+
         // 5. Send the final, detailed reply.
         await interaction.channel.send(lfgMessage);
+        await interaction.update({ components: [ // Deprecated, find another solution maybe.
+                {
+                    "type": 17, // Embed Container
+                    "components": [
+                        {
+                            "type": 10, // Text
+                            "content": "## Successfully Submitted LFG.",
+                        }
+                    ]
+                },
+            ]
+        });
     },
 };
