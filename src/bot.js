@@ -1,13 +1,9 @@
+const { gameManager, serverManagerServiceInstance, userManagerServiceInstance, storeManagerInstance } = require('./services')
 const { Client, GatewayIntentBits, BaseInteraction, MessageFlags } = require('discord.js');
-const serverManagerServiceInstance = require('./services/ServerManagerService.js');
-const userManagerServiceInstance = require('./services/UserManagerService.js');
-const storeManagerInstance = require('./services/StoreManagerService.js');
-const { gameManager } = require('./services/GameManagerService.js');
-const { setClient } = require('./provider/clientProvider.js');
+const { clientProvider } = require('./provider');
 const { config, ConfigOption } = require('./config.js');
 const path = require('path');
 const fs = require('fs');
-
 
 /**
  * Initializes and starts a single shard.
@@ -32,7 +28,7 @@ async function startShard() {
         ],
     });
 
-    setClient(client);
+    clientProvider.setClient(client);
     
     await loadEvents(client);
     await loadCommands(client, 'global');

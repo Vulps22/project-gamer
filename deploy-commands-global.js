@@ -5,7 +5,7 @@ const { REST, Routes } = require("discord.js");
 const fs = require("node:fs");
 const path = require("node:path");
 const { config, ConfigOption } = require('./src/config.js');
-const db = require('./src/lib/database.js'); // <-- Import DB wrapper directly
+const { db } = require('./src/lib'); // <-- Import DB wrapper directly
 
 (async () => {
     try {

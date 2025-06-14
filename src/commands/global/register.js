@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
-const { BotInteraction } = require('../../structures/botInteraction');
+const { BotInteraction } = require('../../structures');
 
 
 
@@ -27,7 +27,7 @@ module.exports = {
         const url = interaction.options.getString('url');
         const userId = interaction.user.id;
 
-        const { gameManager, gameStatus } = require('../../services/GameManagerService');
+        const { gameManager, gameStatus } = require('../../services');
         // Call the GameManagerService to register the game
         const result = await gameManager.registerGameFromUrl(url, userId);
 

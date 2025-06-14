@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 const { MessageCreateOptions, Channel, Snowflake } = require('discord.js');
 const { config, ConfigOption } = require('../config.js');
-const { getClient } = require('../provider/clientProvider.js');
+const { clientProvider } = require('../provider');
 
 const logger = {
 
@@ -42,7 +42,9 @@ const logger = {
 
 };
 
-module.exports = { logger };
+module.exports = {
+    logger
+};
 
 /**
      * Sends a message to a specific channel of the support server across shards.
@@ -63,7 +65,7 @@ async function sendTo(messageOptions, channelId) {
 
     try {
 
-        const client = getClient();
+        const client = clientProvider.getClient();
         if (!client) {
             console.error('Client instance is not available. Ensure it is set in the provider.');
             return null;
@@ -114,7 +116,7 @@ async function sendEdit(channelId, messageId, messageOptions) {
         return null;
     }
 
-    const client = getClient();
+    const client = clientProvider.getClient();
 
     if (!client) {
         console.error('Client instance is not available. Ensure it is set in the provider.');
