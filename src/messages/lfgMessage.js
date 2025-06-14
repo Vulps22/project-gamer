@@ -60,6 +60,19 @@ function LFGMessage(game, links, requestor, taggables, openInvitation = false) {
 
 }
 
+function getSuccessMessage() {
+    const containerBuilder = new ContainerBuilder();
+    const textBuilder = new TextDisplayBuilder().setContent("## Successfully Submitted LFG.");
+
+    containerBuilder.addTextDisplayComponents(textBuilder);
+
+    return {
+        flags: MessageFlags.IsComponentsV2,
+        components: [ containerBuilder ]
+    };
+}
+
 module.exports = {
-    LFGMessage
+    LFGMessage,
+    getSuccessMessage
 };

@@ -1,8 +1,7 @@
 // At the top of your file
-const { LFGMessage } = require('../messages/lfgMessage');
+const { LFGMessage, getSuccessMessage } = require('../messages/lfgMessage');
 const { gameManager } = require('../services/GameManagerService');
 const { BotButtonInteraction } = require('../structures');
-const {ContainerBuilder, TextDisplayBuilder} = require("discord.js");
 
 module.exports = {
     id: 'lfg_anyone',
@@ -26,11 +25,6 @@ module.exports = {
         const message = LFGMessage(game, links, userId, [], true);
         await interaction.channel.send(message);
 
-        const containerBuilder = new ContainerBuilder();
-        const textBuilder = new TextDisplayBuilder().setContent("## Successfully Submitted LFG.");
-
-        containerBuilder.addTextDisplayComponents(textBuilder);
-
-        await interaction.update({ components: [ containerBuilder ] });
+        await interaction.update(getSuccessMessage());
     },
 };
