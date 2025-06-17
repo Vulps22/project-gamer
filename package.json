@@ -4,8 +4,13 @@
   "description": "This project is a complete rebuild of LFGameSync-bot.",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "db:apply": "node scripts/apply-schema.js",
+    "db:migrate": "node scripts/run-migrations.js",
+    "deploy": "node deploy-commands-global.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+
   "author": "Vulps",
   "license": "ISC",
   "dependencies": {
