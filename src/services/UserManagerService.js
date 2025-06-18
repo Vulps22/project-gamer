@@ -73,7 +73,7 @@ class UserManagerService {
                 {userId: userId, serverId: serverId}
             );
             //console.log("serverUser query result:", existingLink);
-            if (existingLink === undefined || existingLink.length > 0) {
+            if (existingLink.length > 0) {
                 //console.log(`User ${userId} is already linked to server ${serverId}`);
                 return;
             }
