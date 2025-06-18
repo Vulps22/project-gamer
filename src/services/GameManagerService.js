@@ -159,7 +159,7 @@ class GameManagerService {
             let queryData = gameIdOrName;
 
             if (!/^[0-9]+$/.test(gameIdOrName)) {
-                queryData = this.getIdByGame(gameIdOrName)
+                queryData = await this.getIdByGame(gameIdOrName);
             }
 
             const [existingLink] = await db.query(`
