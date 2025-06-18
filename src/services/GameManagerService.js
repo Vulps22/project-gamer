@@ -251,7 +251,7 @@ class GameManagerService {
         const sql = `SELECT gs.id FROM gameStore gs JOIN game g ON gs.gameId = g.id WHERE g.name = ?;`;
         const results = await db.query(sql, [game]);
 
-        return results[0] || null;
+        return results[0]?.id || null;
     }
 
     async getStoreUrlsForGame(gameId) {
