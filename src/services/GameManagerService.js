@@ -164,7 +164,7 @@ class GameManagerService {
 
             const [existingLink] = await db.query(`
                     SELECT * FROM userLibrary as ul
-                    INNER JOIN user as u ON u.id = ?
+                    INNER JOIN user as u ON ul.userId = u.id AND u.id = ?
                     INNER JOIN gameStore as gs ON ul.gameStoreId = gs.id AND gs.storeGameId = ? AND gs.storeId = ?
                     INNER JOIN game as g ON gs.gameId = g.id
             `,
