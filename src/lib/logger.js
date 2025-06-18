@@ -61,7 +61,7 @@ async function sendTo(messageOptions, channelId) {
     // if messageOptions is a string, convert it to an object and set content
     if (typeof messageOptions === 'string') messageOptions = { content: messageOptions };
 
-    console.log('Sending message to channel:', channelId, 'with options:', messageOptions);
+    //console.log('Sending message to channel:', channelId, 'with options:', messageOptions);
 
     try {
 

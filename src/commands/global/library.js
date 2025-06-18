@@ -1,8 +1,7 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
 const { gameManager } = require('../../services');
-const { chooseStoresMessage } = require('../../messages');
+const { chooseStoresMessage, GlobalMessages } = require('../../messages');
 const { BotInteraction } = require('../../structures');
-
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,6 +16,16 @@ module.exports = {
                 .setRequired(true)
                 .setAutocomplete(true)
             )
+        )
+        .addSubcommand(new SlashCommandSubcommandBuilder()
+            .setName('remove')
+            .setDescription('Remove a game from your library')
+            .addStringOption(new SlashCommandStringOption()
+                .setName('game')
+                .setDescription('The game you want to remove')
+                .setRequired(true)
+                .setAutocomplete(true)
+            )
         ),
     administrator: false,
     /**
@@ -28,25 +37,23 @@ module.exports = {
         const name = interaction.options.getFocused();
         const games = await gameManager.searchGamesByName(name);
 
-        console.log('Autocomplete games:', games);
+        //console.log('Autocomplete games:', games);
 
         if (!games || games.length === 0) {
             return interaction.respond([{ name: 'No games found', value: 'none' }]);
         }
 
         interaction.respond(games.map(game => ({ name: game.name, value: String(game.id) })));
-        
+
     },
     /**
-     * 
-     * @param {BotInteraction} interaction 
+     *
+     * @param {BotInteraction} interaction
      */
     async execute(interaction) {
-        
-        //get a list of the stores this game is available on
-        const gameId = interaction.options.getString('game');
-        const stores = await gameManager.getStoresForGame(gameId, interaction.user.id);
-
+        // Can be name or Id
+        const game = interaction.options.getString('game');
+        const stores = await gameManager.getStoresForGame(game, interaction.user.id);
         const storesMessage = chooseStoresMessage(stores);
 
         await interaction.ephemeralReply(null, storesMessage);

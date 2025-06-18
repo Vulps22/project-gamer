@@ -3,7 +3,7 @@ const { StringSelectMenuBuilder, TextDisplayBuilder, ActionRowBuilder, Container
 
 function chooseStoresMessage(stores) {
 
-    console.log("Choose stores message called with stores:", stores, stores.length);
+    //console.log("Choose stores message called with stores:", stores, stores.length);
 
     if (!stores || stores.length === 0) {
         stores = [{name: 'You have added all the stores available for this game', id: 'none'}];
@@ -16,7 +16,7 @@ function chooseStoresMessage(stores) {
         }
     })
 
-    console.log("Store list:", storeList);
+    //console.log("Store list:", storeList);
 
     const messageText = new TextDisplayBuilder()
         .setContent('Please select where you own this game (you can select multiple stores):')
@@ -40,7 +40,7 @@ function chooseStoresMessage(stores) {
         components: [containerComponent],
     }
 
-    console.log("Choose stores message:", message);
+    //console.log("Choose stores message:", message);
     return message;
 }
 

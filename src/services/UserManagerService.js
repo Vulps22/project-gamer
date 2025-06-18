@@ -12,8 +12,8 @@ class UserManagerService {
 
     /**
      * Find the user by their Discord ID.
-     * @param {Snowflake} userId 
-     * @returns 
+     * @param {Snowflake} userId
+     * @returns
      */
     async getUserById(userId) {
 
@@ -28,7 +28,7 @@ class UserManagerService {
 
     /**
      * Create a new user in the database.
-     * @param {Snowflake} userId 
+     * @param {Snowflake} userId
      * @returns {Snowflake} The ID of the newly created user.
      */
     async createUser(userId) {
@@ -46,13 +46,13 @@ class UserManagerService {
 
     /**
      * Get a user by their ID, or create them if they do not exist.
-     * @param {Snowflake} userId 
+     * @param {Snowflake} userId
      * @returns {Snowflake} The ID of the user, either fetched or newly created.
      */
     async getOrCreateUser(userId) {
         try {
             let user = await this.getUserById(userId);
-            
+
             if (!user || user.length === 0) {
                 user = await this.createUser(userId);
             }
@@ -65,16 +65,16 @@ class UserManagerService {
 
     async addUserToServer(userId, serverId) {
 
-        console.log(`Adding user ${userId} to server ${serverId}`);
+        //console.log(`Adding user ${userId} to server ${serverId}`);
 
         try {
             const existingLink = await db.query(
                 "SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId",
                 {userId: userId, serverId: serverId}
             );
-            console.log("serverUser query result:", existingLink);
+            //console.log("serverUser query result:", existingLink);
             if (existingLink === undefined || existingLink.length > 0) {
-                console.log(`User ${userId} is already linked to server ${serverId}`);
+                //console.log(`User ${userId} is already linked to server ${serverId}`);
                 return;
             }
 
