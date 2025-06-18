@@ -172,7 +172,7 @@ class GameManagerService {
             );
 
             if (!existingLink) {
-                logger.log(`User ${userId} does not own game ${gameStoreId} in their library`);
+                logger.log(`User ${userId} does not own game ${queryData} in their library`);
                 return { queryData: "null", success: false };
             }
 
