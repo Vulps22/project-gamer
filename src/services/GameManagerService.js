@@ -327,6 +327,33 @@ class GameManagerService {
 
         return results;
     }
+
+    /**
+     * Get all stores for a game.
+     * @param gameId Game Id
+     * @returns {Promise<*|*[]>} Array of all stores.
+     */
+    async getAllStoresForGame(gameId) {
+        const sql = `
+        SELECT
+            gs.id,
+            s.name
+        FROM
+            gameStore AS gs
+        INNER JOIN
+            store AS s ON gs.storeId = s.id
+        WHERE
+            gs.gameId = ?;
+        `;
+
+        const results = await db.query(sql, [gameId]);
+
+        if (!results || results.length === 0) {
+            return [];
+        }
+
+        return results;
+    }
 }
 
 const gameManagerInstance = new GameManagerService();

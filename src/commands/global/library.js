@@ -51,10 +51,16 @@ module.exports = {
      * @param {BotInteraction} interaction
      */
     async execute(interaction) {
-        // Can be name or Id
         const game = interaction.options.getString('game');
-        const stores = await gameManager.getStoresForGame(game, interaction.user.id);
-        const storesMessage = chooseStoresMessage(stores);
+        const isDeleting = interaction.options.getSubcommand() === 'remove';
+        let stores = stores = await gameManager.getStoresForGame(game, interaction.user.id);
+
+        if (isDeleting) {
+            stores = [];
+            stores = await gameManager.getAllStoresForGame(game);
+        }
+
+        const storesMessage = chooseStoresMessage(stores, isDeleting)
 
         await interaction.ephemeralReply(null, storesMessage);
     },

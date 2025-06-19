@@ -1,7 +1,13 @@
 const { StringSelectMenuBuilder, TextDisplayBuilder, ActionRowBuilder, ContainerBuilder, MessageFlags } = require("discord.js");
 
 
-function chooseStoresMessage(stores) {
+/**
+ * Creates messages a dropdown selection for user.
+ * @param stores Game stores.
+ * @param isDeleting Is user deleting the game?
+ * @returns {*|{flags: *, components: ContainerBuilder[]}}
+ */
+function chooseStoresMessage(stores, isDeleting) {
 
     //console.log("Choose stores message called with stores:", stores, stores.length);
 
@@ -26,7 +32,8 @@ function chooseStoresMessage(stores) {
         .setPlaceholder('Select a store')
         .addOptions(storeList)
         .setMinValues(1)
-        .setMaxValues(storeList.length);
+        .setMaxValues(storeList.length)
+        .setCustomId(`storeSelect:${isDeleting}`);
 
     const actionRowComponent = new ActionRowBuilder()
         .addComponents(stringSelectComponent);

@@ -13,26 +13,25 @@ module.exports = {
      * @param {StringSelectMenuInteraction} interaction
      * @param context May have context to the interaction
      */
-    async execute(interaction, context = null) {
+    async execute(interaction) {
         const selectedStores = interaction.values;
 
         if (selectedStores[0] === 'none') {
             return;
         }
 
-        //console.log('Selected stores:', selectedStores);
+        const isDeleting = interaction.customId.split(':')[1];
 
-        if (context !== null && context === "remove") {
-            console.log("Remove subcommand!!!")
-
-            //const success = await gameManager.removeGameFromUserLibrary(interaction.user.id, game);
-
-            //await interaction.ephemeralReply(GlobalMessages.getSuccessMessage(success[0], success[1]))
-            await interaction.channel.send(GlobalMessages.getSuccessMessage("Test", "Idk Maybe"))
+        if (isDeleting !== null && isDeleting === "true") {
+            await this.doRemove(interaction)
 
             return;
         }
 
+        await this.doAdd(interaction, selectedStores)
+    },
+
+    async doAdd(interaction, selectedStores) {
         // 1. Create an array of promises, just like before.
         const promises = selectedStores.map(storeId =>
             gameManager.addGameToUserLibrary(interaction.user.id, storeId)
@@ -67,4 +66,11 @@ module.exports = {
         // 5. Send the final, detailed reply.
         return interaction.ephemeralReply(content.trim());
     },
+
+    async doRemove(interaction) {
+        //const success = selectedStores.map(gameStoreId => gameManager.removeGameFromUserLibrary(interaction.user.id, gameStoreId));
+        const success = ["Test", true]
+
+        await interaction.ephemeralReply(GlobalMessages.getSuccessMessage(success[0], success[1]))
+    }
 };
