@@ -153,5 +153,5 @@ class Database {
 }
 
 // Export a single instance (Singleton Pattern)
-const dbInstance = new Database();
-module.exports = dbInstance;
+const db = new Database();
+module.exports = db;

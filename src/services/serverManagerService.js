@@ -77,5 +77,5 @@ class ServerManagerService {
 
 }
 
-const serverManagerServiceInstance = new ServerManagerService();
-module.exports = serverManagerServiceInstance;
+const serverManagerService = new ServerManagerService();
+module.exports = serverManagerService;
