@@ -234,5 +234,5 @@ class StoreManagerService {
     }
 }
 
-const storeManagerInstance = new StoreManagerService();
-module.exports = storeManagerInstance;
+const storeManagerService = new StoreManagerService();
+module.exports = storeManagerService;

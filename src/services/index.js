@@ -1,14 +1,14 @@
 // services/index.js
 
-const { gameManager, gameStatus } = require('./GameManagerService.js');
-const serverManagerServiceInstance = require('./ServerManagerService.js');
-const storeManagerInstance = require('./StoreManagerService.js');
-const userManagerServiceInstance = require('./UserManagerService.js');
+const { gameManagerService, gameStatus } = require('./gameManagerService.js');
+const serverManagerService = require('./serverManagerService.js');
+const storeManagerService = require('./storeManagerService.js');
+const userManagerService = require('./userManagerService.js');
 
 module.exports = {
-    gameManager,
+    gameManagerService,
     gameStatus,
-    serverManagerServiceInstance,
-    storeManagerInstance,
-    userManagerServiceInstance,
+    serverManagerService,
+    storeManagerService,
+    userManagerService,
 }

@@ -1,8 +1,8 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
-const { gameManager } = require('../../services/GameManagerService');
+const { gameManager } = require('../../services/gameManagerService');
 const { chooseStoresMessage } = require('../../messages/chooseStoresMessage');
 const { BotInteraction } = require('../../structures/botInteraction');
-const userManagerServiceInstance = require('../../services/UserManagerService');
+const userManagerService = require('../../services/userManagerService');
 const { logger } = require('../../lib');
 
 
@@ -39,7 +39,7 @@ module.exports = {
                 break;
         }
         try {
-            const didUpdate = await userManagerServiceInstance.setSharing(interaction.user.id, interaction.guildId, sharing)
+            const didUpdate = await userManagerService.setSharing(interaction.user.id, interaction.guildId, sharing)
 
             if (!didUpdate) {
                 await interaction.ephemeralReply("Failed to update sharing settings. Please try again later.");
