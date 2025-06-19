@@ -53,7 +53,7 @@ module.exports = {
     async execute(interaction) {
         const game = interaction.options.getString('game');
         const isDeleting = interaction.options.getSubcommand() === 'remove';
-        let stores = stores = await gameManager.getStoresForGame(game, interaction.user.id);
+        let stores = await gameManager.getStoresForGame(game, interaction.user.id);
 
         if (isDeleting) {
             stores = [];

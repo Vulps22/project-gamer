@@ -148,57 +148,26 @@ class GameManagerService {
     /**
      * Removes the specified game from the user's library.
      * @param {Snowflake} userId User's ID.
-     * @param {string} gameIdOrName Game's ID or Name
-     * @param {string} storeId Store's ID
-     * @returns {Promise<{queryData: string, success: boolean}>} Whether the operation was successful.
+     * @param {string} gameStoreId Game's ID or Name
+     * @returns {Promise<{boolean}>} Whether the operation was successful.
      */
-    async removeGameFromUserLibrary(userId, gameIdOrName, storeId) {
-        console.log('removeGameFromUserLibrary called with:', userId, gameIdOrName);
+    async removeGameFromUserLibrary(userId, gameStoreId) {
+        console.log('removeGameFromUserLibrary called with:', userId, gameStoreId);
 
         try {
-            let queryData = gameIdOrName;
-
-            if (!/^[0-9]+$/.test(gameIdOrName)) {
-                queryData = await this.getIdByGame(gameIdOrName);
-            }
-
-            const [existingLink] = await db.query(`
-                    SELECT * FROM userLibrary as ul
-                    INNER JOIN user as u ON ul.userId = u.id AND u.id = ?
-                    INNER JOIN gameStore as gs ON ul.gameStoreId = gs.id AND gs.storeGameId = ? AND gs.storeId = ?
-                    INNER JOIN game as g ON gs.gameId = g.id
-            `,
-                [userId, queryData, storeId]
-            );
-
-            if (!existingLink) {
-                logger.log(`User ${userId} does not own game ${queryData} in their library`);
-                return { queryData: "null", success: false };
-            }
-
-            const result = await db.query(`
-                    DELETE FROM userLibrary
-                    WHERE userId = ?
-                    AND gameStoreId = (
-                        SELECT gs.id
-                        FROM gameStore as gs
-                        WHERE gs.storeGameId = ? AND gs.storeId = ?
-                        LIMIT 1
-                        )
-            `, [userId, queryData, storeId]
-            );
+            const result = db.delete(`userLibrary`, `userId = ? AND gameStoreId = ?`, [userId, gameStoreId])
 
             if (!result) {
-                logger.error(`Failed to remove game ${gameIdOrName} from user ${userId}.`)
-                return { queryData: "null", success: false };
+                logger.error(`Failed to remove game ${gameStoreId} from user ${userId}.`)
+                return false;
             }
 
-            return { queryData: queryData, success: true };
+            return true;
         } catch (error) {
-            logger.error(`Error removing game ${gameIdOrName} from user ${userId}`);
-            console.error(`Error removing game ${gameIdOrName} from user ${userId}`);
+            logger.error(`Error removing game ${gameStoreId} from user ${userId}`);
+            console.error(`Error removing game ${gameStoreId} from user ${userId}`);
 
-            return { queryData: "null", success: false };
+            return false;
         }
     }
 

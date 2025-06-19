@@ -1,7 +1,8 @@
 // At the top of your file
 const { StringSelectMenuInteraction } = require('discord.js');
 const { gameManager } = require('../services');
-const { GlobalMessages } = require('../messages');
+const { successMessage } = require('../messages');
+const { logger } = require('../lib');
 
 module.exports = {
     data: {
@@ -23,7 +24,7 @@ module.exports = {
         const isDeleting = interaction.customId.split(':')[1];
 
         if (isDeleting !== null && isDeleting === "true") {
-            await this.doRemove(interaction)
+            await this.doRemove(interaction, selectedStores)
 
             return;
         }
@@ -67,10 +68,15 @@ module.exports = {
         return interaction.ephemeralReply(content.trim());
     },
 
-    async doRemove(interaction) {
-        //const success = selectedStores.map(gameStoreId => gameManager.removeGameFromUserLibrary(interaction.user.id, gameStoreId));
-        const success = ["Test", true]
-
-        await interaction.ephemeralReply(GlobalMessages.getSuccessMessage(success[0], success[1]))
+    async doRemove(interaction, selectedStores) {
+        try {
+            selectedStores.map(gameStoreId => {
+                gameManager.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
+                interaction.channel.send(successMessage(gameStoreId, true));
+            });
+        } catch (error) {
+            console.error(`Failed to remove game from user ${interaction.user.id}. ${error}`);
+            logger.error(`Failed to remove game from user ${interaction.user.id}. ${error}`);
+        }
     }
 };
