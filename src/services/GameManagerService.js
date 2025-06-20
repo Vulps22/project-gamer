@@ -79,19 +79,19 @@ class GameManagerService {
                     logger.log(`GameManagerService: Creating new game entry for "${title}" with imageURL.`);
                     gameId = await db.insert('game', {
                         name: title,
-                        status: 'APPROVED',
+                        status: gameStatus.APPROVED,
                         imageURL: imageURL // Using your casing
                     });
                 }
                 
                 // This part remains the same
-                await db.insert('gameStore', { gameId, storeId, storeGameId, url: storeUrl, status: 'APPROVED' });
+                await db.insert('gameStore', { gameId, storeId, storeGameId, url: storeUrl, status: gameStatus.APPROVED });
             }
 
             return {
                 submission: {
                     url: storeUrl,
-                    status: 'APPROVED',
+                    status: gameStatus.APPROVED,
                     gameId: gameId,
                 },
                 error: null,
