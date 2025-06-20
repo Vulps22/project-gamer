@@ -31,13 +31,12 @@ class GameManagerService {
             return { submission: null, error: errorMessage };
         }
 
-        // --- CHANGE 1: Destructure imageURL from the scraped data ---
         const { storeName, storeUrl, error, title, storeGameId, imageURL } = gameDataFromStore;
 
         const [store] = await db.query('SELECT id FROM store WHERE name = ?', [storeName]);
 
         if (!store) {
-            // Unrecognized store logic remains the same...
+            
             logger.log(`Unrecognized store "${storeName}" from URL <${url}>. Creating a pending submission.`);
             await db.insert('gameSubmissions', { url: url, submittedBy: userId });
             return {
