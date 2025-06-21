@@ -1,28 +1,40 @@
 // At the top of your file
 const { StringSelectMenuInteraction } = require('discord.js');
 const { gameManager } = require('../services');
+const { successMessage } = require('../messages');
+const { logger } = require('../lib');
 
 module.exports = {
     data: {
         id: 'storeSelect',
         administrator: false,
     },
-    
+
     /**
-     * @param {StringSelectMenuInteraction} interaction 
+     * @param {StringSelectMenuInteraction} interaction
+     * @param context May have context to the interaction
      */
     async execute(interaction) {
-        
         const selectedStores = interaction.values;
 
         if (selectedStores[0] === 'none') {
             return;
         }
 
-        console.log('Selected stores:', selectedStores);
+        const isDeleting = interaction.customId.split(':')[1];
 
+        if (isDeleting !== null && isDeleting === "true") {
+            await this.doRemove(interaction, selectedStores)
+
+            return;
+        }
+
+        await this.doAdd(interaction, selectedStores)
+    },
+
+    async doAdd(interaction, selectedStores) {
         // 1. Create an array of promises, just like before.
-        const promises = selectedStores.map(storeId => 
+        const promises = selectedStores.map(storeId =>
             gameManager.addGameToUserLibrary(interaction.user.id, storeId)
         );
 
@@ -30,10 +42,10 @@ module.exports = {
         const results = await Promise.allSettled(promises);
 
         // 3. Process the results to count successes and failures.
-        const successfulAdds = results.filter(result => 
+        const successfulAdds = results.filter(result =>
             result.status === 'fulfilled' && result.value === true
         );
-        
+
         const failedCount = results.length - successfulAdds.length;
 
         // 4. Build a dynamic response message based on the outcome.
@@ -55,4 +67,16 @@ module.exports = {
         // 5. Send the final, detailed reply.
         return interaction.ephemeralReply(content.trim());
     },
+
+    async doRemove(interaction, selectedStores) {
+        try {
+            selectedStores.map(gameStoreId => {
+                gameManager.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
+                interaction.channel.send(successMessage(gameStoreId, true));
+            });
+        } catch (error) {
+            console.error(`Failed to remove game from user ${interaction.user.id}. ${error}`);
+            logger.error(`Failed to remove game from user ${interaction.user.id}. ${error}`);
+        }
+    }
 };

@@ -66,7 +66,7 @@ class GameManagerService {
 
                 if (existingGame) {
                     gameId = existingGame.id;
-                    
+
                     // --- CHANGE 2: If the game exists but is missing an imageURL, update it. ---
                     if (!existingGame.imageURL && imageURL) {
                         logger.log(`GameManagerService: Found existing game "${title}" (ID: ${gameId}) and updating its missing imageURL.`);
@@ -82,7 +82,7 @@ class GameManagerService {
                         imageURL: imageURL // Using your casing
                     });
                 }
-                
+
                 // This part remains the same
                 await db.insert('gameStore', { gameId, storeId, storeGameId, url: storeUrl, status: gameStatus.APPROVED });
             }
@@ -104,9 +104,9 @@ class GameManagerService {
 }
 
     /**
-     * 
-     * @param {Snowflake} userId 
-     * @param {number} gameStoreId 
+     * Adds specific game to user's library.
+     * @param {Snowflake} userId
+     * @param {number} gameStoreId
      * @returns {Promise<boolean>} - Returns true if the game was added successfully, false otherwise.
      */
     async addGameToUserLibrary(userId, gameStoreId) {
@@ -144,14 +144,30 @@ class GameManagerService {
         }
     }
 
-    // Stub other methods as their implementation will depend more on your specific DB schema
-    // and other parts of your application.
+    /**
+     * Removes the specified game from the user's library.
+     * @param {Snowflake} userId User's ID.
+     * @param {string} gameStoreId Game's ID or Name
+     * @returns {Promise<{boolean}>} Whether the operation was successful.
+     */
+    async removeGameFromUserLibrary(userId, gameStoreId) {
+        console.log('removeGameFromUserLibrary called with:', userId, gameStoreId);
 
-    async removeGameFromUserLibrary(userId, gameIdOrName) {
-        console.log('removeGameFromUserLibrary called with:', userId, gameIdOrName);
-        // 1. Find gameId if name is given
-        // 2. db.delete('user_games', 'user_id = ? AND game_id = ?', [userId, gameId]);
-        return false; // Placeholder
+        try {
+            const result = db.delete(`userLibrary`, `userId = ? AND gameStoreId = ?`, [userId, gameStoreId])
+
+            if (!result) {
+                logger.error(`Failed to remove game ${gameStoreId} from user ${userId}.`)
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            logger.error(`Error removing game ${gameStoreId} from user ${userId}`);
+            console.error(`Error removing game ${gameStoreId} from user ${userId}`);
+
+            return false;
+        }
     }
 
     async getUsersForGame(gameId, guildId) {
@@ -193,11 +209,17 @@ class GameManagerService {
     }
 
     async getGameById(gameId) {
-        console.log('getGameById called with:', gameId);
         const sql = 'SELECT * FROM game WHERE id = ?';
         const results = await db.query(sql, [gameId]);
-        console.log('getGameById results:', results[0]);
-        return results[0] || null; // Return the first result or null if not found
+
+        return results[0] || null;
+    }
+
+    async getIdByGame(game) {
+        const sql = `SELECT gs.id FROM gameStore gs JOIN game g ON gs.gameId = g.id WHERE g.name = ?;`;
+        const results = await db.query(sql, [game]);
+
+        return results[0]?.id || null;
     }
 
     async getStoreUrlsForGame(gameId) {
@@ -218,11 +240,10 @@ class GameManagerService {
 
     /**
      * Searches for games by name, ordered by popularity limited to 25 results.
-     * @param {string} name 
-     * @returns 
+     * @param {string} name
+     * @returns
      */
     async searchGamesByName(name) {
-        console.log('searchGamesByName (by popularity) called with:', name);
         const sql = `
         SELECT
             g.id,
@@ -250,8 +271,6 @@ class GameManagerService {
  * @returns {Promise<Array<object>>} A filtered array of store objects.
  */
     async getStoresForGame(gameId, userId) {
-        console.log(`getStoresForGame called for gameId: ${gameId}, excluding stores for userId: ${userId}`);
-
         // The ? placeholders are positional. The first '?' will be userId, the second will be gameId.
         const sql = `
         SELECT
@@ -269,6 +288,33 @@ class GameManagerService {
 
         // The order of parameters in this array MUST match the order of the '?' in the SQL.
         const results = await db.query(sql, [userId, gameId]);
+
+        if (!results || results.length === 0) {
+            return [];
+        }
+
+        return results;
+    }
+
+    /**
+     * Get all stores for a game.
+     * @param gameId Game Id
+     * @returns {Promise<*|*[]>} Array of all stores.
+     */
+    async getAllStoresForGame(gameId) {
+        const sql = `
+        SELECT
+            gs.id,
+            s.name
+        FROM
+            gameStore AS gs
+        INNER JOIN
+            store AS s ON gs.storeId = s.id
+        WHERE
+            gs.gameId = ?;
+        `;
+
+        const results = await db.query(sql, [gameId]);
 
         if (!results || results.length === 0) {
             return [];
