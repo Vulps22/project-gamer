@@ -47,7 +47,6 @@ class StoreManagerService {
         }
     }
 
-    // In your StoreManagerService class...
     async _downloadAndLoadHtml(url) {
         if (!url || typeof url !== 'string') {
             return { error: 'Invalid URL provided.' };
@@ -82,7 +81,6 @@ class StoreManagerService {
             }
         }
 
-        // --- EXISTING LOGIC for other, simpler stores (Steam, GOG, etc.) ---
         try {
             const parsedUrl = new URL(url);
             const cleanUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}`;
@@ -111,7 +109,6 @@ class StoreManagerService {
             throw new Error(`Failed to download page content from ${url}.`);
         }
     }
-
 
     /**
      * Identifies the store name (scraper_key) based on the URL's hostname
@@ -148,11 +145,10 @@ class StoreManagerService {
         }
     }
 
-
     /**
      * fetchGameDataFromUrl method remains largely the same in its logic of using the storeName
      * to pick a scraper from this.scrapers. The storeName it receives will now be from the DB-driven logic.
-     * 
+     *
      * @param {string} url The URL of the game's store page.
      * @returns {Promise<{
      * storeName: string,
@@ -177,7 +173,7 @@ class StoreManagerService {
             storeName = 'Unknown Store';
         }
 
-        if (storeName == 'Unknown Store') {
+        if (storeName === 'Unknown Store') {
             return {
                 storeName: 'Unknown Store',
                 storeUrl: url,
@@ -192,11 +188,11 @@ class StoreManagerService {
             const scraperModule = this.scrapers.findScraperByName(storeName);
 
             if (scraperModule && typeof scraperModule.scrape === 'function') {
-                console.log(`StoreManagerService: Using '${storeName === 'Unknown Store' ? 'Generic' : storeName}' scraper for ${url}`);
+                console.log(`StoreManagerService: Using '${storeName}' scraper for ${url}`);
                 scrapedData = await scraperModule.scrape($, url);
                 console.log(`StoreManagerService: Scraped data for ${url}:`, scrapedData);
             } else {
-                console.warn(`StoreManagerService: No valid scraper module found for resolved store key '${storeName}'. This might indicate a mismatch between 'stores' table scraper_key and 'scraperRegistry.js' keys, or a missing 'Generic' scraper in the registry.`);
+                console.warn(`StoreManagerService: No valid scraper module found for resolved store key '${storeName}'.`);
                 errorMsg = `Scraper configuration error for store key: ${storeName}.`;
                 scrapedData = { title: null }; // Ensure defined for spread
             }
@@ -215,7 +211,7 @@ class StoreManagerService {
         } catch (error) {
             console.error(`StoreManagerService: Error processing URL ${url} with resolved store key ${storeName}:`, error.message);
             errorMsg = error.message;
-            if ((!scrapedData || !scrapedData.title) && storeName !== 'Generic' && this.scrapers.generic) {
+            if (!scrapedData || !scrapedData.title) {
                 console.warn(`StoreManagerService: Specific scraper for ${storeName} failed. Passing to moderator for manual verification.`);
             }
 
@@ -228,8 +224,6 @@ class StoreManagerService {
 
             console.log(`StoreManagerService: Returning data for ${url}:`, returnData);
             return returnData;
-
-
         }
     }
 }
