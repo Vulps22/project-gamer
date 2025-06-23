@@ -11,7 +11,7 @@ module.exports = [
             'brace-style': ['error', '1tbs', { allowSingleLine: true }],
             'comma-spacing': 'error',
             'comma-style': 'error',
-            curly: ['error', 'all'],
+            curly: ['error', 'multi-line'],
             'dot-location': ['error', 'property'],
             'handle-callback-err': 'off',
             indent: ['error', 4],
