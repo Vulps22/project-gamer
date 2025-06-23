@@ -10,7 +10,7 @@ const fs = require('fs/promises'); // Import fs/promises for async file operatio
 // Your Custom Libs
 const { config, ConfigOption } = require('./src/config.js');
 const { db, logger } = require('./src/lib'); // NEW: Import db and logger
-const { userManagerServiceInstance, steamManagerService } = require('./src/services'); // NEW: Import SteamManagerService and UserManagerService
+const { userManagerService, steamManagerService } = require('./src/services'); // NEW: Import SteamManagerService and UserManagerService
 
 // --- Main Application Logic ---
 
@@ -192,11 +192,11 @@ async function startWebServer() {
 
             // At this point, the token is valid and not expired.
             // Link the Steam ID to the Discord user in your 'user' table.
-            await userManagerServiceInstance.linkSteamAccount(userId, steamId);
+            await userManagerService.linkSteamAccount(userId, steamId);
 
             // Clean up the used session token (SteamManagerService handles its own expiration cleanup,
             // but we explicitly delete after successful use to prevent replay attacks).
-            await db.delete('steam_link_sessions', 'token = ?', [state]);
+            steamManagerService.burnSession(state);
 
             logger.log(`Successfully linked Steam ID ${steamId} to Discord user ${userId}.`);
             const successTitle = 'Steam Account Linked!';

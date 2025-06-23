@@ -109,6 +109,25 @@ class UserManagerService {
             throw error;
         }
     }
+
+    async linkSteamAccount(userId, steamId) {
+        try {
+            // Check if the user already has a linked Steam account
+            const user = await db.query(
+                'SELECT * FROM user WHERE id = :userId',
+                { userId: userId }
+            );
+
+            if (user) {
+                await db.update('user', { steamId: steamId }, 'id = ?', [userId]);
+            }
+
+            console.log(`Steam account linked for user ${userId} with Steam ID ${steamId}`);
+        } catch (error) {
+            console.error(`Error linking Steam account for user ${userId}:`, error);
+            throw error;
+        }
+    }
 }
 
 const userManagerService = new UserManagerService();

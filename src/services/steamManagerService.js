@@ -132,7 +132,7 @@ class SteamManagerService {
             if (new Date() > expiresAtDate && config.get(ConfigOption.ENVIRONMENT) !== 'dev') {
                 logger.error(`Expired state token found for user ${session.userId}: ${token}`);
                 // Clean up expired token immediately
-                await db.delete('steam_link_sessions', 'token = ?', [token]);
+                await this.burnSession(token);
                 return null;
             }
 
@@ -147,6 +147,39 @@ class SteamManagerService {
             throw new Error('An internal error occurred during session validation.');
         }
     }
+
+    /**
+     * Cleans up expired or invalid Steam link sessions from the database.
+     * This should be called periodically to maintain the integrity of the session store.
+     * Will be called once every hour from index.js
+     */
+    async cleanupExpiredSessions() {
+        try {
+            // Delete sessions that have expired
+            const result = await db.delete('steam_link_sessions', 'expiresAt < NOW()');
+            logger.log(`Cleaned up ${result.affectedRows} expired Steam link sessions.`);
+        } catch (error) {
+            logger.error(`Error cleaning up expired Steam link sessions: ${error.message}`);
+            console.error('Error cleaning up expired Steam link sessions:', error);
+        }
+    }
+
+    /**
+     * Deletes a Steam link session by its token.
+     * This is useful for manual cleanup or when a user explicitly unlinks their Steam account.
+     * @param {string} token The session token to delete.
+     * @returns {Promise<void>}
+     */
+    async burnSession(token) {
+        try {
+            await db.delete('steam_link_sessions', 'token = ?', [token]);
+        } catch (error) {
+            logger.error(`Error deleting Steam link session for token ${token}: ${error.message}`);
+            console.error(`Error deleting Steam link session for token ${token}:`, error);
+            throw new Error('Failed to delete Steam link session. Please try again.');
+        }
+    }
+
 
 }
 
