@@ -265,6 +265,37 @@ class GameManagerService {
     }
 
     /**
+     * Searches for games by name, ordered by popularity limited to 25 results.
+     * @param {string} name
+     * @param {Snowflake} userId
+     * @returns
+     */
+    async searchUserGamesByName(name, userId) {
+
+        if(!userId) return [];
+
+        const sql = `
+        SELECT
+            g.id,
+            g.name,
+            COUNT(ul.id) AS popularity
+        FROM
+            game AS g
+        LEFT JOIN gameStore AS gs ON g.id = gs.gameId
+        LEFT JOIN userLibrary AS ul ON gs.id = ul.gameStoreId
+        WHERE
+            g.name LIKE :name
+            AND ul.userId = :userId
+        GROUP BY
+            g.id, g.name
+        ORDER BY
+            popularity DESC, g.name ASC
+        LIMIT 20;`;
+
+        return await db.query(sql, { name: `%${name}%`, userId: userId});
+    }
+
+    /**
  * Gets all stores for a given game that the user does not already have in their library.
  * @param {string} gameId The ID of the game.
  * @param {string} userId The ID of the user to check against.
@@ -324,8 +355,8 @@ class GameManagerService {
     }
 }
 
-const gameManager = new GameManagerService();
+const gameManagerService = new GameManagerService();
 module.exports = {
-    gameManagerService: gameManager,
+    gameManagerService: gameManagerService,
     gameStatus: gameStatus,
 };
