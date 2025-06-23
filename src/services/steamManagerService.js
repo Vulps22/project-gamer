@@ -1,8 +1,11 @@
 // src/services/SteamManagerService.js
 
-const config = require("../config");
+const config = require('../config');
 const { db, logger } = require('../lib'); // Import db and logger
 const crypto = require('node:crypto'); // For generating secure tokens
+
+// Steam OpenID endpoint
+const STEAM_OPENID_URL = 'https://steamcommunity.com/openid/login';
 
 class SteamManagerService {
 
@@ -33,7 +36,7 @@ class SteamManagerService {
     }
 
     getToken() {
-        return config.get(config.ConfigOption.STEAM_API_TOKEN)
+        return config.get(config.ConfigOption.STEAM_API_TOKEN);
     }
 
     /**
@@ -55,7 +58,7 @@ class SteamManagerService {
             await db.insert('steam_link_sessions', {
                 token: sessionToken,
                 userId: userId,
-                expiresAt: expiresAt.toISOString().slice(0, 19).replace('T', ' '), // Format for MySQL DATETIME
+                expiresAt: expiresAt.toISOString().slice(0, 19).replace('T', ' '),
             });
 
             logger.log(`Generated Steam link session for user ${userId} with token: ${sessionToken.substring(0, 8)}...`);
@@ -66,6 +69,85 @@ class SteamManagerService {
             throw new Error('Failed to generate Steam link session. Please try again.');
         }
     }
+
+    /**
+     * Creates a Steam login URL, generating a unique session token in the process.
+     * This URL will redirect the user to Steam for authentication.
+     * @param {string} userId The Discord user ID initiating the link.
+     * @returns {Promise<string>} The constructed Steam OpenID login URL.
+     * @throws {Error} If a session token cannot be generated or the base URL is not configured.
+     */
+    async getSessionURL(userId) {
+        try {
+            // Generate a session token for the current user
+            const sessionToken = await this.generateSession(userId);
+
+            // Get the bot's base URL from configuration
+            const baseUrl = config.get(config.ConfigOption.BASE_URL);
+            if (!baseUrl) {
+                const errorMessage = 'BASE_URL is not configured. Cannot generate Steam login URL.';
+                logger.error(errorMessage);
+                throw new Error(errorMessage);
+            }
+
+            // Construct the return_to URL for Steam's callback
+            const returnToUrl = `${baseUrl}/auth/steam/callback?state=${sessionToken}`;
+
+            // Construct the Steam login URL with OpenID parameters
+            const steamLoginURL = `${STEAM_OPENID_URL}` +
+                '?openid.ns=http://specs.openid.net/auth/2.0' +
+                '&openid.mode=checkid_setup' +
+                `&openid.return_to=${encodeURIComponent(returnToUrl)}` +
+                `&openid.realm=${encodeURIComponent(baseUrl)}` +
+                '&openid.identity=http://specs.openid.net/auth/2.0/identifier_select' +
+                '&openid.claimed_id=http://specs.openid.net/auth/2.0/identifier_select';
+
+            logger.log(`Generated Steam login URL for user ${userId}: ${steamLoginURL}`);
+            return steamLoginURL;
+        } catch (error) {
+            logger.error(`Error creating Steam login URL: ${error.message}`);
+            console.error('Error creating Steam login URL:', error);
+            throw new Error('Failed to create Steam login URL. Please try again.');
+        }
+    }
+
+    /**
+    * Validates a Steam login session token. Fetches the session from the database,
+    * checks its expiration, and cleans it up after validation (whether successful or not).
+    * @param {string} token The session token received from the Steam callback.
+    * @returns {Promise<{userId: string, expiresAt: Date} | null>} An object containing userId and expiresAt if valid, otherwise null.
+    */
+    async validateSession(token) {
+        try {
+            const [session] = await db.query('SELECT userId, expiresAt FROM steam_link_sessions WHERE token = ?', [token]);
+
+            if (!session) {
+                logger.error(`Invalid or non-existent state token received during validation: ${token}`);
+                return null;
+            }
+
+            // Convert expiresAt to Date object for comparison
+            const expiresAtDate = new Date(session.expiresAt);
+
+            if (new Date() > expiresAtDate) {
+                logger.error(`Expired state token found for user ${session.userId}: ${token}`);
+                // Clean up expired token immediately
+                await db.delete('steam_link_sessions', 'token = ?', [token]);
+                return null;
+            }
+
+            // If valid, return the user ID and expiration date
+            // The token will be deleted after being consumed in index.js to prevent replay
+            return { userId: session.userId, expiresAt: expiresAtDate };
+
+        } catch (error) {
+            logger.error(`Error validating Steam session token ${token}: ${error.message}`);
+            console.error(`Error validating Steam session token ${token}:`, error);
+            // Re-throw to indicate a deeper system issue, not just an invalid token
+            throw new Error('An internal error occurred during session validation.');
+        }
+    }
+
 }
 
 // Export a single instance of the service

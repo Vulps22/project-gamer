@@ -3,9 +3,12 @@ const { ShardingManager } = require('discord.js');
 const { AutoPoster } = require('topgg-autoposter');
 const axios = require('axios');
 const retry = require('async-retry');
+const express = require('express'); // NEW: Import Express.js
 
 // Your Custom Libs
 const { config, ConfigOption } = require('./src/config.js');
+const { db, logger } = require('./src/lib'); // NEW: Import db and logger
+const { steamManagerServiceInstance, userManagerServiceInstance } = require('./src/services'); // NEW: Import SteamManagerService and UserManagerService
 
 // --- Main Application Logic ---
 
@@ -13,7 +16,7 @@ const { config, ConfigOption } = require('./src/config.js');
  * Main function to initialize and start the bot.
  */
 async function main() {
-    console.log('Starting Sharding Manager...');
+    console.log('Starting Sharding Manager and Web Server...');
 
     // 1. Load configuration from DB (MUST be first after imports/dotenv)
     await config.init();
@@ -28,7 +31,12 @@ async function main() {
         process.exit(1);
     }
 
-    // 3. Initialize the Sharding Manager
+    // NEW: 3. Start the web server BEFORE spawning shards
+    // The web server needs to be available globally to receive callbacks.
+    await startWebServer();
+    console.log('Web server started.');
+
+    // 4. Initialize the Sharding Manager
     const manager = new ShardingManager('./src/bot.js', {
         token: token,
         totalShards: environment === 'dev' ? 1 : 'auto',
@@ -36,11 +44,11 @@ async function main() {
 
     manager.on('shardCreate', shard => console.log(`Launched shard ${shard.id}`));
 
-    // 4. Spawn shards
+    // 5. Spawn shards
     await manager.spawn();
     console.log('All shards launched.');
 
-    // 5. Setup auxiliary services (pass manager/config if needed,
+    // 6. Setup auxiliary services (pass manager/config if needed,
     //    but preferably they should import config themselves)
     setupVoteServer();
     scheduleDailyCleanup();
@@ -108,6 +116,116 @@ function syncGG(manager) {
     }
 }
 
+/**
+ * Starts the Express web server to handle Steam OpenID callbacks.
+ */
+async function startWebServer() {
+    const app = express();
+    const port = config.get(ConfigOption.WEB_SERVER_PORT, 3000);
+
+    // NEW: Load the HTML template once at startup
+    try {
+        const templatePath = path.join(__dirname, 'src', 'views', 'steam_callback_template.html');
+        console.log(`Loading Steam callback HTML template from: ${templatePath}`);
+        steamCallbackTemplate = await fs.readFile(templatePath, 'utf8');
+        console.log('Steam callback HTML template loaded successfully.');
+    } catch (error) {
+        console.error('FATAL ERROR: Could not load Steam callback HTML template:', error);
+        process.exit(1); // Cannot proceed without the template
+    }
+
+    // Middleware to parse query parameters (Express does this by default for GET requests)
+    app.use(express.urlencoded({ extended: true }));
+
+    // Define the Steam OpenID callback route
+    app.get('/auth/steam/callback', async (req, res) => {
+        const { 'openid.claimed_id': steamIdUrl, state } = req.query;
+        logger.log(`Steam callback received: steamIdUrl=${steamIdUrl}, state=${state}`);
+
+        if (!steamIdUrl || !state) {
+            logger.error('Missing Steam ID or state in callback.');
+            const errorTitle = 'Authentication Failed';
+            const errorMessage = 'Missing parameters. Please try linking your Steam account again from Discord.';
+            return res.status(400).send(
+                steamCallbackTemplate
+                    .replace('{{TITLE}}', errorTitle)
+                    .replace('{{MESSAGE}}', errorMessage)
+            );
+        }
+
+        try {
+            // Extract the 64-bit Steam ID from the claimed_id URL
+            const steamIdMatch = steamIdUrl.match(/steamcommunity\.com\/openid\/id\/(\d+)/);
+            if (!steamIdMatch || !steamIdMatch[1]) {
+                logger.error(`Invalid Steam ID URL format: ${steamIdUrl}`);
+                const errorTitle = 'Authentication Failed';
+                const errorMessage = 'Invalid Steam ID format received. Please try again.';
+                return res.status(400).send(
+                    steamCallbackTemplate
+                        .replace('{{TITLE}}', errorTitle)
+                        .replace('{{MESSAGE}}', errorMessage)
+                );
+            }
+            const steamId = steamIdMatch[1];
+
+            // Validate the state token using the SteamManagerService
+            const session = await steamManagerServiceInstance.validateSession(state);
+
+            if (!session) {
+                // validateSession returns null if invalid or expired, and handles its own logging
+                const errorTitle = 'Authentication Failed';
+                const errorMessage = 'Your linking session was invalid or expired. Please initiate the linking process again from Discord.';
+                return res.status(400).send(
+                    steamCallbackTemplate
+                        .replace('{{TITLE}}', errorTitle)
+                        .replace('{{MESSAGE}}', errorMessage)
+                );
+            }
+
+            const { userId } = session; // Destructure userId from the returned session object
+
+            // At this point, the token is valid and not expired.
+            // Link the Steam ID to the Discord user in your 'user' table.
+            await userManagerServiceInstance.linkSteamAccount(userId, steamId);
+
+            // Clean up the used session token (SteamManagerService handles its own expiration cleanup,
+            // but we explicitly delete after successful use to prevent replay attacks).
+            await db.delete('steam_link_sessions', 'token = ?', [state]);
+
+            logger.log(`Successfully linked Steam ID ${steamId} to Discord user ${userId}.`);
+            const successTitle = 'Steam Account Linked!';
+            const successMessage = 'Your Steam account has been successfully linked to your Discord profile. You may now return to the bot and use `/sync` to synchronize your game library.';
+            res.status(200).send(
+                steamCallbackTemplate
+                    .replace('{{TITLE}}', successTitle)
+                    .replace('{{MESSAGE}}', successMessage)
+            );
+
+        } catch (error) {
+            logger.error(`Error processing Steam callback: ${error.message}`);
+            console.error('Steam callback processing error:', error);
+            const errorTitle = 'Internal Server Error';
+            const errorMessage = 'An internal error occurred during authentication. Please try again later.';
+            res.status(500).send(
+                steamCallbackTemplate
+                    .replace('{{TITLE}}', errorTitle)
+                    .replace('{{MESSAGE}}', errorMessage)
+            );
+        }
+    });
+
+    return new Promise((resolve, reject) => {
+        app.listen(port, () => {
+            console.log(`Web server listening on port ${port}`);
+            resolve();
+        }).on('error', (err) => {
+            console.error(`Failed to start web server on port ${port}:`, err);
+            reject(err);
+        });
+    });
+}
+
+
 /** Placeholder: Sets up a server for handling vote webhooks. */
 function setupVoteServer() {
     console.log('Setup Vote Server (Placeholder - Needs Implementation)');
@@ -129,6 +247,6 @@ function scheduleTopGGUpdate() {
 
 // --- Start the application ---
 main().catch(error => {
-    console.error('Failed to start the shard manager:', error);
+    console.error('Failed to start the application:', error);
     process.exit(1);
 });

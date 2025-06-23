@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TITLE}}</title>
+    <!-- Favicon/Apple Touch Icon from original index.html -->
+    <link rel="apple-touch-icon" href="./img/lfgamesync-2.png">
+    <link rel="icon" href="./img/lfgamesync-2.png" type="image/png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/ac7deee7ba.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-300 antialiased">
+
+    <!-- Header Section (Copied from index.html) -->
+    <header class="bg-slate-900/70 backdrop-blur-lg sticky top-0 z-50 border-b border-slate-800">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold text-white tracking-tight">
+                LFGameSync
+            </div>
+            <div class="flex items-center gap-x-4">
+                <a href="https://github.com/Vulps22/project-gamer" target="_blank"
+                    class="text-slate-400 hover:text-white transition-colors text-2xl">
+                    <i class="fa-brands fa-github"></i>
+                </a>
+                <a href="https://discord.gg/PxjD25Cc85" class="inline-flex items-center bg-green-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-green-500 transition-colors shadow-lg shadow-green-600/20">
+                    <i class="fa-solid fa-users mr-2"></i>
+                    Join the Community
+                </a>
+                <a href="https://discord.com/oauth2/authorize?client_id=1137177567745548318"
+                    class="inline-flex items-center bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20">
+                    <i class="fa-brands fa-discord mr-2"></i>
+                    Add to Your Server
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex items-center justify-center min-h-[calc(100vh-160px)]"> <!-- Adjusted min-h for header/footer -->
+        <div class="container mx-auto px-6 text-center max-w-2xl py-12">
+            <div class="bg-slate-800/80 rounded-xl p-8 md:p-12 border border-slate-700 shadow-xl shadow-slate-700/10">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+                    {{TITLE}}
+                </h1>
+                <p class="mt-6 text-lg md:text-xl text-slate-400">
+                    {{MESSAGE}}
+                </p>
+                <div class="mt-8">
+                    <!-- Adjusted button text to be more general for a callback -->
+                    <a href="https://discord.gg/PxjD25Cc85" class="inline-flex items-center bg-blue-600 text-white font-bold text-lg px-6 py-3 rounded-lg hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/30">
+                        Continue to Community Server
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Section (Copied from index.html) -->
+    <footer class="border-t border-slate-800">
+        <div class="ml-3 mr-6 px-6 py-8 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+            <p id="disclaimer" class="md:col-span-4 text-xs text-slate-500 text-center md:text-left">
+                <sup>1</sup>LFGameSync and its developers are not affiliated with, endorsed by, or in any way officially
+                connected with any of the supported stores. All product and company names are trademarks™ or registered®
+                trademarks of their respective holders. We utilize publicly available data from their websites to
+                provide functionality for the bot.
+            </p>
+
+            <div class="md:col-span-4 md:col-start-5 text-center text-slate-400">
+                <p>&copy; 2025 LFGameSync. Built by <a href="https://vulps.co.uk" target="_blank"
+                        class="underline hover:text-white transition-colors">Vulps Development.</a></p>
+                <div class="mt-4 flex justify-center items-center gap-x-6">
+                    <a href="https://discord.gg/PxjD25Cc85" class="underline hover:text-white transition-colors">Join the Community</a>
+                    <a href="./privacy.html" class="underline hover:text-white transition-colors">Privacy Policy</a>
+                    <a href="https://github.com/Vulps22/project-gamer" target="_blank"
+                        class="hover:text-white transition-colors text-lg">
+                        <i class="fa-brands fa-github"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="hidden md:block md:col-span-3"></div>
+        </div>
+    </footer>
+
+</body>
+</html>
