@@ -1,6 +1,6 @@
 // At the top of your file
 const { StringSelectMenuInteraction } = require('discord.js');
-const { gameManager } = require('../services');
+const { gameManagerService } = require('../services');
 const { successMessage } = require('../messages');
 const { logger } = require('../lib');
 
@@ -35,7 +35,7 @@ module.exports = {
     async doAdd(interaction, selectedStores) {
         // 1. Create an array of promises, just like before.
         const promises = selectedStores.map(storeId =>
-            gameManager.addGameToUserLibrary(interaction.user.id, storeId)
+            gameManagerService.addGameToUserLibrary(interaction.user.id, storeId)
         );
 
         // 2. Use Promise.allSettled to wait for all of them to complete.
@@ -71,9 +71,9 @@ module.exports = {
     async doRemove(interaction, selectedStores) {
         try {
             selectedStores.map(gameStoreId => {
-                const result = gameManager.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
+                const result = gameManagerService.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
 
-                const gameName = gameManager.getGameById(gameStoreId);
+                const gameName = gameManagerService.getGameById(gameStoreId);
                 console.log("", gameName)
 
                 interaction.ephemeralReply(null, successMessage(gameName, result));

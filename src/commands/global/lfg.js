@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags } = require('discord.js');
-const { gameManager} = require('../../services');
+const { gameManagerService} = require('../../services');
 const { choosePlayersMessage } = require('../../messages');
 const { BotInteraction } = require('../../structures');
 
@@ -22,7 +22,7 @@ module.exports = {
 	 */
     async autoComplete(interaction) {
         const name = interaction.options.getFocused();
-        const games = await gameManager.searchGamesByName(name);
+        const games = await gameManagerService.searchGamesByName(name);
 
         //console.log('Autocomplete games:', games);
 
@@ -43,7 +43,7 @@ module.exports = {
         const gameId = interaction.options.getString('game');
         const userId = interaction.user.id;
 
-        const game = await gameManager.getGameById(gameId);
+        const game = await gameManagerService.getGameById(gameId);
 
         console.log('LFG Game found:', game);
 
@@ -51,7 +51,7 @@ module.exports = {
             return interaction.ephemeralReply({ content: 'Game not found.'});
         }
 
-        const message = choosePlayersMessage(game.name, await gameManager.getUsersForGame(gameId, interaction.guildId), gameId);
+        const message = choosePlayersMessage(game.name, await gameManagerService.getUsersForGame(gameId, interaction.guildId), gameId);
 
         //const message = await LFGMessage(gameId, [], userId, [userId]);
 
