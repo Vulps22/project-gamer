@@ -2,7 +2,7 @@
 const { Snowflake } = require('discord.js'); // Import Snowflake type for userId
 const { db, logger } = require('../lib');
 const { clientProvider } = require('../provider');
-const storeManager = require('./StoreManagerService'); // Import the StoreManagerService
+const storeManager = require('./storeManagerService'); // Import the StoreManagerService
 
 const gameStatus = {
     APPROVED: 'approved',
@@ -278,8 +278,8 @@ class GameManagerService {
     }
 }
 
-const gameManagerInstance = new GameManagerService();
+const gameManager = new GameManagerService();
 module.exports = {
-    gameManager: gameManagerInstance,
+    gameManagerService: gameManager,
     gameStatus: gameStatus,
 };
