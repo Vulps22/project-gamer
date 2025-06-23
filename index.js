@@ -10,7 +10,7 @@ const fs = require('fs/promises'); // Import fs/promises for async file operatio
 // Your Custom Libs
 const { config, ConfigOption } = require('./src/config.js');
 const { db, logger } = require('./src/lib'); // NEW: Import db and logger
-const { steamManagerServiceInstance, userManagerServiceInstance } = require('./src/services'); // NEW: Import SteamManagerService and UserManagerService
+const { userManagerServiceInstance, steamManagerService } = require('./src/services'); // NEW: Import SteamManagerService and UserManagerService
 
 // --- Main Application Logic ---
 
@@ -123,7 +123,7 @@ function syncGG(manager) {
  */
 async function startWebServer() {
     const app = express();
-    const port = config.get(ConfigOption.WEB_SERVER_PORT, 3000);
+    const port = config.get(ConfigOption.WEB_SERVER_PORT, 3001);
 
     // NEW: Load the HTML template once at startup
     try {
@@ -139,10 +139,14 @@ async function startWebServer() {
     // Middleware to parse query parameters (Express does this by default for GET requests)
     app.use(express.urlencoded({ extended: true }));
 
+    app.get('/', (req, res) => {
+        res.send('Welcome to the Steam Link Service! This is a dev endpoint.');
+    });
+
     // Define the Steam OpenID callback route
     app.get('/auth/steam/callback', async (req, res) => {
         const { 'openid.claimed_id': steamIdUrl, state } = req.query;
-        logger.log(`Steam callback received: steamIdUrl=${steamIdUrl}, state=${state}`);
+        console.log(`Steam callback received: steamIdUrl=${steamIdUrl}, state=${state}`);
 
         if (!steamIdUrl || !state) {
             logger.error('Missing Steam ID or state in callback.');
@@ -171,7 +175,7 @@ async function startWebServer() {
             const steamId = steamIdMatch[1];
 
             // Validate the state token using the SteamManagerService
-            const session = await steamManagerServiceInstance.validateSession(state);
+            const session = await steamManagerService.validateSession(state);
 
             if (!session) {
                 // validateSession returns null if invalid or expired, and handles its own logging

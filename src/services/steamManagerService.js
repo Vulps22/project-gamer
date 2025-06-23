@@ -1,6 +1,6 @@
 // src/services/SteamManagerService.js
 
-const config = require('../config');
+const { config, ConfigOption} = require('../config');
 const { db, logger } = require('../lib'); // Import db and logger
 const crypto = require('node:crypto'); // For generating secure tokens
 
@@ -83,7 +83,7 @@ class SteamManagerService {
             const sessionToken = await this.generateSession(userId);
 
             // Get the bot's base URL from configuration
-            const baseUrl = config.get(config.ConfigOption.BASE_URL);
+            const baseUrl = config.get(ConfigOption.BASE_URL);
             if (!baseUrl) {
                 const errorMessage = 'BASE_URL is not configured. Cannot generate Steam login URL.';
                 logger.error(errorMessage);
@@ -129,7 +129,7 @@ class SteamManagerService {
             // Convert expiresAt to Date object for comparison
             const expiresAtDate = new Date(session.expiresAt);
 
-            if (new Date() > expiresAtDate) {
+            if (new Date() > expiresAtDate && config.get(ConfigOption.ENVIRONMENT) !== 'dev') {
                 logger.error(`Expired state token found for user ${session.userId}: ${token}`);
                 // Clean up expired token immediately
                 await db.delete('steam_link_sessions', 'token = ?', [token]);

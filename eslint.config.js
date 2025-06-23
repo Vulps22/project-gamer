@@ -1,7 +1,11 @@
 const js = require('@eslint/js');
+const jsdoc = require('eslint-plugin-jsdoc'); // Import the JSDoc plugin
 
 module.exports = [
     js.configs.recommended,
+    // Add the JSDoc plugin's recommended configuration
+    // This often includes the `no-undefined-types` rule with `markVariablesAsUsed` already set
+    jsdoc.configs['recommended'], // Use the recommended config from eslint-plugin-jsdoc
     {
         languageOptions: {
             ecmaVersion: 'latest',
@@ -27,7 +31,7 @@ module.exports = [
             'no-shadow': ['error', { allow: ['err', 'resolve', 'reject'] }],
             'no-trailing-spaces': ['error'],
             'no-var': 'error',
-            'no-undef': 'off',
+            'no-undef': 'off', // Keep this off if you're not using environments that define globals
             'object-curly-spacing': ['error', 'always'],
             'prefer-const': 'error',
             quotes: ['error', 'single'],
@@ -43,6 +47,15 @@ module.exports = [
             'space-unary-ops': 'error',
             'spaced-comment': 'error',
             yoda: 'error',
+
+            // JSDoc rules
+            'jsdoc/no-undefined-types': [
+              'error',
+              {
+                'markVariablesAsUsed': true
+              }
+            ],
+
         },
     },
 ];
