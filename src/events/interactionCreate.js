@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 const { Events, Interaction } = require('discord.js');
 const { logger } = require('../lib');
-const { userManagerServiceInstance } = require('../services');
+const { userManagerService } = require('../services');
 const { clientProvider } = require('../provider');
 const { BotInteraction, BotButtonInteraction } = require('../structures');
 
@@ -213,13 +213,13 @@ async function saveUser(interaction) {
         return false;
     }
 
-    user = await userManagerServiceInstance.getOrCreateUser(userId);
+    user = await userManagerService.getOrCreateUser(userId);
 
     if (!user) {
         return;
     }
 
-    await userManagerServiceInstance.addUserToServer(userId, interaction.guildId);
+    await userManagerService.addUserToServer(userId, interaction.guildId);
 
     return true;
 

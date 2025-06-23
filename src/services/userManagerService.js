@@ -111,5 +111,5 @@ class UserManagerService {
     }
 }
 
-const userManagerServiceInstance = new UserManagerService();
-module.exports = userManagerServiceInstance;
+const userManagerService = new UserManagerService();
+module.exports = userManagerService;

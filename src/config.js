@@ -85,5 +85,5 @@ class Config {
 }
 
 // Export a single instance (Singleton Pattern)
-const configInstance = new Config();
-module.exports = { config: configInstance, ConfigOption };
+const config = new Config();
+module.exports = { config: config, ConfigOption };
