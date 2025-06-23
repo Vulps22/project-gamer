@@ -3,8 +3,8 @@ const { StringSelectMenuBuilder, TextDisplayBuilder, ActionRowBuilder, Container
 
 /**
  * Creates messages a dropdown selection for user.
- * @param stores Game stores.
- * @param isDeleting Is user deleting the game?
+ * @param {Array} stores Game stores.
+ * @param {boolean} isDeleting Is user deleting the game?
  * @returns {*|{flags: *, components: ContainerBuilder[]}}
  */
 function chooseStoresMessage(stores, isDeleting) {

@@ -120,7 +120,7 @@ class GameManagerService {
             );
 
             if (existingLink) {
-                await logger.log(`User ${userId} already has game ${gameStoreId} in their library.`);
+                logger.log(`User ${userId} already has game ${gameStoreId} in their library.`);
                 return true
             }
 
@@ -130,15 +130,15 @@ class GameManagerService {
             });
 
             if (!result) {
-                await logger.error(`Failed to add game ${gameStoreId} for user ${userId}.`);
+                logger.error(`Failed to add game ${gameStoreId} for user ${userId}.`);
                 return false;
             }
 
-            await logger.log(`Added game ${gameStoreId} to user ${userId}'s library.`);
+            logger.log(`Added game ${gameStoreId} to user ${userId}'s library.`);
 
             return true; // Assumes this returns the new ID
         } catch (error) {
-            await logger.error(`Error adding game ${gameStoreId} for user ${userId}:`);
+            logger.error(`Error adding game ${gameStoreId} for user ${userId}:`);
             console.error(`Error adding game ${gameStoreId} for user ${userId}:`, error);
             return false; // Return an error status
         }
@@ -157,13 +157,13 @@ class GameManagerService {
             const results = await db.delete(`userLibrary`, `userId = ? AND gameStoreId = ?`, [userId, gameStoreId])
 
             if (!results || results === 0) {
-                await logger.error(`Failed to remove game ${gameStoreId} from user ${userId}.`)
+                logger.error(`Failed to remove game ${gameStoreId} from user ${userId}.`)
                 return false;
             }
 
             return true;
         } catch (error) {
-            await logger.error(`Error removing game ${gameStoreId} from user ${userId}`);
+            logger.error(`Error removing game ${gameStoreId} from user ${userId}`);
             console.error(`Error removing game ${gameStoreId} from user ${userId}`);
 
             return false;

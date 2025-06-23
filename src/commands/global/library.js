@@ -91,7 +91,7 @@ module.exports = {
             stores = await gameManagerService.getAllStoresForGame(game);
         }
 
-        const storesMessage = chooseStoresMessage(stores, isDeleting)
+        const storesMessage = chooseStoresMessage(stores, isDeleting);
 
         await interaction.ephemeralReply(null, storesMessage);
     },
