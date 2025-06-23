@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
 const { BotInteraction } = require('../../structures');
+const GameManagerService = require('../../services/GameManagerService');
 
 
 
@@ -23,6 +24,7 @@ module.exports = {
      * @returns 
      */
     async execute(interaction) {
+
         interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const url = interaction.options.getString('url');
         const userId = interaction.user.id;
@@ -40,7 +42,12 @@ module.exports = {
         if (result.submission.status === gameStatus.PENDING) {
             return interaction.ephemeralReply('We do not recognize this store yet. The game has been registered but must be approved by an administrator before it can be used.\n You will be DM\'d automatically when it is approved.',);
         }
+        console.log("Game registered:", result.submission);
+        if( result.submission.status === gameStatus.APPROVED) {
+            console.log("Adding game to user library:", userId, result.submission.gameId);
+            await gameManager.addGameToUserLibrary(userId, result.submission.gameId);
+        }
 
-        return interaction.ephemeralReply(`Game registered successfully!`);
+        return interaction.ephemeralReply(`Game registered successfully and has been added to your library!`);
     },
 };
