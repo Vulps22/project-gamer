@@ -155,9 +155,9 @@ class GameManagerService {
         console.log('removeGameFromUserLibrary called with:', userId, gameStoreId);
 
         try {
-            const result = db.delete(`userLibrary`, `userId = ? AND gameStoreId = ?`, [userId, gameStoreId])
+            const results = db.delete(`userLibrary`, `userId = ? AND gameStoreId = ?`, [userId, gameStoreId])
 
-            if (!result) {
+            if (!results || results.length === 0) {
                 logger.error(`Failed to remove game ${gameStoreId} from user ${userId}.`)
                 return false;
             }

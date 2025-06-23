@@ -1,16 +1,19 @@
 const { ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
 
-async function successMessage(game, success) {
-    console.log(`successMessage called: ${game}, ${success}`)
+/**
+ * Creates a message whenever the boolean is true (success) or false (fail)
+ * @param game
+ * @param success
+ * @returns {{flags: *, components: ContainerBuilder[]}}
+ */
+function successMessage(game, success) {
     const containerBuilder = new ContainerBuilder();
     const textBuilder = new TextDisplayBuilder();
 
-    textBuilder.setContent("## >:(")
-
     if (success) {
-        textBuilder.setContent(`## Successfully removed ${game}`)
+        textBuilder.setContent(`## ${game} removed from your library.`)
     } else {
-        textBuilder.setContent(`## Failed to remove ${game}`);
+        textBuilder.setContent(`## Failed to remove ${game} from your library. \n-# Possibly wrong store selected?`);
     }
 
     containerBuilder.addTextDisplayComponents(textBuilder);
@@ -20,7 +23,6 @@ async function successMessage(game, success) {
         components: [ containerBuilder ]
     };
 
-    console.log(`successMessage: `, message)
     return message;
 }
 

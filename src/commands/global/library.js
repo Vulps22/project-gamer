@@ -28,6 +28,7 @@ module.exports = {
             )
         ),
     administrator: false,
+
     /**
      * Handles autocomplete for game search.
      * Fetches games from the database based on user input.
@@ -46,6 +47,7 @@ module.exports = {
         interaction.respond(games.map(game => ({ name: game.name, value: String(game.id) })));
 
     },
+
     /**
      *
      * @param {BotInteraction} interaction
