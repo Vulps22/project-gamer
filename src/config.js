@@ -12,6 +12,7 @@ const ConfigOption = Object.freeze({
     DISCORD_SUPPORT_SERVER_URL: 'discord_support_server_url',
     TOP_GG_TOKEN: 'top_gg_token',
     UPTIME_KUMA_URL: 'uptime_kuma_url',
+    STEAM_API_TOKEN: 'steam_api_token',
     ENVIRONMENT: 'env',
 });
 

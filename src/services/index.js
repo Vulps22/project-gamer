@@ -4,6 +4,7 @@ const { gameManager, gameStatus } = require('./GameManagerService.js');
 const serverManagerServiceInstance = require('./ServerManagerService.js');
 const storeManagerInstance = require('./StoreManagerService.js');
 const userManagerServiceInstance = require('./UserManagerService.js');
+const SteamManagerService = require('./steamManagerService.js');
 
 module.exports = {
     gameManager,
