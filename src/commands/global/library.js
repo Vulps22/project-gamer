@@ -27,6 +27,16 @@ module.exports = {
                 .setRequired(true)
                 .setAutocomplete(true)
             )
+        )
+        .addSubcommand(new SlashCommandSubcommandBuilder()
+            .setName('view')
+            .setDescription('View your library in the autocomplete')
+            .addStringOption(new SlashCommandStringOption()
+                .setName('game')
+                .setDescription('The game you want to view')
+                .setRequired(false)
+                .setAutocomplete(true)
+            )
         ),
     administrator: false,
 
@@ -65,6 +75,13 @@ module.exports = {
      * @param {BotInteraction} interaction
      */
     async execute(interaction) {
+
+        if (interaction.options.getSubcommand() === 'view') {
+            interaction.ephemeralReply("Hello! We plan to flesh this out in the future,"
+                + " but felt it was important to give everyone a way to see which games they have already added to their library."
+                + " For now, you can use `/library view` to see your games in the autocomplete.");
+        }
+
         const game = interaction.options.getString('game');
         const isDeleting = interaction.options.getSubcommand() === 'remove';
         let stores = await gameManagerService.getStoresForGame(game, interaction.user.id);
