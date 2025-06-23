@@ -64,8 +64,14 @@ async function sendTo(messageOptions, channelId) {
     console.log('Sending message to channel:', channelId, 'with options:', messageOptions);
 
     try {
-
-        const client = clientProvider.getClient();
+        let client;
+        try {
+        client = clientProvider.getClient();
+        } catch {
+            console.log('Client Not Available: defaulting to log webhook')
+            sendWebhook(messageOptions);
+            return null;
+        }
         if (!client) {
             console.error('Client instance is not available. Ensure it is set in the provider.');
             return null;
@@ -150,4 +156,41 @@ async function sendEdit(channelId, messageId, messageOptions) {
     );
 
     return results.some(success => success === true);
+}
+
+async function sendWebhook(messageOptions) {
+
+    if (!messageOptions) {
+        console.error('Message options must be provided.');
+        return null;
+    }
+
+    const webhookUrl = config.get(ConfigOption.DISCORD_LOGGER_WEBHOOK);
+    if (!webhookUrl) {
+        console.error('Webhook URL is not configured.');
+        return null;
+    }
+
+    try {
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(messageOptions),
+        });
+
+        if (!response.ok) {
+            console.error(`Failed to send webhook: ${response.status} ${response.statusText}`);
+            return null;
+        }
+
+        console.log('response', response.status);
+
+        return response.status === 204 ? true : null;
+        
+    } catch (error) {
+        console.error('Error sending webhook:', error);
+        return null;
+    }
 }
