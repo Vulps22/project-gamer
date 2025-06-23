@@ -52,7 +52,7 @@ module.exports = {
         let content = '';
 
         if (successfulAdds.length > 0) {
-            content += `Game added to your library on ${successfulAdds.length} store(s). `;
+            content += `Game added to your library on ${successfulAdds.length} store(s).`;
         }
 
         if (failedCount > 0) {
@@ -70,13 +70,12 @@ module.exports = {
 
     async doRemove(interaction, selectedStores) {
         try {
-            selectedStores.map(gameStoreId => {
+            selectedStores.map(async gameStoreId => {
                 const result = gameManagerService.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
 
-                const gameName = gameManagerService.getGameById(gameStoreId);
-                console.log("", gameName)
+                const gameName = await gameManagerService.getGameById(gameStoreId);
 
-                interaction.ephemeralReply(null, successMessage(gameName, result));
+                interaction.ephemeralReply(null, successMessage(gameName.name, result));
             });
         } catch (error) {
             console.error(`Failed to remove game from user ${interaction.user.id}. ${error}`);
