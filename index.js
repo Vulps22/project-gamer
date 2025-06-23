@@ -4,6 +4,8 @@ const { AutoPoster } = require('topgg-autoposter');
 const axios = require('axios');
 const retry = require('async-retry');
 const express = require('express'); // NEW: Import Express.js
+const path = require('path'); // Import path module
+const fs = require('fs/promises'); // Import fs/promises for async file operations
 
 // Your Custom Libs
 const { config, ConfigOption } = require('./src/config.js');
