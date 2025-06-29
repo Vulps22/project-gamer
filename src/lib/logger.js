@@ -7,7 +7,7 @@ const logger = {
 
     /**
      * Logs a message to the log channel across shards.
-     * @param {MessageCreateOptions} messageOptions
+     * @param {MessageCreateOptions | string} messageOptions
      * @returns {Promise<string|null>} - Resolves with the message ID if sent successfully, or null if unsuccessful.
      */
     async log(messageOptions) {
@@ -20,6 +20,12 @@ const logger = {
         return await sendTo(messageOptions, channelId);
     },
 
+    /**
+     *
+     * @param messageId {string}
+     * @param messageOptions {MessageCreateOptions | string}
+     * @returns {Promise<boolean|null>}
+     */
     async editLog(messageId, messageOptions) {
         if (!messageId || !messageOptions) {
             console.error('Message ID and message options must be provided.');
@@ -30,6 +36,11 @@ const logger = {
         return await sendEdit(channelId, messageId, messageOptions);
     },
 
+    /**
+     *
+     * @param messageOptions {MessageCreateOptions | string}
+     * @returns {Promise<null>}
+     */
     async error(messageOptions) {
         if (!messageOptions) {
             console.error('Message options must be provided.');
@@ -46,7 +57,7 @@ module.exports = {
     logger
 };
 
-/**
+    /**
      * Sends a message to a specific channel of the support server across shards.
      * @param {MessageCreateOptions} messageOptions - The message options (content, embeds, etc.) to be sent.
      * @param {string} channelId - The ID of the channel to send the message to.
@@ -61,7 +72,7 @@ async function sendTo(messageOptions, channelId) {
     // if messageOptions is a string, convert it to an object and set content
     if (typeof messageOptions === 'string') messageOptions = { content: messageOptions };
 
-    console.log('Sending message to channel:', channelId, 'with options:', messageOptions);
+    //console.log('Sending message to channel:', channelId, 'with options:', messageOptions);
 
     try {
 
@@ -103,7 +114,7 @@ async function sendTo(messageOptions, channelId) {
     }
 }
 
-/**
+    /**
      * Edits a message in a specific channel across shards.
      * @param {Snowflake} channelId
      * @param {Snowflake} messageId

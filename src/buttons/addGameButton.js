@@ -1,7 +1,7 @@
 // At the top of your file
 
 const { chooseStoresMessage } = require('../messages');
-const { gameManager } = require('../services');
+const { gameManagerService } = require('../services');
 const { BotButtonInteraction } = require('../structures');
 
 module.exports = {
@@ -15,7 +15,7 @@ module.exports = {
         console.log("LFG Add Game Button Interaction:", interaction.buttonData, "User ID:", interaction.user.id);
         const gameId = interaction.params.get('id');
         const userId = interaction.user.id;
-        const stores = await gameManager.getStoresForGame(gameId, userId);
+        const stores = await gameManagerService.getStoresForGame(gameId, userId);
         const message = chooseStoresMessage(stores)
         await interaction.ephemeralReply(null, message);
 

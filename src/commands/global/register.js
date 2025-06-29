@@ -29,9 +29,9 @@ module.exports = {
         const url = interaction.options.getString('url');
         const userId = interaction.user.id;
 
-        const { gameManager, gameStatus } = require('../../services');
+        const { gameManagerService, gameStatus } = require('../../services');
         // Call the GameManagerService to register the game
-        const result = await gameManager.registerGameFromUrl(url, userId);
+        const result = await gameManagerService.registerGameFromUrl(url, userId);
 
         if (result.error) {
             return interaction.ephemeralReply(`Error registering game: ${result.error}`);
@@ -45,7 +45,7 @@ module.exports = {
         console.log("Game registered:", result.submission);
         if( result.submission.status === gameStatus.APPROVED) {
             console.log("Adding game to user library:", userId, result.submission.gameId);
-            await gameManager.addGameToUserLibrary(userId, result.submission.gameId);
+            await gameManagerService.addGameToUserLibrary(userId, result.submission.gameId);
         }
 
         return interaction.ephemeralReply(`Game registered successfully and has been added to your library!`);

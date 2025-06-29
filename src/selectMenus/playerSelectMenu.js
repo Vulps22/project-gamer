@@ -1,6 +1,6 @@
 // At the top of your file
 const { StringSelectMenuInteraction, TextDisplayBuilder, ContainerBuilder} = require('discord.js');
-const { gameManager } = require('../services/GameManagerService');
+const { gameManagerService } = require('../services/GameManagerService');
 const { LFGMessage, getSuccessMessage } = require('../messages/lfgMessage');
 
 module.exports = {
@@ -29,13 +29,13 @@ module.exports = {
             return parts[1];
         });
 
-        const game = await gameManager.getGameById(gameId);
+        const game = await gameManagerService.getGameById(gameId);
 
         if (!game) {
             return interaction.ephemeralReply('Game not found.');
         }
 
-        const links = await gameManager.getStoreUrlsForGame(gameId);
+        const links = await gameManagerService.getStoreUrlsForGame(gameId);
         const lfgMessage = LFGMessage(game, links, interaction.user.id, userIds);
 
         await interaction.channel.send(lfgMessage);
