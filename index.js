@@ -127,10 +127,13 @@ async function startWebServer() {
 
     // NEW: Load the HTML template once at startup
     try {
-        const templatePath = path.join(__dirname, 'src', 'views', 'steam_callback_template.html');
-        console.log(`Loading Steam callback HTML template from: ${templatePath}`);
-        steamCallbackTemplate = await fs.readFile(templatePath, 'utf8');
-        console.log('Steam callback HTML template loaded successfully.');
+        const templateSuccessPath = path.join(__dirname, 'src', 'views', 'steam_callback_success.html');
+        const templateFailPath = path.join(__dirname, 'src', 'views', 'steam_callback_fail.html');
+
+        console.log(`Loading Steam callback HTML templates.`);
+        steamsuccess = await fs.readFile(templateSuccessPath, 'utf8');
+        steamFail = await fs.readFile(templateFailPath, 'utf8');
+        console.log('Steam callback HTML templates loaded successfully.');
     } catch (error) {
         console.error('FATAL ERROR: Could not load Steam callback HTML template:', error);
         process.exit(1); // Cannot proceed without the template
@@ -150,11 +153,9 @@ async function startWebServer() {
 
         if (!steamIdUrl || !state) {
             logger.error('Missing Steam ID or state in callback.');
-            const errorTitle = 'Authentication Failed';
             const errorMessage = 'Missing parameters. Please try linking your Steam account again from Discord.';
             return res.status(400).send(
-                steamCallbackTemplate
-                    .replace('{{TITLE}}', errorTitle)
+                steamFail
                     .replace('{{MESSAGE}}', errorMessage)
             );
         }
@@ -164,11 +165,9 @@ async function startWebServer() {
             const steamIdMatch = steamIdUrl.match(/steamcommunity\.com\/openid\/id\/(\d+)/);
             if (!steamIdMatch || !steamIdMatch[1]) {
                 logger.error(`Invalid Steam ID URL format: ${steamIdUrl}`);
-                const errorTitle = 'Authentication Failed';
                 const errorMessage = 'Invalid Steam ID format received. Please try again.';
                 return res.status(400).send(
-                    steamCallbackTemplate
-                        .replace('{{TITLE}}', errorTitle)
+                    steamFail
                         .replace('{{MESSAGE}}', errorMessage)
                 );
             }
@@ -179,11 +178,9 @@ async function startWebServer() {
 
             if (!session) {
                 // validateSession returns null if invalid or expired, and handles its own logging
-                const errorTitle = 'Authentication Failed';
                 const errorMessage = 'Your linking session was invalid or expired. Please initiate the linking process again from Discord.';
                 return res.status(400).send(
-                    steamCallbackTemplate
-                        .replace('{{TITLE}}', errorTitle)
+                    steamFail
                         .replace('{{MESSAGE}}', errorMessage)
                 );
             }
@@ -199,22 +196,18 @@ async function startWebServer() {
             steamManagerService.burnSession(state);
 
             logger.log(`Successfully linked Steam ID ${steamId} to Discord user ${userId}.`);
-            const successTitle = 'Steam Account Linked!';
             const successMessage = 'Your Steam account has been successfully linked to your Discord profile. You may now return to the bot and use `/sync` to synchronize your game library.';
             res.status(200).send(
-                steamCallbackTemplate
-                    .replace('{{TITLE}}', successTitle)
+                steamsuccess
                     .replace('{{MESSAGE}}', successMessage)
             );
 
         } catch (error) {
             logger.error(`Error processing Steam callback: ${error.message}`);
             console.error('Steam callback processing error:', error);
-            const errorTitle = 'Internal Server Error';
             const errorMessage = 'An internal error occurred during authentication. Please try again later.';
             res.status(500).send(
-                steamCallbackTemplate
-                    .replace('{{TITLE}}', errorTitle)
+                steamFail
                     .replace('{{MESSAGE}}', errorMessage)
             );
         }
