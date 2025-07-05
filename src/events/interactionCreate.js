@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-unused-vars
-const { Events, Interaction } = require('discord.js');
+const { Events, Interaction, User, PermissionsBitField } = require('discord.js');
 const { logger } = require('../lib');
 const { userManagerService } = require('../services');
 const { clientProvider } = require('../provider');
@@ -183,15 +183,17 @@ function getCommand(client, commandName) {
 
 /**
  * Determines if a command should be executed based on permissions and other criteria.
- * @param {Interaction} interaction
+ * @param {BotInteraction} interaction
  * @param {*} command
  * @param {Server} server
  * @returns
  */
 function shouldExecute(interaction, command) {
 
+    
+
     // Check for Administrator role for commands that require it
-    if (command.administrator && !interaction.member.permissions.has('Administrator')) {
+    if (command.administrator && !interaction.isAdministrator()) {
         logger.editLog(interaction.logMessage, `${logInteraction} || Interaction Aborted: User was not Administrator`);
         interaction.reply('You need the Administrator role to use this command.');
         return false;
