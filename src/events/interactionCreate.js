@@ -130,7 +130,7 @@ async function handleButtonInteraction(interaction) {
 
     try {
         const button = clientProvider.getClient().buttons.get(interaction.baseId);
-        console.log('Buttton:', button);
+        console.log('Button:', button);
 
 
         if (!button) {
@@ -190,11 +190,11 @@ function getCommand(client, commandName) {
  */
 function shouldExecute(interaction, command) {
 
-    
+
 
     // Check for Administrator role for commands that require it
     if (command.administrator && !interaction.isAdministrator()) {
-        logger.editLog(interaction.logMessage, `${logInteraction} || Interaction Aborted: User was not Administrator`);
+        logger.editLog(interaction.logMessage, `${interaction.logInteraction} || Interaction Aborted: User was not Administrator`);
         interaction.reply('You need the Administrator role to use this command.');
         return false;
     }
@@ -215,7 +215,7 @@ async function saveUser(interaction) {
         return false;
     }
 
-    user = await userManagerService.getOrCreateUser(userId);
+    const user = await userManagerService.getOrCreateUser(userId);
 
     if (!user) {
         return;
