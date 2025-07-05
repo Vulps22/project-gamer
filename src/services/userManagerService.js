@@ -110,7 +110,15 @@ class UserManagerService {
         }
     }
 
-    async linkSteamAccount(userId, steamId) {
+    /**
+     * Set the user's Steam ID in the database.
+     * This will link the user's Discord account with their Steam account.
+     * If the user already has a Steam ID linked, it will update it.
+     * Leaving steamId as null will unlink the account.
+     * @param {Snowflake} userId 
+     * @param {number} steamId 
+     */
+    async linkSteamAccount(userId, steamId = null) {
         try {
             // Check if the user already has a linked Steam account
             const user = await db.query(

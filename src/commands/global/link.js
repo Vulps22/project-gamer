@@ -1,7 +1,8 @@
 const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags } = require('discord.js');
-const { steamManagerService } = require('../../services');
+const { steamManagerService, userManagerService } = require('../../services');
 const { BotInteraction } = require('../../structures');
 const { steamLinkMessage } = require('../../messages');
+const { steamAlreadyLinkedMessage } = require('../../messages/steamAlreadyLinkedMessage');
 
 
 
@@ -18,6 +19,17 @@ module.exports = {
     async execute(interaction) {
 
         const userId = interaction.user.id;
+        const user = await userManagerService.getUserById(userId);
+
+        console.log(user);
+
+        if(user.steamId) { 
+            //send a message that the user already has a linked steam account
+            const message = steamAlreadyLinkedMessage();
+            interaction.ephemeralReply(null, message);
+            return;
+        }
+
         const sessionURL = await steamManagerService.getSessionURL(userId);
 
         const message = steamLinkMessage(sessionURL);
