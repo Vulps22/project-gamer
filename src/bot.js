@@ -32,7 +32,7 @@ async function startShard() {
 
     await loadEvents(client);
     await loadCommands(client, 'global');
-    //await loadCommands(client, 'mod');
+    await loadCommands(client, 'mod');
     await loadSelectMenus(client);
     await loadButtons(client);
     //await patchInteraction();
