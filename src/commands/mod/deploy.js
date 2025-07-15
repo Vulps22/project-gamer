@@ -27,21 +27,19 @@ module.exports = {
         try {
             console.log('Starting deployment of commands...');
             // Execute the deployment script using 'node'
-            exec('node deploy-commands.js', async (error, stdout, stderr) => {
-                if (error) {
-                    logger.error(`Deployment script failed: ${error.message}`);
-                    await interaction.editReply(`Failed to deploy mod commands: \`\`\`${error.message}\`\`\``);
-                    return;
-                }
+            try {
+                const { stdout, stderr } = await execAsync('node deploy-commands.js');
                 if (stderr) {
                     logger.error(`Deployment script stderr: ${stderr}`);
-                    // You might want to decide if stderr always means failure or just warnings
                     await interaction.editReply(`Deployment script reported warnings/errors:\n\`\`\`${stderr}\`\`\``);
                     return;
                 }
                 logger.log(`Mod commands deployed successfully:\n${stdout}`);
                 await interaction.editReply('Mod commands deployed successfully to this server!');
-            });
+            } catch (error) {
+                logger.error(`Deployment script failed: ${error.message}`);
+                await interaction.editReply(`Failed to deploy mod commands: \`\`\`${error.message}\`\`\``);
+            }
             console.log('Deployment command initiated successfully.');
         } catch (error) {
             logger.error(`Error initiating mod command deployment: ${error.message}`);
