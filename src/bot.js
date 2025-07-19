@@ -1,4 +1,4 @@
-const { gameManagerService, serverManagerService, userManagerService, storeManagerService } = require('./services')
+const { gameManagerService, serverManagerService, userManagerService, storeManagerService } = require('./services');
 const { Client, GatewayIntentBits, BaseInteraction, MessageFlags } = require('discord.js');
 const { clientProvider } = require('./provider');
 const { config, ConfigOption } = require('./config.js');
@@ -35,7 +35,7 @@ async function startShard() {
     await loadCommands(client, 'mod');
     await loadSelectMenus(client);
     await loadButtons(client);
-    //await patchInteraction();
+    // await patchInteraction();
 
     client.login(config.get(ConfigOption.DISCORD_BOT_TOKEN));
 
@@ -47,6 +47,10 @@ startShard().catch(error => {
     process.exit(1);
 });
 
+/**
+ *
+ * @param client
+ */
 function loadEvents(client) {
     const eventsPath = path.join(__dirname, 'events');
     const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
@@ -54,13 +58,15 @@ function loadEvents(client) {
 
         const filePath = path.join(eventsPath, file);
         const event = require(filePath);
-        if (event.once)
-            client.once(event.name, (...args) => event.execute(...args));
-        else
-            client.on(event.name, (...args) => event.execute(...args));
+        if (event.once) {client.once(event.name, (...args) => event.execute(...args));} else {client.on(event.name, (...args) => event.execute(...args));}
     });
 }
 
+/**
+ *
+ * @param client
+ * @param type
+ */
 function loadCommands(client, type) {
     const commandsPath = path.join(__dirname, `commands/${type}`);
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -70,14 +76,15 @@ function loadCommands(client, type) {
     commandFiles.forEach(file => {
         const filePath = path.join(commandsPath, file);
         const command = require(filePath);
-        if (command.data && command.execute)
-            client.commands.set(command.data.name, command);
-        else
-            console.warn(`[WARNING] The command at ${filePath} is missing a required 'data' or 'execute' property`);
+        if (command.data && command.execute) {client.commands.set(command.data.name, command);} else {console.warn(`[WARNING] The command at ${filePath} is missing a required 'data' or 'execute' property`);}
 
     });
 }
 
+/**
+ *
+ * @param client
+ */
 function loadSelectMenus(client) {
     const selectMenusPath = path.join(__dirname, 'selectMenus');
     const selectMenuFiles = fs.readdirSync(selectMenusPath).filter(file => file.endsWith('.js'));
@@ -97,12 +104,14 @@ function loadSelectMenus(client) {
             }
 
             client.selectMenus.set(selectMenu.data.id, selectMenu);
-        }
-        else
-            console.warn(`[WARNING] The select menu at ${filePath} is missing a required 'data' or 'execute' property`);
+        } else {console.warn(`[WARNING] The select menu at ${filePath} is missing a required 'data' or 'execute' property`);}
     });
 }
 
+/**
+ *
+ * @param client
+ */
 function loadButtons(client) {
     const buttonsPath = path.join(__dirname, 'buttons');
     const buttonFiles = fs.readdirSync(buttonsPath).filter(file => file.endsWith('.js'));
@@ -112,13 +121,13 @@ function loadButtons(client) {
     buttonFiles.forEach(file => {
         const filePath = path.join(buttonsPath, file);
         const button = require(filePath);
-        if (button.id && button.execute)
-            client.buttons.set(button.id, button);
-        else
-            console.warn(`[WARNING] The Button at ${filePath} is missing a required 'id' or 'execute' property`);
+        if (button.id && button.execute) {client.buttons.set(button.id, button);} else {console.warn(`[WARNING] The Button at ${filePath} is missing a required 'id' or 'execute' property`);}
     });
 }
 
+/**
+ *
+ */
 async function patchInteraction() {
     // Patch the interaction prototype to include a custom method
 
@@ -128,7 +137,7 @@ async function patchInteraction() {
      * @param {*} options
      * @returns
      */
-    BaseInteraction.prototype.ephemeralReply = async function (content, options = {}) {
+    BaseInteraction.prototype.ephemeralReply = async function(content, options = {}) {
         const existingFlags = options.flags || 0;
 
         // This combines the flags without overriding any existing ones.
@@ -151,7 +160,7 @@ async function patchInteraction() {
      * @param {*} options
      * @returns
      */
-    BaseInteraction.prototype.sendReply = async function (content, options = {}) {
+    BaseInteraction.prototype.sendReply = async function(content, options = {}) {
 
         if (typeof content === 'string' && content.length > 0) {
             options.content = content;

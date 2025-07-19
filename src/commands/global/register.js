@@ -3,7 +3,6 @@ const { BotInteraction } = require('../../structures');
 const GameManagerService = require('../../services/GameManagerService');
 
 
-
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('register')
@@ -19,9 +18,9 @@ module.exports = {
         ),
     administrator: false,
     /**
-     * 
-     * @param {BotInteraction} interaction 
-     * @returns 
+     *
+     * @param {BotInteraction} interaction
+     * @returns
      */
     async execute(interaction) {
 
@@ -37,17 +36,17 @@ module.exports = {
             return interaction.ephemeralReply(`Error registering game: ${result.error}`);
         }
 
-        console.log("Submission result:", result);
+        console.log('Submission result:', result);
 
         if (result.submission.status === gameStatus.PENDING) {
             return interaction.ephemeralReply('We do not recognize this store yet. The game has been registered but must be approved by an administrator before it can be used.\n You will be DM\'d automatically when it is approved.',);
         }
-        console.log("Game registered:", result.submission);
-        if( result.submission.status === gameStatus.APPROVED) {
-            console.log("Adding game to user library:", userId, result.submission.gameId);
+        console.log('Game registered:', result.submission);
+        if (result.submission.status === gameStatus.APPROVED) {
+            console.log('Adding game to user library:', userId, result.submission.gameId);
             await gameManagerService.addGameToUserLibrary(userId, result.submission.gameId);
         }
 
-        return interaction.ephemeralReply(`Game registered successfully and has been added to your library!`);
+        return interaction.ephemeralReply('Game registered successfully and has been added to your library!');
     },
 };

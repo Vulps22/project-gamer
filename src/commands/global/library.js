@@ -52,8 +52,7 @@ module.exports = {
 
         if (interaction.options.getSubcommand() === 'remove' || interaction.options.getSubcommand() === 'view') {
             games = await gameManagerService.searchUserGamesByName(name, interaction.user.id);
-        }
-        else {
+        } else {
             games = await gameManagerService.searchGamesByName(name);
         }
 
@@ -63,7 +62,7 @@ module.exports = {
             return interaction.respond([{ name: 'No games found', value: 'none' }]);
         }
 
-        const choices = games.map(game => ({ name: game.name, value: String(game.id) }))
+        const choices = games.map(game => ({ name: game.name, value: String(game.id) }));
         console.log('Autocomplete choices:', choices);
 
         interaction.respond(choices);

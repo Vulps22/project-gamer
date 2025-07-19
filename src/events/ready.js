@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-unused-vars
 const { Events, Client } = require('discord.js');
 
 module.exports = {

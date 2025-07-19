@@ -8,8 +8,7 @@ class Database {
     constructor() {
         // --- Singleton Pattern ---
         // If an instance already exists, return it instead of creating a new one.
-        if (Database.instance)
-            return Database.instance;
+        if (Database.instance) {return Database.instance;}
         // -------------------------
 
         // --- Use process.env directly ---
@@ -76,12 +75,12 @@ class Database {
         return this.pool.getConnection();
     }
 
-     /**
+    /**
      * Runs any SQL query using prepared statements.
      * Can run on the main pool or on a specific connection for transactions.
      * @param {string} sql - The SQL query with ? or :named placeholders.
-     * @param {Array<any>|object} [params=[]] - Parameters to substitute.
-     * @param {mysql.PoolConnection} [connection=null] - An optional connection for transactions.
+     * @param {Array<any>|object} [params] - Parameters to substitute.
+     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
      * @returns {Promise<any>}
      */
     async query(sql, params = [], connection = null) {
@@ -100,9 +99,9 @@ class Database {
     /**
      * Selects data from a table. Basic version.
      * @param {string} table
-     * @param {string} [columns='*']
-     * @param {string} [where=''] - e.g., 'id = ? AND status = ?'
-     * @param {Array<any>} [params=[]]
+     * @param {string} [columns]
+     * @param {string} [where] - e.g., 'id = ? AND status = ?'
+     * @param {Array<any>} [params]
      * @returns {Promise<Array<object>>}
      */
     async select(table, columns = '*', where = '', params = []) {
@@ -115,7 +114,7 @@ class Database {
      * Inserts data into a table.
      * @param {string} table
      * @param {object} data - e.g., { name: 'Test', value: 123 }
-     * @param {mysql.PoolConnection} [connection=null] - An optional connection for transactions.
+     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - The insertId.
      */
     async insert(table, data, connection = null) {
@@ -133,7 +132,7 @@ class Database {
      * @param {object} data - The fields to update.
      * @param {string} where - The WHERE clause (e.g., 'id = ?').
      * @param {Array<any>} params - Parameters for the WHERE clause.
-     * @param {mysql.PoolConnection} [connection=null] - An optional connection for transactions.
+     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - Number of affected rows.
      */
     async update(table, data, where, params = [], connection = null) {
@@ -149,7 +148,7 @@ class Database {
      * @param {string} table
      * @param {string} where - The WHERE clause (e.g., 'id = ?').
      * @param {Array<any>} params - Parameters for the WHERE clause.
-     * @param {mysql.PoolConnection} [connection=null] - An optional connection for transactions.
+     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - Number of affected rows.
      */
     async delete(table, where, params = [], connection = null) {

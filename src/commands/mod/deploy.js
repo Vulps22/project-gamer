@@ -18,7 +18,7 @@ module.exports = {
      * @param {BotInteraction} interaction
      */
     async execute(interaction) {
-        
+
         // Ensure this command is only run in the official support server
         const officialServerId = config.get(ConfigOption.DISCORD_SUPPORT_SERVER);
         if (interaction.guildId !== officialServerId) {
