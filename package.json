@@ -4,7 +4,8 @@
   "description": "This project is a complete rebuild of LFGameSync-bot.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node .",
+    "test": "jest"
   },
   "author": "Vulps",
   "license": "ISC",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@eslint/js": "^9.27.0",
     "eslint": "^9.27.0",
-    "eslint-plugin-jsdoc": "^51.2.1"
+    "eslint-plugin-jsdoc": "^51.2.1",
+    "jest": "^29.7.0"
   }
 }
