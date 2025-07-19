@@ -150,10 +150,10 @@ jobs:
                       echo "• $PR_TITLE by @$PR_AUTHOR in #$PR_NUM"
                     fi
                   else
-                    # echo "• Failed to get PR #${PR_NUM} details"
+                    echo "• Failed to get PR #${PR_NUM} details"
                   fi
                 else
-                    echo "• $COMMIT_MSG (GitHub CLI not available)"
+                  echo "• $COMMIT_MSG (GitHub CLI not available)"
                 fi
               else
                 # Skip non-PR merges (like "Merge branch 'main'")
