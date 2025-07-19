@@ -77,7 +77,7 @@ module.exports = {
     async execute(interaction) {
 
         if (interaction.options.getSubcommand() === 'view') {
-            interaction.ephemeralReply("Hello! We plan to flesh this out in the future,"
+            return interaction.ephemeralReply("Hello! We plan to flesh this out in the future,"
                 + " but felt it was important to give everyone a way to see which games they have already added to their library."
                 + " For now, you can use `/library view` to see your games in the autocomplete.");
         }
