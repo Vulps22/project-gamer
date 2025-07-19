@@ -118,7 +118,6 @@ jobs:
           if [ -z "$MERGE_COMMITS" ]; then
             echo "No merge commits found since last release." >> changelog.md
             echo "" >> changelog.md
-            echo "Regular commits since last release:" >> changelog.md
             if [ "$LAST_TAG" != "" ]; then
               git log --no-merges --pretty=format:"• %s by @%an" ${LAST_TAG}..HEAD | head -10 >> changelog.md
             else
@@ -137,12 +136,12 @@ jobs:
                   if [ -n "$PR_DATA" ]; then
                     PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // "Unknown Title"')
                     PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login // "Unknown Author"')
-                    PR_BODY=$(echo "$PR_DATA" | jq -r '.body // ""')
                     
-                    # Look for linked issues in PR body
+                    # Extract issue number from branch name in the merge commit message
+                    # Format: "Merge pull request #123 from user/40-branch-name"
                     LINKED_ISSUE=""
-                    if [[ $PR_BODY =~ (fix|fixes|fixed|close|closes|closed|resolve|resolves|resolved)[[:space:]]*#([0-9]+) ]]; then
-                      LINKED_ISSUE=${BASH_REMATCH[2]}
+                    if [[ $COMMIT_MSG =~ from\ [^/]+/([0-9]+)- ]]; then
+                      LINKED_ISSUE=${BASH_REMATCH[1]}
                       echo "• $PR_TITLE by @$PR_AUTHOR for #$LINKED_ISSUE" >> changelog.md
                     else
                       echo "• $PR_TITLE by @$PR_AUTHOR in #$PR_NUM" >> changelog.md
