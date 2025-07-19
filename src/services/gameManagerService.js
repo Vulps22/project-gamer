@@ -197,9 +197,9 @@ class GameManagerService {
 
         const users = await Promise.all(ids.map(async row => {
             let user = client.users.cache.get(row.id);
-            
+            console.log(user);
             // If user is not in cache, try to fetch from Discord
-            if (!user) {
+            if (!user || user === undefined) {
                 try {
                     user = await client.users.fetch(row.id);
                     console.log(`Fetched user ${row.id} from Discord API: ${user.username}`);
@@ -208,11 +208,10 @@ class GameManagerService {
                     // User might have deleted their account or bot lacks permissions
                 }
             }
-            
             return {
                 id: row.id,
                 username: user ? user.username : 'Unknown User',
-            }
+            };
         }));
 
         console.log('getUsersForGame found users:', users);
