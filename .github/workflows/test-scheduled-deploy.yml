@@ -127,7 +127,7 @@ jobs:
             echo "Found merge commits, processing PRs..."
             
             # Process each merge commit, but only GitHub PR merges
-            echo "$MERGE_COMMITS" | while IFS='|' read -r commit COMMIT_MSG; do
+            while IFS='|' read -r commit COMMIT_MSG; do <<< "$MERGE_COMMITS"
               # Only process GitHub PR merge commits (not manual merges)
               if [[ $COMMIT_MSG =~ ^Merge\ pull\ request\ \#([0-9]+)\ from ]]; then
                 PR_NUM=${BASH_REMATCH[1]}
