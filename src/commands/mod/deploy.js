@@ -2,8 +2,11 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const { BotInteraction } = require('../../structures');
 const { exec } = require('child_process');
+const { promisify } = require('util');
 const { logger } = require('../../lib');
 const { config, ConfigOption } = require('../../config');
+
+const execAsync = promisify(exec);
 
 module.exports = {
     data: new SlashCommandBuilder()
