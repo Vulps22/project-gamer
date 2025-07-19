@@ -1,6 +1,6 @@
 // At the top of your file
 const { StringSelectMenuInteraction, TextDisplayBuilder, ContainerBuilder } = require('discord.js');
-const { gameManagerService } = require('../services/GameManagerService');
+const { gameManagerService } = require('../services/gameManagerService');
 const { LFGMessage, getSuccessMessage } = require('../messages/lfgMessage');
 
 module.exports = {
