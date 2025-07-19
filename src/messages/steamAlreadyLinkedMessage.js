@@ -38,7 +38,7 @@ function steamUnlinkedConfirmationMessage() {
     let separatorComponent = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
 
     let noticeComponent = new TextDisplayBuilder()
-        .setContent(`Your Steam account has been successfully unlinked.\n Youy can now link a new Steam account with the command \`/link\`.`);
+        .setContent(`Your Steam account has been successfully unlinked.\n You can now link a new Steam account with the command \`/link\`.`);
 
     const containerComponent = new ContainerBuilder()
         .addTextDisplayComponents(titleComponent)

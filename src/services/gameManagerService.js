@@ -107,7 +107,7 @@ class GameManagerService {
      * @param {Snowflake} userId 
      * @param {number} gameStoreId 
      * @returns {Promise<boolean>} - Returns true if the game was added successfully, false otherwise.
-     * @deprecrated Use UserLibraryManagerService instead.
+     * @deprecated Use UserLibraryManagerService instead.
      */
     async addGameToUserLibrary(userId, gameStoreId) {
 

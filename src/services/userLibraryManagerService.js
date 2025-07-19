@@ -29,7 +29,7 @@ class UserLibraryManagerService {
      * @param {Snowflake} userId 
      * @param {number} gameStoreId 
      * @returns {Promise<boolean>} - Returns true if the game was added successfully, false otherwise.
-     * @deprecrated Use UserLibraryManagerService instead.
+     * @deprecated Use UserLibraryManagerService instead.
      */
     async addGameToUserLibrary(userId, gameStoreId) {
 
@@ -43,7 +43,7 @@ class UserLibraryManagerService {
 
             if (existingLink) {
                 logger.log(`User ${userId} already has game ${gameStoreId} in their library.`);
-                return true
+                return true;
             }
 
             const result = await db.insert('userLibrary', {

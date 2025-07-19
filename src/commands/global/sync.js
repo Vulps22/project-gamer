@@ -47,7 +47,7 @@ module.exports = {
             let newGamesAddedToBot = 0;
 
             if (newGameAppIds.length > 0) {
-                logger.log(`[Sync] Discoverd ${newGameAppIds.length} new games for the bot.`);
+                logger.log(`[Sync] Discovered ${newGameAppIds.length} new games for the bot.`);
                 const newGamesData = allSteamGames.filter(game => newGameAppIds.includes(String(game.appid)));
                 
                 const newlyCreatedGameStoreIds = await gameManagerService.registerNewGames(1, newGamesData); // 1 = Steam store ID

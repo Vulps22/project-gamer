@@ -131,8 +131,8 @@ async function startWebServer() {
         const templateFailPath = path.join(__dirname, 'src', 'views', 'steam_callback_fail.html');
 
         console.log(`Loading Steam callback HTML templates.`);
-        steamsuccess = await fs.readFile(templateSuccessPath, 'utf8');
-        steamFail = await fs.readFile(templateFailPath, 'utf8');
+        const steamsuccess = await fs.readFile(templateSuccessPath, 'utf8');
+        const steamFail = await fs.readFile(templateFailPath, 'utf8');
         console.log('Steam callback HTML templates loaded successfully.');
     } catch (error) {
         console.error('FATAL ERROR: Could not load Steam callback HTML template:', error);
