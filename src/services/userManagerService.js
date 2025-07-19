@@ -109,6 +109,49 @@ class UserManagerService {
             throw error;
         }
     }
+
+    /**
+     * Set the user's Steam ID in the database.
+     * This will link the user's Discord account with their Steam account.
+     * If the user already has a Steam ID linked, it will update it.
+     * Leaving steamId as null will unlink the account.
+     * @param {Snowflake} userId 
+     * @param {number} steamId 
+     */
+    async linkSteamAccount(userId, steamId = null) {
+        try {
+            // Check if the user already has a linked Steam account
+            const user = await db.query(
+                'SELECT * FROM user WHERE id = :userId',
+                { userId: userId }
+            );
+
+            if (user) {
+                await db.update('user', { steamId: steamId }, 'id = ?', [userId]);
+            }
+
+            console.log(`Steam account linked for user ${userId} with Steam ID ${steamId}`);
+        } catch (error) {
+            console.error(`Error linking Steam account for user ${userId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get the Steam ID for a given Discord user ID.
+     * @param {Snowflake} userId The Discord User ID.
+     * @returns {Promise<string|null>} The Steam ID if found, otherwise null.
+     */
+    async getSteamIdForUser(userId) {
+        try {
+            const [user] = await db.query('SELECT steamId FROM user WHERE id = ?', [userId]);
+            return user ? user.steamId : null;
+        } catch (error) {
+            logger.error(`Error fetching Steam ID for user ${userId}: ${error.message}`);
+            console.error(`Error fetching Steam ID for user ${userId}:`, error);
+            return null;
+        }
+    }
 }
 
 const userManagerService = new UserManagerService();
