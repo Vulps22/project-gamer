@@ -41,7 +41,8 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     permissions:
-      contents: read # Read-only for testing
+      contents: read
+      pull-requests: read # Need to read PRs for changelog
       
     steps:
       - name: Checkout Code
@@ -85,33 +86,91 @@ jobs:
             echo "✅ Tag $TAG does not exist. Would proceed with deployment."
           fi
           
-      - name: Simulate Changelog Generation
+      - name: Test Enhanced Changelog Generation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "📝 Simulating changelog generation..."
+          echo "📝 Testing actual enhanced changelog generation..."
           
           # Get the most recent actual release tag
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$LAST_TAG" ]; then
-            echo "No previous tags found. Would use initial commit."
+            echo "No previous tags found. Using initial commit."
             LAST_TAG=$(git rev-list --max-parents=0 HEAD)
           fi
           echo "Last release tag: ${LAST_TAG}"
+          echo "Current HEAD: $(git rev-parse HEAD)"
           
+          # Test the actual changelog generation logic
           echo ""
-          echo "📋 Would generate this changelog:"
+          echo "📋 Generating REAL changelog using actual logic:"
           echo "## What's Changed"
           echo ""
           
-          # Show what commits would be included
+          # Get merge commits since last tag (same logic as actual workflow)
           if [ "$LAST_TAG" != "" ]; then
-            git log --pretty=format:"* %s (%h)" ${LAST_TAG}..HEAD | head -10
+            MERGE_COMMITS=$(git log --merges --pretty=format:"%H|%s" ${LAST_TAG}..HEAD)
           else
-            git log --pretty=format:"* %s (%h)" | head -10
+            MERGE_COMMITS=$(git log --merges --pretty=format:"%H|%s")
+          fi
+          
+          if [ -z "$MERGE_COMMITS" ]; then
+            echo "No merge commits found since last release."
+            echo ""
+            echo "Regular commits since last release:"
+            if [ "$LAST_TAG" != "" ]; then
+              git log --no-merges --pretty=format:"• %s by @%an" ${LAST_TAG}..HEAD | head -10
+            else
+              git log --no-merges --pretty=format:"• %s by @%an" | head -10
+            fi
+          else
+            echo "Found merge commits, processing PRs..."
+            
+            # Process each merge commit, but only GitHub PR merges
+            while IFS='|' read -r commit COMMIT_MSG; do <<< "$MERGE_COMMITS"
+              # Only process GitHub PR merge commits (not manual merges)
+              if [[ $COMMIT_MSG =~ ^Merge\ pull\ request\ \#([0-9]+)\ from ]]; then
+                PR_NUM=${BASH_REMATCH[1]}
+                echo "Processing PR #${PR_NUM}..."
+                
+                # Get PR details using GitHub CLI
+                if command -v gh &> /dev/null; then
+                  PR_DATA=$(gh pr view $PR_NUM --json title,author,body 2>/dev/null || echo "")
+                  if [ -n "$PR_DATA" ]; then
+                    PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // "Unknown Title"')
+                    PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login // "Unknown Author"')
+                    
+                    # Extract issue number from branch name in the merge commit message
+                    # Format: "Merge pull request #123 from user/40-branch-name"
+                    LINKED_ISSUE=""
+                    if [[ $COMMIT_MSG =~ from\ [^/]+/([0-9]+)- ]]; then
+                      LINKED_ISSUE=${BASH_REMATCH[1]}
+                      echo "• $PR_TITLE by @$PR_AUTHOR for #$LINKED_ISSUE"
+                    else
+                      echo "• $PR_TITLE by @$PR_AUTHOR in #$PR_NUM"
+                    fi
+                  else
+                    echo "• Failed to get PR #${PR_NUM} details"
+                  fi
+                else
+                  echo "• $COMMIT_MSG (GitHub CLI not available)"
+                fi
+              else
+                # Skip non-PR merges (like "Merge branch 'main'")
+                echo "Skipping non-PR merge: $COMMIT_MSG"
+              fi
+            done
           fi
           
           echo ""
-          echo "## Contributors"
-          git log --pretty=format:"* @%an" ${LAST_TAG}..HEAD | sort | uniq | head -5
+          
+          TEST_TAG="${{ steps.release_tag.outputs.RELEASE_TAG }}"
+          echo ""
+          echo "**Full Changelog**: https://github.com/Vulps22/project-gamer/compare/${LAST_TAG}...${TEST_TAG}"
+          
+          echo ""
+          echo "✅ Changelog generation test completed!"
+          echo "This shows the actual output that would be generated."
           
       - name: Simulate Deployment Trigger
         run: |
