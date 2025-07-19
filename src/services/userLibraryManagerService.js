@@ -25,9 +25,9 @@ class UserLibraryManagerService {
     }
 
     /**
-     * 
-     * @param {Snowflake} userId 
-     * @param {number} gameStoreId 
+     *
+     * @param {Snowflake} userId
+     * @param {number} gameStoreId
      * @returns {Promise<boolean>} - Returns true if the game was added successfully, false otherwise.
      * @deprecated Use UserLibraryManagerService instead.
      */
@@ -100,7 +100,7 @@ class UserLibraryManagerService {
             }
 
             // Batch insert the new games into the user's library
-            const insertPromises = gamesToAdd.map(gameStoreId => 
+            const insertPromises = gamesToAdd.map(gameStoreId =>
                 db.insert('userLibrary', {
                     userId: discordUserId,
                     gameStoreId: gameStoreId,

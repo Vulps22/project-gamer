@@ -6,9 +6,9 @@ const { BotButtonInteraction } = require('../structures');
 module.exports = {
     id: 'lfg_anyone',
     administrator: false,
-    
+
     /**
-     * @param {BotButtonInteraction} interaction 
+     * @param {BotButtonInteraction} interaction
      */
     async execute(interaction) {
         const gameId = interaction.params.get('id');

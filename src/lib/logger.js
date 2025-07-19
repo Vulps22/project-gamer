@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-unused-vars
 const { MessageCreateOptions, Channel, Snowflake } = require('discord.js');
 const { config, ConfigOption } = require('../config.js');
 const { clientProvider } = require('../provider');
@@ -57,12 +56,12 @@ module.exports = {
     logger
 };
 
-    /**
-     * Sends a message to a specific channel of the support server across shards.
-     * @param {MessageCreateOptions} messageOptions - The message options (content, embeds, etc.) to be sent.
-     * @param {string} channelId - The ID of the channel to send the message to.
-     * @returns {Promise<string|null>} - Resolves with the message ID if sent successfully, or null if unsuccessful.
-     */
+/**
+ * Sends a message to a specific channel of the support server across shards.
+ * @param {MessageCreateOptions} messageOptions - The message options (content, embeds, etc.) to be sent.
+ * @param {string} channelId - The ID of the channel to send the message to.
+ * @returns {Promise<string|null>} - Resolves with the message ID if sent successfully, or null if unsuccessful.
+ */
 async function sendTo(messageOptions, channelId) {
     if (!channelId) {
         console.error('Channel ID must be provided.');
@@ -72,14 +71,14 @@ async function sendTo(messageOptions, channelId) {
     // if messageOptions is a string, convert it to an object and set content
     if (typeof messageOptions === 'string') messageOptions = { content: messageOptions };
 
-    //console.log('Sending message to channel:', channelId, 'with options:', messageOptions);
+    // console.log('Sending message to channel:', channelId, 'with options:', messageOptions);
 
     try {
         let client;
         try {
-        client = clientProvider.getClient();
+            client = clientProvider.getClient();
         } catch {
-            console.log('Client Not Available: defaulting to log webhook')
+            console.log('Client Not Available: defaulting to log webhook');
             sendWebhook(messageOptions);
             return null;
         }
@@ -92,11 +91,11 @@ async function sendTo(messageOptions, channelId) {
             // eslint-disable-next-line no-shadow
             async (client, { channelId, messageOptions }) => {
                 /**
-                     * @type {Channel}
-                     */
+                 * @type {Channel}
+                 */
                 const channel = client.channels.cache.get(channelId);
 
-                // eslint-disable-next-line curly
+
                 if (channel && channel.isTextBased()) {
                     try {
                         const options = { ...messageOptions, fetchReply: true };
@@ -120,13 +119,13 @@ async function sendTo(messageOptions, channelId) {
     }
 }
 
-    /**
-     * Edits a message in a specific channel across shards.
-     * @param {Snowflake} channelId
-     * @param {Snowflake} messageId
-     * @param {MessageCreateOptions} messageOptions
-     * @returns {Promise<boolean>} - Resolves to true if the message was edited successfully, false otherwise.
-     */
+/**
+ * Edits a message in a specific channel across shards.
+ * @param {Snowflake} channelId
+ * @param {Snowflake} messageId
+ * @param {MessageCreateOptions} messageOptions
+ * @returns {Promise<boolean>} - Resolves to true if the message was edited successfully, false otherwise.
+ */
 async function sendEdit(channelId, messageId, messageOptions) {
     if (!messageId || !messageOptions || !channelId) {
         console.error('Message ID, Channel ID and message options must be provided.');
@@ -143,32 +142,36 @@ async function sendEdit(channelId, messageId, messageOptions) {
     const results = await client.shard.broadcastEval(
         async (client, {
             channelId, messageId, messageOptions }) => {
-        const channel = client.channels.cache.get(channelId);
+            const channel = client.channels.cache.get(channelId);
 
-        if (!channel || !channel.isTextBased()) {
-          return false;
-        }
+            if (!channel || !channel.isTextBased()) {
+                return false;
+            }
 
-        try {
-          const message = await channel.messages.fetch(messageId);
+            try {
+                const message = await channel.messages.fetch(messageId);
 
-          if (message) {
-            await message.edit(messageOptions);
-          }
-        } catch (error) {
-          console.error(`Error editing message in shard ${client.shard.ids[0]}:`, error);
-          return false;
-        }
+                if (message) {
+                    await message.edit(messageOptions);
+                }
+            } catch (error) {
+                console.error(`Error editing message in shard ${client.shard.ids[0]}:`, error);
+                return false;
+            }
 
-        return true;
-      }, {
-        context: { channelId, messageId, messageOptions }
-      },
+            return true;
+        }, {
+            context: { channelId, messageId, messageOptions }
+        },
     );
 
     return results.some(success => success === true);
 }
 
+/**
+ *
+ * @param messageOptions
+ */
 async function sendWebhook(messageOptions) {
 
     if (!messageOptions) {
@@ -199,7 +202,7 @@ async function sendWebhook(messageOptions) {
         console.log('response', response.status);
 
         return response.status === 204 ? true : null;
-        
+
     } catch (error) {
         console.error('Error sending webhook:', error);
         return null;

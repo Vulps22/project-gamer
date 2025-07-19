@@ -27,9 +27,9 @@ class Config {
     }
 
     /**
-   * Loads configuration from the database based on NODE_ENV.
-   * This MUST be called asynchronously at startup.
-   */
+     * Loads configuration from the database based on NODE_ENV.
+     * This MUST be called asynchronously at startup.
+     */
     async init() {
         if (this.isInitialized) {
             console.warn('Config already initialized.');
@@ -58,11 +58,11 @@ class Config {
     }
 
     /**
-   * Gets a configuration value by its key.
-   * @param {ConfigOption} key - The configuration key (matches a column name in `configs`).
-   * @param {any} [defaultValue=null] - A value to return if the key isn't found.
-   * @returns {any} The configuration value.
-   */
+     * Gets a configuration value by its key.
+     * @param {ConfigOption} key - The configuration key (matches a column name in `configs`).
+     * @param {any} [defaultValue] - A value to return if the key isn't found.
+     * @returns {any} The configuration value.
+     */
     get(key, defaultValue = null) {
         if (!this.isInitialized) {
             console.warn(`Attempted to get config key '${key}' before initialization. This might work for .env vars but not DB vars.`);
@@ -75,9 +75,9 @@ class Config {
     }
 
     /**
-   * Gets all loaded settings.
-   * @returns {object}
-   */
+     * Gets all loaded settings.
+     * @returns {object}
+     */
     getAll() {
         if (!this.isInitialized) throw new Error('Configuration accessed before initialization is complete.');
 

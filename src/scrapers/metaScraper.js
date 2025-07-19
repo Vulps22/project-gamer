@@ -14,7 +14,7 @@ async function scrape($, url) {
     };
 
     // --- Get the raw title from the meta tag ---
-    let rawTitle = $('meta[name="og:title"]').attr('content') || null;
+    const rawTitle = $('meta[name="og:title"]').attr('content') || null;
 
     // --- NEW: Clean up the title if it was found ---
     if (rawTitle) {
@@ -29,7 +29,7 @@ async function scrape($, url) {
     // Get the store ID
     if (!data.storeGameId) {
         const urlParts = url.split('/');
-        let potentialId = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
+        const potentialId = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
         const idRegex = /^\d+$/;
 
         if (potentialId && idRegex.test(potentialId)) {

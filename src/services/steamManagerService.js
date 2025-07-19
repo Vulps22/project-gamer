@@ -1,6 +1,6 @@
 // src/services/SteamManagerService.js
 const { Snowflake } = require('discord.js');
-const { config, ConfigOption} = require('../config');
+const { config, ConfigOption } = require('../config');
 const { db, logger } = require('../lib'); // Import db and logger
 const crypto = require('node:crypto'); // For generating secure tokens
 const userManagerService = require('./userManagerService');
@@ -91,7 +91,7 @@ class SteamManagerService {
 
             // Get the bot's base URL from configuration
             const baseUrl = config.get(ConfigOption.BASE_URL);
-            
+
             if (!baseUrl) {
                 const errorMessage = 'BASE_URL is not configured. Cannot generate Steam login URL.';
                 logger.error(errorMessage);
@@ -120,11 +120,11 @@ class SteamManagerService {
     }
 
     /**
-    * Validates a Steam login session token. Fetches the session from the database,
-    * checks its expiration, and cleans it up after validation (whether successful or not).
-    * @param {string} token The session token received from the Steam callback.
-    * @returns {Promise<{userId: string, expiresAt: Date} | null>} An object containing userId and expiresAt if valid, otherwise null.
-    */
+     * Validates a Steam login session token. Fetches the session from the database,
+     * checks its expiration, and cleans it up after validation (whether successful or not).
+     * @param {string} token The session token received from the Steam callback.
+     * @returns {Promise<{userId: string, expiresAt: Date} | null>} An object containing userId and expiresAt if valid, otherwise null.
+     */
     async validateSession(token) {
         try {
             const [session] = await db.query('SELECT userId, expiresAt FROM steam_link_sessions WHERE token = ?', [token]);
@@ -209,9 +209,9 @@ class SteamManagerService {
             const url = `${STEAM_API_BASE_URL}IPlayerService/GetOwnedGames/v1/` +
                 `?key=${apiKey}` +
                 `&steamid=${steamId}` +
-                `&format=json` +
-                `&include_appinfo=1` + // Include app names and icons
-                `&include_played_free_games=1`; // Include free games if desired
+                '&format=json' +
+                '&include_appinfo=1' + // Include app names and icons
+                '&include_played_free_games=1'; // Include free games if desired
 
             logger.log(`Fetching Steam library for Steam ID: ${steamId}...`);
             const response = await axios.get(url);
@@ -231,7 +231,7 @@ class SteamManagerService {
                 // The request was made and the server responded with a status code
                 // that falls out of the range of 2xx
                 logger.error(`Steam API Error (Status: ${error.response.status}): ${error.response.data.apimessage || error.message}`);
-                console.error(`Steam API Error Response Data:`, error.response.data);
+                console.error('Steam API Error Response Data:', error.response.data);
             } else if (error.request) {
                 // The request was made but no response was received
                 logger.error(`No response received from Steam API: ${error.message}`);

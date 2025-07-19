@@ -11,7 +11,7 @@ function successMessage(gameName, success) {
     const textBuilder = new TextDisplayBuilder();
 
     if (success) {
-        textBuilder.setContent(`## ${gameName} removed from your library.`)
+        textBuilder.setContent(`## ${gameName} removed from your library.`);
     } else {
         textBuilder.setContent(`## Failed to remove ${gameName} from your library. \n-# Possibly wrong store selected?`);
     }
@@ -28,4 +28,4 @@ function successMessage(gameName, success) {
 
 module.exports = {
     successMessage
-}
+};

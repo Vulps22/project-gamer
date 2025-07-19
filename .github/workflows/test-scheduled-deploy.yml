@@ -1,0 +1,126 @@
+# .github/workflows/test-scheduled-deploy.yml
+
+name: Test Scheduled Deployment
+
+on:
+  # Only manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      simulate_week:
+        description: 'Simulate which week (2 or 4)'
+        required: true
+        default: '2'
+        type: choice
+        options:
+        - '2'
+        - '4'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run Tests
+        run: npm test
+
+  simulate-release:
+    name: Simulate Release Creation (DRY RUN)
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Read-only for testing
+      
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Simulate Release Tag Calculation
+        id: release_tag
+        run: |
+          # Get current date components
+          YEAR=$(date +%Y)
+          MONTH=$(date +%m)
+          
+          # Use the simulated week from input
+          SIMULATED_WEEK="${{ github.event.inputs.simulate_week }}"
+          
+          if [ "$SIMULATED_WEEK" = "2" ]; then
+            RELEASE_NUM=1
+            echo "Simulating 2nd Saturday deployment"
+          elif [ "$SIMULATED_WEEK" = "4" ]; then
+            RELEASE_NUM=2
+            echo "Simulating 4th Saturday deployment"
+          else
+            echo "Error: Invalid week simulation"
+            exit 1
+          fi
+          
+          # Create release tag (but don't actually create it)
+          RELEASE_TAG="TEST-v${YEAR}.${MONTH}.R${RELEASE_NUM}"
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "Would create release tag: ${RELEASE_TAG}"
+          
+      - name: Simulate Tag Check
+        run: |
+          TAG="${{ steps.release_tag.outputs.RELEASE_TAG }}"
+          echo "Checking if tag would already exist: $TAG"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "⚠️  Tag $TAG already exists. Would skip deployment."
+          else
+            echo "✅ Tag $TAG does not exist. Would proceed with deployment."
+          fi
+          
+      - name: Simulate Changelog Generation
+        run: |
+          echo "📝 Simulating changelog generation..."
+          
+          # Get the most recent actual release tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous tags found. Would use initial commit."
+            LAST_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          echo "Last release tag: ${LAST_TAG}"
+          
+          echo ""
+          echo "📋 Would generate this changelog:"
+          echo "## What's Changed"
+          echo ""
+          
+          # Show what commits would be included
+          if [ "$LAST_TAG" != "" ]; then
+            git log --pretty=format:"* %s (%h)" ${LAST_TAG}..HEAD | head -10
+          else
+            git log --pretty=format:"* %s (%h)" | head -10
+          fi
+          
+          echo ""
+          echo "## Contributors"
+          git log --pretty=format:"* @%an" ${LAST_TAG}..HEAD | sort | uniq | head -5
+          
+      - name: Simulate Deployment Trigger
+        run: |
+          TAG="${{ steps.release_tag.outputs.RELEASE_TAG }}"
+          echo "🚀 In real deployment, would:"
+          echo "1. Create and push tag: $TAG"
+          echo "2. Create GitHub release with generated changelog"
+          echo "3. Trigger deploy.yml workflow via tag push"
+          echo "4. Monitor deployment completion"
+          echo ""
+          echo "✅ Test completed successfully!"
+          echo "Ready for real deployment when scheduled workflow runs."

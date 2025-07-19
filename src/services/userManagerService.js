@@ -65,26 +65,25 @@ class UserManagerService {
 
     async addUserToServer(userId, serverId) {
 
-        //console.log(`Adding user ${userId} to server ${serverId}`);
+        // console.log(`Adding user ${userId} to server ${serverId}`);
 
         try {
             const existingLink = await db.query(
-                "SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId",
-                {userId: userId, serverId: serverId}
+                'SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId',
+                { userId: userId, serverId: serverId }
             );
-            //console.log("serverUser query result:", existingLink);
+            // console.log("serverUser query result:", existingLink);
             if (existingLink.length > 0) {
-                //console.log(`User ${userId} is already linked to server ${serverId}`);
+                // console.log(`User ${userId} is already linked to server ${serverId}`);
                 return;
             }
 
-        console.log(`User ${userId} is not linked to server ${serverId}, adding...`);
+            console.log(`User ${userId} is not linked to server ${serverId}, adding...`);
             await db.insert('serverUser', {
                 userId: userId,
                 serverId: serverId,
             });
-        }
-        catch (error) {
+        } catch (error) {
             console.error(`Error adding user ${userId} to server ${serverId}:`, error);
             throw error;
         }
@@ -93,7 +92,7 @@ class UserManagerService {
     async setSharing(userId, serverId, enabled) {
         try {
             const [existingLink] = await db.query(
-                "SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId",
+                'SELECT * FROM serverUser WHERE userId = :userId AND serverId = :serverId',
                 { userId: userId, serverId: serverId }
             );
 
@@ -115,8 +114,8 @@ class UserManagerService {
      * This will link the user's Discord account with their Steam account.
      * If the user already has a Steam ID linked, it will update it.
      * Leaving steamId as null will unlink the account.
-     * @param {Snowflake} userId 
-     * @param {number} steamId 
+     * @param {Snowflake} userId
+     * @param {number} steamId
      */
     async linkSteamAccount(userId, steamId = null) {
         try {

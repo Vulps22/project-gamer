@@ -14,14 +14,14 @@ async function scrape($, url) {
         storeGameId: null,
     };
 
-    console.log("Steam Scraper: Scraped:", data);
+    console.log('Steam Scraper: Scraped:', data);
 
     // Get the app ID from the URL using a regular expression
     const appIdMatch = url.match(/app\/(\d+)/);
     if (appIdMatch && appIdMatch[1]) {
         data.storeGameId = appIdMatch[1];
     }
-    
+
     return data;
 }
 
