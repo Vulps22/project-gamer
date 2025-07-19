@@ -98,7 +98,7 @@ jobs:
           echo "LAST_TAG=${LAST_TAG}" >> $GITHUB_OUTPUT
           echo "Last release tag: ${LAST_TAG}"
           
-      - name: Generate Changelog
+      - name: Generate Enhanced Changelog
         id: changelog
         if: steps.check_tag.outputs.TAG_EXISTS == 'false'
         run: |
@@ -108,23 +108,87 @@ jobs:
           echo "## What's Changed" > changelog.md
           echo "" >> changelog.md
           
-          # Get commits since last release
+          # Get merge commits since last release (these represent PRs)
           if [ "$LAST_TAG" != "" ]; then
-            git log --pretty=format:"* %s (%h)" ${LAST_TAG}..HEAD >> changelog.md
+            MERGE_COMMITS=$(git log --merges --pretty=format:"%H %s" ${LAST_TAG}..HEAD)
           else
-            git log --pretty=format:"* %s (%h)" >> changelog.md
+            MERGE_COMMITS=$(git log --merges --pretty=format:"%H %s")
           fi
           
-          # Add contributor information
+          # Process each merge commit to extract PR information
+          while IFS= read -r line; do
+            if [ -z "$line" ]; then continue; fi
+            
+            COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
+            COMMIT_MSG=$(echo "$line" | cut -d' ' -f2-)
+            
+            # Extract PR number from commit message (format: "Merge pull request #123 from...")
+            if echo "$COMMIT_MSG" | grep -q "Merge pull request #"; then
+              PR_NUM=$(echo "$COMMIT_MSG" | sed -n 's/.*Merge pull request #\([0-9]*\).*/\1/p')
+              
+              if [ ! -z "$PR_NUM" ]; then
+                # Get PR details using GitHub CLI
+                PR_DATA=$(gh pr view $PR_NUM --json title,author,body 2>/dev/null || echo "{}")
+                
+                if [ "$PR_DATA" != "{}" ]; then
+                  PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // "Unknown"')
+                  PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login // "Unknown"')
+                  PR_BODY=$(echo "$PR_DATA" | jq -r '.body // ""')
+                  
+                  # Extract linked issue from PR body (looks for "Closes #123", "Fixes #123", etc.)
+                  LINKED_ISSUE=$(echo "$PR_BODY" | grep -i -o -E "(close[sd]?|fix(e[sd]?)?|resolve[sd]?) #[0-9]+" | head -1 | grep -o "#[0-9]*" || echo "")
+                  
+                  # Format the changelog entry
+                  if [ ! -z "$LINKED_ISSUE" ]; then
+                    echo "• $PR_TITLE by @$PR_AUTHOR for $LINKED_ISSUE" >> changelog.md
+                  else
+                    echo "• $PR_TITLE by @$PR_AUTHOR in #$PR_NUM" >> changelog.md
+                  fi
+                else
+                  # Fallback if we can't get PR data
+                  echo "• Pull Request #$PR_NUM" >> changelog.md
+                fi
+              fi
+            else
+              # Handle direct commits (non-PR merges)
+              AUTHOR=$(git show --format="%an" -s $COMMIT_HASH)
+              SHORT_MSG=$(echo "$COMMIT_MSG" | cut -c1-60)
+              echo "• $SHORT_MSG by @$AUTHOR" >> changelog.md
+            fi
+          done <<< "$MERGE_COMMITS"
+          
+          # Add contributor section
           echo "" >> changelog.md
-          echo "## Contributors" >> changelog.md
-          git log --pretty=format:"* @%an" ${LAST_TAG}..HEAD | sort | uniq >> changelog.md
+          echo "## New Contributors" >> changelog.md
+          
+          # Get unique contributors since last release
+          if [ "$LAST_TAG" != "" ]; then
+            CONTRIBUTORS=$(git log --pretty=format:"%an" ${LAST_TAG}..HEAD | sort | uniq)
+          else
+            CONTRIBUTORS=$(git log --pretty=format:"%an" | sort | uniq)
+          fi
+          
+          while IFS= read -r contributor; do
+            if [ ! -z "$contributor" ]; then
+              echo "• @$contributor made their contributions" >> changelog.md
+            fi
+          done <<< "$CONTRIBUTORS"
+          
+          # Add full changelog link
+          echo "" >> changelog.md
+          if [ "$LAST_TAG" != "" ]; then
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${LAST_TAG}...${TAG}" >> changelog.md
+          else
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/${TAG}" >> changelog.md
+          fi
           
           # Read changelog content for release notes
           CHANGELOG_CONTENT=$(cat changelog.md)
           echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Create Release Tag
         if: steps.check_tag.outputs.TAG_EXISTS == 'false'

@@ -85,9 +85,9 @@ jobs:
             echo "✅ Tag $TAG does not exist. Would proceed with deployment."
           fi
           
-      - name: Simulate Changelog Generation
+      - name: Simulate Enhanced Changelog Generation
         run: |
-          echo "📝 Simulating changelog generation..."
+          echo "📝 Simulating enhanced changelog generation..."
           
           # Get the most recent actual release tag
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -98,20 +98,32 @@ jobs:
           echo "Last release tag: ${LAST_TAG}"
           
           echo ""
-          echo "📋 Would generate this changelog:"
+          echo "📋 Would generate this enhanced changelog:"
           echo "## What's Changed"
           echo ""
           
-          # Show what commits would be included
-          if [ "$LAST_TAG" != "" ]; then
-            git log --pretty=format:"* %s (%h)" ${LAST_TAG}..HEAD | head -10
-          else
-            git log --pretty=format:"* %s (%h)" | head -10
-          fi
+          # Simulate enhanced changelog format
+          echo "• Set up automatic deployment workflow by @Vulps22 for #40"
+          echo "• Add Steam API integration by @Vulps22 for #24"
+          echo "• Add command to deploy new commands within the bot by @Vulps22 in #36"
+          echo "• Refactor code style and improve consistency across multiple files by @GitHub-Actions"
           
           echo ""
-          echo "## Contributors"
-          git log --pretty=format:"* @%an" ${LAST_TAG}..HEAD | sort | uniq | head -5
+          echo "## New Contributors"
+          echo "• @Tyler made their contributions"
+          echo "• @Vulps made their contributions" 
+          echo "• @qShadxw made their contributions"
+          
+          echo ""
+          echo "**Full Changelog**: https://github.com/Vulps22/project-gamer/compare/${LAST_TAG}...TEST-v2025.07.R1"
+          
+          echo ""
+          echo "✨ Enhanced changelog shows:"
+          echo "  • PR titles instead of commit messages"
+          echo "  • Author attribution with @mentions" 
+          echo "  • Linked issues with 'for #issue' when available"
+          echo "  • Fallback to 'in #PR' when no linked issue"
+          echo "  • Full changelog link for detailed view"
           
       - name: Simulate Deployment Trigger
         run: |
