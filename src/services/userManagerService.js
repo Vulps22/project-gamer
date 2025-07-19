@@ -136,6 +136,22 @@ class UserManagerService {
             throw error;
         }
     }
+
+    /**
+     * Get the Steam ID for a given Discord user ID.
+     * @param {Snowflake} userId The Discord User ID.
+     * @returns {Promise<string|null>} The Steam ID if found, otherwise null.
+     */
+    async getSteamIdForUser(userId) {
+        try {
+            const [user] = await db.query('SELECT steamId FROM user WHERE id = ?', [userId]);
+            return user ? user.steamId : null;
+        } catch (error) {
+            logger.error(`Error fetching Steam ID for user ${userId}: ${error.message}`);
+            console.error(`Error fetching Steam ID for user ${userId}:`, error);
+            return null;
+        }
+    }
 }
 
 const userManagerService = new UserManagerService();

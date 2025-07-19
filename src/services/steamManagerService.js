@@ -1,11 +1,14 @@
 // src/services/SteamManagerService.js
-
+const { Snowflake } = require('discord.js');
 const { config, ConfigOption} = require('../config');
 const { db, logger } = require('../lib'); // Import db and logger
 const crypto = require('node:crypto'); // For generating secure tokens
+const userManagerService = require('./userManagerService');
+const { default: axios } = require('axios');
 
 // Steam OpenID endpoint
 const STEAM_OPENID_URL = 'https://steamcommunity.com/openid/login';
+const STEAM_API_BASE_URL = 'https://api.steampowered.com/';
 
 class SteamManagerService {
 
@@ -35,8 +38,12 @@ class SteamManagerService {
         console.log('SteamManagerService initialized.');
     }
 
+    /**
+     * Retrieve the Steam API token from the configuration.
+     * @returns {string} The Steam API token from the configuration.
+     */
     getToken() {
-        return config.get(config.ConfigOption.STEAM_API_TOKEN);
+        return config.get(ConfigOption.STEAM_API_TOKEN);
     }
 
     /**
@@ -84,6 +91,7 @@ class SteamManagerService {
 
             // Get the bot's base URL from configuration
             const baseUrl = config.get(ConfigOption.BASE_URL);
+            
             if (!baseUrl) {
                 const errorMessage = 'BASE_URL is not configured. Cannot generate Steam login URL.';
                 logger.error(errorMessage);
@@ -180,6 +188,61 @@ class SteamManagerService {
         }
     }
 
+    /**
+     * Fetches the user's Steam Library in JSON format from the Steam API.
+     * @param {string} steamId The Discord User ID of the user.
+     * @returns {Promise<object[]|null>} An array of game objects if successful, otherwise null.
+     */
+    async getSteamLibrary(steamId) {
+        try {
+            if (!steamId) {
+                logger.warn(`User ${steamId} is not linked to a Steam account.`);
+                return null; // User is not linked
+            }
+
+            const apiKey = this.getToken(); // Using the renamed method
+            if (!apiKey) {
+                logger.error('Steam API Key is not configured.');
+                throw new Error('Steam API Key is missing in configuration.');
+            }
+
+            const url = `${STEAM_API_BASE_URL}IPlayerService/GetOwnedGames/v1/` +
+                `?key=${apiKey}` +
+                `&steamid=${steamId}` +
+                `&format=json` +
+                `&include_appinfo=1` + // Include app names and icons
+                `&include_played_free_games=1`; // Include free games if desired
+
+            logger.log(`Fetching Steam library for Steam ID: ${steamId}...`);
+            const response = await axios.get(url);
+
+            if (response.data && response.data.response && response.data.response.games) {
+                const games = response.data.response.games;
+                console.log(`Successfully fetched Steam library for steam user ${steamId}. Found ${games.length} games.`);
+                // For debugging, dump the whole library (or first few games)
+                console.log(JSON.stringify(games.slice(0, 5), null, 2)); // Log first 5 games for brevity
+                return games;
+            } else {
+                logger.warn(`Steam API did not return expected game data for Steam ID ${steamId}. Response: ${JSON.stringify(response.data)}`);
+                return null; // No games found or unexpected response structure
+            }
+        } catch (error) {
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                logger.error(`Steam API Error (Status: ${error.response.status}): ${error.response.data.apimessage || error.message}`);
+                console.error(`Steam API Error Response Data:`, error.response.data);
+            } else if (error.request) {
+                // The request was made but no response was received
+                logger.error(`No response received from Steam API: ${error.message}`);
+            } else {
+                // Something else happened in setting up the request that triggered an Error
+                logger.error(`Error setting up Steam API request: ${error.message}`);
+            }
+            console.error(`Full error during Steam library fetch for user ${steamId}:`, error);
+            throw new Error('Failed to fetch Steam library. Check logs for details.');
+        }
+    }
 
 }
 

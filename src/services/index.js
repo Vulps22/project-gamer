@@ -5,6 +5,7 @@ const serverManagerService = require('./serverManagerService.js');
 const storeManagerService = require('./storeManagerService.js');
 const userManagerService = require('./userManagerService.js');
 const steamManagerService = require('./steamManagerService.js');
+const userLibraryManagerService = require('./userLibraryManagerService.js');
 
 module.exports = {
     gameManagerService,
@@ -13,4 +14,6 @@ module.exports = {
     storeManagerService,
     userManagerService,
     steamManagerService,
+    userLibraryManagerService,
+
 }

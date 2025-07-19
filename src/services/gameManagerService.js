@@ -10,7 +10,6 @@ const gameStatus = {
     REJECTED: 'rejected',
 }
 
-
 class GameManagerService {
     async init() {
         if (GameManagerService.instance) {
@@ -108,6 +107,7 @@ class GameManagerService {
      * @param {Snowflake} userId 
      * @param {number} gameStoreId 
      * @returns {Promise<boolean>} - Returns true if the game was added successfully, false otherwise.
+     * @deprecrated Use UserLibraryManagerService instead.
      */
     async addGameToUserLibrary(userId, gameStoreId) {
 
@@ -144,8 +144,6 @@ class GameManagerService {
         }
     }
 
-    // Stub other methods as their implementation will depend more on your specific DB schema
-    // and other parts of your application.
 
     async removeGameFromUserLibrary(userId, gameIdOrName) {
         console.log('removeGameFromUserLibrary called with:', userId, gameIdOrName);
@@ -276,6 +274,108 @@ class GameManagerService {
 
         return results;
     }
+
+        /**
+     * Finds all games in the master database that match a given list of store-specific IDs.
+     * @param {number} storeId The internal ID of the store.
+     * @param {string[]} storeGameIds An array of store-specific game IDs (e.g., Steam AppIDs).
+     * @returns {Promise<Array<{gameStoreId: number, storeGameId: string}>>} A list of known games.
+     */
+    async getKnownGames(storeId, storeGameIds) {
+        logger.log(`GameManagerService: Checking for ${storeGameIds.length} known games from store ID "${storeId}".`);
+        if (!storeGameIds || storeGameIds.length === 0) {
+            return []; // Return early if there's nothing to check.
+        }
+
+        try {
+            // The storeId is now passed directly, no need to look it up.
+            const sql = 'SELECT id as gameStoreId, storeGameId FROM gameStore WHERE storeId = ? AND storeGameId IN (?)';
+            const results = await db.query(sql, [storeId, storeGameIds]);
+            
+            return results;
+        } catch (error) {
+            logger.error(`GameManagerService: Error in getKnownGames for store ID "${storeId}":`, error);
+            // Re-throw the error to be handled by the caller (the sync command)
+            throw error;
+        }
+    }
+
+    /**
+     * Adds brand new games to the master 'game' and 'gameStore' tables.
+     * @param {number} storeId The internal ID of the store. 1= steam by defualt
+     * @param {Array<object>} newGamesData Array of game objects from the Steam API.
+     * @returns {Promise<number[]>} A list of the newly created internal gameStoreIds.
+     */
+    async registerNewGames(storeId = 1, newGamesData) {
+        logger.log(`GameManagerService: Registering ${newGamesData.length} new games for store ID "${storeId}".`);
+        if (!newGamesData || newGamesData.length === 0) {
+            return [];
+        }
+
+        const steamStoreUrlBase = 'https://store.steampowered.com/app/';
+        const newlyCreatedGameStoreIds = [];
+
+        for (const gameData of newGamesData) {
+            const steamAppId = String(gameData.appid);
+            const gameName = gameData.name;
+            const imageUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
+            const storeUrl = `${steamStoreUrlBase}${steamAppId}`;
+
+            const conn = await db.getConnection();
+            try {
+                await conn.beginTransaction();
+
+                let gameId;
+
+                // 1. Check if the game already exists in the master 'game' table by name.
+                const [existingGame] = await db.query('SELECT id FROM game WHERE name = ?', [gameName], conn);
+
+                if (existingGame) {
+                    // 2a. If it exists, use its ID.
+                    gameId = existingGame.id;
+                    logger.log(`GameManagerService: Found existing game entry for "${gameName}" (GameID: ${gameId}). Will link to Steam.`);
+                } else {
+                    // 2b. If not, create a new entry in the 'game' table.
+                    gameId = await db.insert('game', {
+                        name: gameName,
+                        status: gameStatus.APPROVED,
+                        imageURL: imageUrl,
+                    }, conn);
+                    logger.log(`GameManagerService: Created new game entry for "${gameName}" (GameID: ${gameId}).`);
+                }
+
+                // 3. Insert into 'gameStore' table with the correct gameId (either existing or new).
+                // Use INSERT IGNORE to handle duplicates gracefully
+                const insertResult = await db.query(
+                    'INSERT IGNORE INTO gameStore (gameId, storeId, storeGameId, url, status) VALUES (?, ?, ?, ?, ?)',
+                    [gameId, storeId, steamAppId, storeUrl, gameStatus.APPROVED],
+                    conn
+                );
+
+                if (insertResult.affectedRows > 0) {
+                    // New record was created
+                    const newGameStoreId = insertResult.insertId;
+                    await conn.commit();
+                    newlyCreatedGameStoreIds.push(newGameStoreId);
+                    logger.log(`GameManagerService: Registered game store link for "${gameName}" (GameStoreID: ${newGameStoreId}).`);
+                } else {
+                    // Record already existed, just commit and continue
+                    await conn.commit();
+                    logger.log(`GameManagerService: Game "${gameName}" (AppID: ${steamAppId}) already exists in gameStore. Skipping.`);
+                }
+
+            } catch (error) {
+                await conn.rollback();
+                logger.error(`GameManagerService: Failed to register game "${gameName}" (AppID: ${steamAppId}). Rolled back transaction.`, error);
+                // Continue with other games - don't throw to avoid stopping the entire sync
+            } finally {
+                conn.release();
+            }
+        }
+
+        return newlyCreatedGameStoreIds;
+    }
+
 }
 
 const gameManager = new GameManagerService();
