@@ -110,52 +110,53 @@ jobs:
           
           # Get merge commits since last release (these represent PRs)
           if [ "$LAST_TAG" != "" ]; then
-            MERGE_COMMITS=$(git log --merges --pretty=format:"%H %s" ${LAST_TAG}..HEAD)
+            MERGE_COMMITS=$(git log --merges --pretty=format:"%H|%s" ${LAST_TAG}..HEAD)
           else
-            MERGE_COMMITS=$(git log --merges --pretty=format:"%H %s")
+            MERGE_COMMITS=$(git log --merges --pretty=format:"%H|%s")
           fi
           
-          # Process each merge commit to extract PR information
-          while IFS= read -r line; do
-            if [ -z "$line" ]; then continue; fi
-            
-            COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
-            COMMIT_MSG=$(echo "$line" | cut -d' ' -f2-)
-            
-            # Extract PR number from commit message (format: "Merge pull request #123 from...")
-            if echo "$COMMIT_MSG" | grep -q "Merge pull request #"; then
-              PR_NUM=$(echo "$COMMIT_MSG" | sed -n 's/.*Merge pull request #\([0-9]*\).*/\1/p')
-              
-              if [ ! -z "$PR_NUM" ]; then
-                # Get PR details using GitHub CLI
-                PR_DATA=$(gh pr view $PR_NUM --json title,author,body 2>/dev/null || echo "{}")
+          if [ -z "$MERGE_COMMITS" ]; then
+            echo "No merge commits found since last release." >> changelog.md
+            echo "" >> changelog.md
+            echo "Regular commits since last release:" >> changelog.md
+            if [ "$LAST_TAG" != "" ]; then
+              git log --no-merges --pretty=format:"• %s by @%an" ${LAST_TAG}..HEAD | head -10 >> changelog.md
+            else
+              git log --no-merges --pretty=format:"• %s by @%an" | head -10 >> changelog.md
+            fi
+          else
+            # Process each merge commit, but only GitHub PR merges
+            echo "$MERGE_COMMITS" | while IFS='|' read -r commit COMMIT_MSG; do
+              # Only process GitHub PR merge commits (not manual merges)
+              if [[ $COMMIT_MSG =~ ^Merge\ pull\ request\ \#([0-9]+)\ from ]]; then
+                PR_NUM=${BASH_REMATCH[1]}
                 
-                if [ "$PR_DATA" != "{}" ]; then
-                  PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // "Unknown"')
-                  PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login // "Unknown"')
-                  PR_BODY=$(echo "$PR_DATA" | jq -r '.body // ""')
-                  
-                  # Extract linked issue from PR body (looks for "Closes #123", "Fixes #123", etc.)
-                  LINKED_ISSUE=$(echo "$PR_BODY" | grep -i -o -E "(close[sd]?|fix(e[sd]?)?|resolve[sd]?) #[0-9]+" | head -1 | grep -o "#[0-9]*" || echo "")
-                  
-                  # Format the changelog entry
-                  if [ ! -z "$LINKED_ISSUE" ]; then
-                    echo "• $PR_TITLE by @$PR_AUTHOR for $LINKED_ISSUE" >> changelog.md
+                # Get PR details using GitHub CLI
+                if command -v gh &> /dev/null; then
+                  PR_DATA=$(gh pr view $PR_NUM --json title,author,body 2>/dev/null || echo "")
+                  if [ -n "$PR_DATA" ]; then
+                    PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // "Unknown Title"')
+                    PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login // "Unknown Author"')
+                    PR_BODY=$(echo "$PR_DATA" | jq -r '.body // ""')
+                    
+                    # Look for linked issues in PR body
+                    LINKED_ISSUE=""
+                    if [[ $PR_BODY =~ (fix|fixes|fixed|close|closes|closed|resolve|resolves|resolved)[[:space:]]*#([0-9]+) ]]; then
+                      LINKED_ISSUE=${BASH_REMATCH[2]}
+                      echo "• $PR_TITLE by @$PR_AUTHOR for #$LINKED_ISSUE" >> changelog.md
+                    else
+                      echo "• $PR_TITLE by @$PR_AUTHOR in #$PR_NUM" >> changelog.md
+                    fi
                   else
-                    echo "• $PR_TITLE by @$PR_AUTHOR in #$PR_NUM" >> changelog.md
+                    echo "• Failed to get PR #${PR_NUM} details" >> changelog.md
                   fi
                 else
-                  # Fallback if we can't get PR data
-                  echo "• Pull Request #$PR_NUM" >> changelog.md
+                  echo "• $COMMIT_MSG (GitHub CLI not available)" >> changelog.md
                 fi
               fi
-            else
-              # Handle direct commits (non-PR merges)
-              AUTHOR=$(git show --format="%an" -s $COMMIT_HASH)
-              SHORT_MSG=$(echo "$COMMIT_MSG" | cut -c1-60)
-              echo "• $SHORT_MSG by @$AUTHOR" >> changelog.md
-            fi
-          done <<< "$MERGE_COMMITS"
+              # Skip non-PR merges (like "Merge branch 'main'") - don't output anything
+            done
+          fi
           
           # Add contributor section
           echo "" >> changelog.md
