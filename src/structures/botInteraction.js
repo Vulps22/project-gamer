@@ -23,7 +23,7 @@ class BotInteraction {
     get id() { return this._interaction.id; }
     get guildId() { return this._interaction.guildId; }
     get values() { return this._interaction.values; }
-    
+
     // --- PROXY METHODS ---
     reply(options) { return this._interaction.reply(options); }
     editReply(options) { return this._interaction.editReply(options); }
@@ -57,7 +57,7 @@ class BotInteraction {
 
     isAdministrator() {
         // Check if the user has the Administrator permission
-        return this.member.permissions.has(PermissionsBitField.Flags.Administrator)
+        return this.member.permissions.has(PermissionsBitField.Flags.Administrator);
     }
 }
 

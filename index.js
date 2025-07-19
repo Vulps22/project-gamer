@@ -130,7 +130,7 @@ async function startWebServer() {
         const templateSuccessPath = path.join(__dirname, 'src', 'views', 'steam_callback_success.html');
         const templateFailPath = path.join(__dirname, 'src', 'views', 'steam_callback_fail.html');
 
-        console.log(`Loading Steam callback HTML templates.`);
+        console.log('Loading Steam callback HTML templates.');
         const steamsuccess = await fs.readFile(templateSuccessPath, 'utf8');
         const steamFail = await fs.readFile(templateFailPath, 'utf8');
         console.log('Steam callback HTML templates loaded successfully.');

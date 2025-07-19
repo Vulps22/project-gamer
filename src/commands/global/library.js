@@ -52,8 +52,7 @@ module.exports = {
 
         if (interaction.options.getSubcommand() === 'remove' || interaction.options.getSubcommand() === 'view') {
             games = await gameManagerService.searchUserGamesByName(name, interaction.user.id);
-        }
-        else {
+        } else {
             games = await gameManagerService.searchGamesByName(name);
         }
 
@@ -63,7 +62,7 @@ module.exports = {
             return interaction.respond([{ name: 'No games found', value: 'none' }]);
         }
 
-        const choices = games.map(game => ({ name: game.name, value: String(game.id) }))
+        const choices = games.map(game => ({ name: game.name, value: String(game.id) }));
         console.log('Autocomplete choices:', choices);
 
         interaction.respond(choices);
@@ -77,9 +76,9 @@ module.exports = {
     async execute(interaction) {
 
         if (interaction.options.getSubcommand() === 'view') {
-            interaction.ephemeralReply("Hello! We plan to flesh this out in the future,"
-                + " but felt it was important to give everyone a way to see which games they have already added to their library."
-                + " For now, you can use `/library view` to see your games in the autocomplete.");
+            interaction.ephemeralReply('Hello! We plan to flesh this out in the future,'
+                + ' but felt it was important to give everyone a way to see which games they have already added to their library.'
+                + ' For now, you can use `/library view` to see your games in the autocomplete.');
         }
 
         const game = interaction.options.getString('game');

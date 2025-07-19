@@ -1,5 +1,5 @@
 // At the top of your file
-const { StringSelectMenuInteraction, TextDisplayBuilder, ContainerBuilder} = require('discord.js');
+const { StringSelectMenuInteraction, TextDisplayBuilder, ContainerBuilder } = require('discord.js');
 const { gameManagerService } = require('../services/GameManagerService');
 const { LFGMessage, getSuccessMessage } = require('../messages/lfgMessage');
 
@@ -10,7 +10,7 @@ module.exports = {
     },
 
     /**
-     * @param {StringSelectMenuInteraction} interaction 
+     * @param {StringSelectMenuInteraction} interaction
      */
     async execute(interaction) {
         const selectedPlayers = interaction.values;

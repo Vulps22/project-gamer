@@ -10,12 +10,12 @@ module.exports = {
     administrator: false,
 
     /**
-     * @param {BotButtonInteraction} interaction 
+     * @param {BotButtonInteraction} interaction
      */
     async execute(interaction) {
         const userId = interaction.user.id;
 
-        await userManagerService.linkSteamAccount(userId, null)
+        await userManagerService.linkSteamAccount(userId, null);
         interaction.update(steamUnlinkedConfirmationMessage());
     },
 };

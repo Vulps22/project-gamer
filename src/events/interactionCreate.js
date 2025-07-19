@@ -155,6 +155,10 @@ async function handleButtonInteraction(interaction) {
     }
 }
 
+/**
+ *
+ * @param interaction
+ */
 async function handleAutoComplete(interaction) {
     const command = getCommand(interaction.client, interaction.commandName);
 
@@ -167,6 +171,7 @@ async function handleAutoComplete(interaction) {
 
 /**
  * Retrieves a command by its name.
+ * @param client
  * @param {string} commandName
  * @returns {Command}
  */
@@ -191,7 +196,6 @@ function getCommand(client, commandName) {
 function shouldExecute(interaction, command) {
 
 
-
     // Check for Administrator role for commands that require it
     if (command.administrator && !interaction.isAdministrator()) {
         logger.editLog(interaction.logMessage, `${interaction.logInteraction} || Interaction Aborted: User was not Administrator`);
@@ -204,8 +208,8 @@ function shouldExecute(interaction, command) {
 
 /**
  * Check the user Id exists in the database, if not create a new user.
- * @param {*} interaction 
- * @return {boolean} Returns true if the user was saved or already exists, false if no userId was found.
+ * @param {*} interaction
+ * @returns {boolean} Returns true if the user was saved or already exists, false if no userId was found.
  */
 async function saveUser(interaction) {
     const userId = interaction.user.id;

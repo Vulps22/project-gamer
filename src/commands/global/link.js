@@ -5,7 +5,6 @@ const { steamLinkMessage } = require('../../messages');
 const { steamAlreadyLinkedMessage } = require('../../messages/steamAlreadyLinkedMessage');
 
 
-
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('link')
@@ -23,8 +22,8 @@ module.exports = {
 
         console.log(user);
 
-        if(user.steamId) { 
-            //send a message that the user already has a linked steam account
+        if (user.steamId) {
+            // send a message that the user already has a linked steam account
             const message = steamAlreadyLinkedMessage();
             interaction.ephemeralReply(null, message);
             return;
@@ -36,7 +35,7 @@ module.exports = {
 
         console.log(message);
 
-        interaction.ephemeralReply(null, message)
+        interaction.ephemeralReply(null, message);
 
     },
 };

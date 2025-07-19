@@ -127,8 +127,8 @@ class StoreManagerService {
             }
 
             for (const matcher of this.storeMatchers) {
-                console.log(`Checking matcher`, matcher
-                    , `against hostname`, currentHostname
+                console.log('Checking matcher', matcher
+                    , 'against hostname', currentHostname
                 );
 
                 if (currentHostname.includes(matcher.baseHostname)) {
@@ -148,7 +148,6 @@ class StoreManagerService {
     /**
      * fetchGameDataFromUrl method remains largely the same in its logic of using the storeName
      * to pick a scraper from this.scrapers. The storeName it receives will now be from the DB-driven logic.
-     *
      * @param {string} url The URL of the game's store page.
      * @returns {Promise<{
      * storeName: string,
@@ -158,7 +157,7 @@ class StoreManagerService {
      * imageURL?: string | null,
      * storeSpecificId?: string | null
      * }>} A promise that resolves to the scraped game data.
-    */
+     */
     async fetchGameDataFromUrl(url) {
         let storeName = this.getStoreNameFromUrl(url); // This now uses the DB-backed logic
         let scrapedData = {};

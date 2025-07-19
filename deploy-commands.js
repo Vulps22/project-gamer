@@ -1,11 +1,11 @@
 // deploy-commands.js
 
-require("dotenv").config();
-const { REST, Routes } = require("discord.js");
-const fs = require("node:fs");
-const path = require("node:path");
-const { config, ConfigOption } = require("./src/config.js");
-const { db } = require("./src/lib/index.js"); // <-- Import DB wrapper directly
+require('dotenv').config();
+const { REST, Routes } = require('discord.js');
+const fs = require('node:fs');
+const path = require('node:path');
+const { config, ConfigOption } = require('./src/config.js');
+const { db } = require('./src/lib/index.js'); // <-- Import DB wrapper directly
 
 /**
  * Deploys Discord application commands for a given type (global or mod).
@@ -21,13 +21,13 @@ async function deployCommands(commandType) {
 
     // 3. Validate credentials
     if (!TOKEN || !CLIENT_ID) {
-        console.error("FATAL: Missing Discord bot credentials in the database configuration.");
+        console.error('FATAL: Missing Discord bot credentials in the database configuration.');
         process.exitCode = 1; // Set exit code for error
         return;
     }
 
     if (commandType === 'mod' && !GUILD_ID) {
-        console.error("FATAL: Missing Discord Guild ID for 'mod' command deployment. Skipping mod commands.");
+        console.error('FATAL: Missing Discord Guild ID for \'mod\' command deployment. Skipping mod commands.');
         // We'll return here, but don't set process.exitCode = 1 yet, as global might still succeed.
         // The overall error handling at the top level will catch if either fails.
         return;
@@ -36,7 +36,7 @@ async function deployCommands(commandType) {
     try {
         // 4. Load command files
         const commands = [];
-        const commandsPath = path.join(__dirname, "src", "commands", commandType);
+        const commandsPath = path.join(__dirname, 'src', 'commands', commandType);
 
         // Check if the command directory exists
         if (!fs.existsSync(commandsPath)) {
@@ -44,7 +44,7 @@ async function deployCommands(commandType) {
             return;
         }
 
-        const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith(".js"));
+        const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith('.js'));
 
         console.log(`Found ${commandFiles.length} ${commandType} command files.`);
 
@@ -52,7 +52,7 @@ async function deployCommands(commandType) {
             const filePath = path.join(commandsPath, file);
             const command = require(filePath);
 
-            if ("data" in command && "execute" in command) {
+            if ('data' in command && 'execute' in command) {
                 commands.push(command.data.toJSON());
             } else {
                 console.log(
@@ -62,16 +62,16 @@ async function deployCommands(commandType) {
         }
 
         // 5. Deploy commands
-        const rest = new REST({ version: "10" }).setToken(TOKEN);
+        const rest = new REST({ version: '10' }).setToken(TOKEN);
 
         console.log(`Started refreshing ${commands.length} application (/) ${commandType} commands.`);
 
         let data;
-        if (commandType === "global") {
+        if (commandType === 'global') {
             data = await rest.put(Routes.applicationCommands(CLIENT_ID), {
                 body: commands,
             });
-        } else if (commandType === "mod") {
+        } else if (commandType === 'mod') {
             data = await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
                 body: commands,
             });
@@ -98,7 +98,7 @@ async function deployCommands(commandType) {
  */
 async function deployGlobal() {
     console.log('--- Deploying Global Commands ---');
-    return deployCommands("global"); // Return the promise from deployCommands
+    return deployCommands('global'); // Return the promise from deployCommands
 }
 
 /**
@@ -107,7 +107,7 @@ async function deployGlobal() {
  */
 async function deployMod() {
     console.log('--- Deploying Moderator Commands ---');
-    return deployCommands("mod"); // Return the promise from deployCommands
+    return deployCommands('mod'); // Return the promise from deployCommands
 }
 
 // Immediately-invoked async function to run the deployment

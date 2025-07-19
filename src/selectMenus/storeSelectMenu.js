@@ -23,13 +23,13 @@ module.exports = {
 
         const isDeleting = interaction.customId.split(':')[1];
 
-        if (isDeleting !== null && isDeleting === "true") {
-            await this.doRemove(interaction, selectedStores)
+        if (isDeleting !== null && isDeleting === 'true') {
+            await this.doRemove(interaction, selectedStores);
 
             return;
         }
 
-        await this.doAdd(interaction, selectedStores)
+        await this.doAdd(interaction, selectedStores);
     },
 
     async doAdd(interaction, selectedStores) {

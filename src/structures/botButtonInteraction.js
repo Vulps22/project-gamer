@@ -14,7 +14,7 @@ class BotButtonInteraction extends BotInteraction {
         this._parseCustomId();
     }
 
-    //NOTE: Keep these in alphabetical order for consistency
+    // NOTE: Keep these in alphabetical order for consistency
     get action() { return this._buttonData.action; }
     get baseId() { return this._baseId; }
     get buttonData() { return this._buttonData; }
@@ -24,7 +24,6 @@ class BotButtonInteraction extends BotInteraction {
      */
     get params() { return this._buttonData.params; }
     get prefix() { return this._buttonData.prefix; }
-
 
 
     // ... your _parseCustomId method remains the same ...

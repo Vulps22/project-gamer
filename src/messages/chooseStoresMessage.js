@@ -1,4 +1,4 @@
-const { StringSelectMenuBuilder, TextDisplayBuilder, ActionRowBuilder, ContainerBuilder, MessageFlags } = require("discord.js");
+const { StringSelectMenuBuilder, TextDisplayBuilder, ActionRowBuilder, ContainerBuilder, MessageFlags } = require('discord.js');
 
 
 /**
@@ -9,23 +9,23 @@ const { StringSelectMenuBuilder, TextDisplayBuilder, ActionRowBuilder, Container
  */
 function chooseStoresMessage(stores, isDeleting) {
 
-    //console.log("Choose stores message called with stores:", stores, stores.length);
+    // console.log("Choose stores message called with stores:", stores, stores.length);
 
     if (!stores || stores.length === 0) {
-        stores = [{name: 'You have added all the stores available for this game', id: 'none'}];
+        stores = [{ name: 'You have added all the stores available for this game', id: 'none' }];
     }
 
     const storeList = stores.map(store => {
         return {
             label: store.name,
             value: String(store.id),
-        }
-    })
+        };
+    });
 
-    //console.log("Store list:", storeList);
+    // console.log("Store list:", storeList);
 
     const messageText = new TextDisplayBuilder()
-        .setContent('Please select where you own this game (you can select multiple stores):')
+        .setContent('Please select where you own this game (you can select multiple stores):');
 
     const stringSelectComponent = new StringSelectMenuBuilder()
         .setCustomId('storeSelect')
@@ -45,9 +45,9 @@ function chooseStoresMessage(stores, isDeleting) {
     message = {
         flags: MessageFlags.IsComponentsV2,
         components: [containerComponent],
-    }
+    };
 
-    //console.log("Choose stores message:", message);
+    // console.log("Choose stores message:", message);
     return message;
 }
 

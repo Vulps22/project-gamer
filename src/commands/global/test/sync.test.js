@@ -25,7 +25,7 @@ jest.mock('../../../services/gameManagerService', () => ({
 
 jest.mock('../../../services/userLibraryManagerService', () => ({
     userLibraryManagerService: {
-       syncUserLibrary: jest.fn(),
+        syncUserLibrary: jest.fn(),
     }
 }));
 
@@ -69,13 +69,13 @@ describe('Sync Command', () => {
     test('should notify the user to link their Steam account if no Steam ID is found', async () => {
         // Arrange
         userManagerService.getSteamIdForUser.mockResolvedValue(null);
-        
+
         // Act
         await execute(mockInteraction);
 
         // Assert
-        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith("Starting sync... this may take a moment.");
-        expect(mockInteraction.editReply).toHaveBeenCalledWith("You don't have a Steam ID linked to your account. Please use `/link steam` first.");
+        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith('Starting sync... this may take a moment.');
+        expect(mockInteraction.editReply).toHaveBeenCalledWith('You don\'t have a Steam ID linked to your account. Please use `/link steam` first.');
     });
 
     test('should notify the user if their Steam library is empty or private', async () => {
@@ -87,8 +87,8 @@ describe('Sync Command', () => {
         await execute(mockInteraction);
 
         // Assert
-        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith("Starting sync... this may take a moment.");
-        expect(mockInteraction.editReply).toHaveBeenCalledWith("Could not fetch your Steam library. It might be private or empty.");
+        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith('Starting sync... this may take a moment.');
+        expect(mockInteraction.editReply).toHaveBeenCalledWith('Could not fetch your Steam library. It might be private or empty.');
     });
 
     test('should successfully sync a library with new and known games', async () => {
@@ -109,16 +109,16 @@ describe('Sync Command', () => {
         await execute(mockInteraction);
 
         // Assert
-        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith("Starting sync... this may take a moment.");
+        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith('Starting sync... this may take a moment.');
         expect(gameManagerService.registerNewGames).toHaveBeenCalledWith(1, [
             { appid: '2', name: 'Game Two' },
             { appid: '3', name: 'Game Three' }
         ]);
         expect(userLibraryManagerService.syncUserLibrary).toHaveBeenCalledWith('123456789', ['gs1', 'gs2', 'gs3']);
         expect(mockInteraction.editReply).toHaveBeenCalledWith(
-            "Sync complete! ✨\n" +
-            "- Found 2 new games for the bot.\n" +
-            "- Added 3 games to your personal library."
+            'Sync complete! ✨\n' +
+            '- Found 2 new games for the bot.\n' +
+            '- Added 3 games to your personal library.'
         );
     });
 
@@ -139,26 +139,26 @@ describe('Sync Command', () => {
         await execute(mockInteraction);
 
         // Assert
-        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith("Starting sync... this may take a moment.");
+        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith('Starting sync... this may take a moment.');
         expect(gameManagerService.registerNewGames).not.toHaveBeenCalled();
         expect(userLibraryManagerService.syncUserLibrary).toHaveBeenCalledWith('123456789', ['gs1', 'gs2']);
         expect(mockInteraction.editReply).toHaveBeenCalledWith(
-            "Sync complete! ✨\n" +
-            "- Found 0 new games for the bot.\n" +
-            "- Added 2 games to your personal library."
+            'Sync complete! ✨\n' +
+            '- Found 0 new games for the bot.\n' +
+            '- Added 2 games to your personal library.'
         );
     });
-    
+
     test('should handle errors gracefully', async () => {
         // Arrange
         userManagerService.getSteamIdForUser.mockRejectedValue(new Error('Test error'));
 
         // Act
         await execute(mockInteraction);
-        
+
         // Assert
-        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith("Starting sync... this may take a moment.");
-        expect(mockInteraction.editReply).toHaveBeenCalledWith("An error occurred while syncing your library. Please try again later.");
+        expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith('Starting sync... this may take a moment.');
+        expect(mockInteraction.editReply).toHaveBeenCalledWith('An error occurred while syncing your library. Please try again later.');
         expect(logger.error).toHaveBeenCalled();
     });
 });
