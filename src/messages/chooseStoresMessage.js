@@ -1,9 +1,15 @@
 const { StringSelectMenuBuilder, TextDisplayBuilder, ActionRowBuilder, ContainerBuilder, MessageFlags } = require("discord.js");
 
 
-function chooseStoresMessage(stores) {
+/**
+ * Creates messages a dropdown selection for user.
+ * @param {Array} stores Game stores.
+ * @param {boolean} isDeleting Is user deleting the game?
+ * @returns {*|{flags: *, components: ContainerBuilder[]}}
+ */
+function chooseStoresMessage(stores, isDeleting) {
 
-    console.log("Choose stores message called with stores:", stores, stores.length);
+    //console.log("Choose stores message called with stores:", stores, stores.length);
 
     if (!stores || stores.length === 0) {
         stores = [{name: 'You have added all the stores available for this game', id: 'none'}];
@@ -16,7 +22,7 @@ function chooseStoresMessage(stores) {
         }
     })
 
-    console.log("Store list:", storeList);
+    //console.log("Store list:", storeList);
 
     const messageText = new TextDisplayBuilder()
         .setContent('Please select where you own this game (you can select multiple stores):')
@@ -26,7 +32,8 @@ function chooseStoresMessage(stores) {
         .setPlaceholder('Select a store')
         .addOptions(storeList)
         .setMinValues(1)
-        .setMaxValues(storeList.length);
+        .setMaxValues(storeList.length)
+        .setCustomId(`storeSelect:${isDeleting}`);
 
     const actionRowComponent = new ActionRowBuilder()
         .addComponents(stringSelectComponent);
@@ -40,7 +47,7 @@ function chooseStoresMessage(stores) {
         components: [containerComponent],
     }
 
-    console.log("Choose stores message:", message);
+    //console.log("Choose stores message:", message);
     return message;
 }
 

@@ -24,19 +24,19 @@ module.exports = {
         const name = interaction.options.getFocused();
         const games = await gameManagerService.searchGamesByName(name);
 
-        console.log('Autocomplete games:', games);
+        //console.log('Autocomplete games:', games);
 
         if (!games || games.length === 0) {
             return interaction.respond([{ name: 'No games found', value: 'none' }]);
         }
 
         interaction.respond(games.map(game => ({ name: game.name, value: String(game.id) })));
-        
+
     },
     /**
-     * 
-     * @param {BotInteraction} interaction 
-     * @returns 
+     *
+     * @param {BotInteraction} interaction
+     * @returns
      */
     async execute(interaction) {
 
@@ -44,7 +44,7 @@ module.exports = {
         const userId = interaction.user.id;
 
         const game = await gameManagerService.getGameById(gameId);
-        
+
         console.log('LFG Game found:', game);
 
         if (!game) {

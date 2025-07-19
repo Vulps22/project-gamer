@@ -29,7 +29,7 @@ async function startShard() {
     });
 
     clientProvider.setClient(client);
-    
+
     await loadEvents(client);
     await loadCommands(client, 'global');
     //await loadCommands(client, 'mod');
@@ -87,8 +87,17 @@ function loadSelectMenus(client) {
     selectMenuFiles.forEach(file => {
         const filePath = path.join(selectMenusPath, file);
         const selectMenu = require(filePath);
-        if (selectMenu.data && selectMenu.execute)
+        if (selectMenu.data && selectMenu.execute) {
+            // Exception for selectMenu
+            if (selectMenu.data.id === 'storeSelect') {
+                client.selectMenus.set(`${selectMenu.data.id}:true`, selectMenu);
+                client.selectMenus.set(`${selectMenu.data.id}:false`, selectMenu);
+
+                return;
+            }
+
             client.selectMenus.set(selectMenu.data.id, selectMenu);
+        }
         else
             console.warn(`[WARNING] The select menu at ${filePath} is missing a required 'data' or 'execute' property`);
     });
@@ -115,9 +124,9 @@ async function patchInteraction() {
 
     /**
      * @deprecated Use BotInteraction instead
-     * @param {*} content 
-     * @param {*} options 
-     * @returns 
+     * @param {*} content
+     * @param {*} options
+     * @returns
      */
     BaseInteraction.prototype.ephemeralReply = async function (content, options = {}) {
         const existingFlags = options.flags || 0;
@@ -138,9 +147,9 @@ async function patchInteraction() {
 
     /**
      * @deprecated Use BotInteraction instead
-     * @param {*} content 
-     * @param {*} options 
-     * @returns 
+     * @param {*} content
+     * @param {*} options
+     * @returns
      */
     BaseInteraction.prototype.sendReply = async function (content, options = {}) {
 
