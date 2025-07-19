@@ -125,14 +125,17 @@ async function startWebServer() {
     const app = express();
     const port = config.get(ConfigOption.WEB_SERVER_PORT, 3001);
 
+    // Declare template variables in function scope
+    let steamsuccess, steamFail;
+
     // NEW: Load the HTML template once at startup
     try {
         const templateSuccessPath = path.join(__dirname, 'src', 'views', 'steam_callback_success.html');
         const templateFailPath = path.join(__dirname, 'src', 'views', 'steam_callback_fail.html');
 
         console.log('Loading Steam callback HTML templates.');
-        const steamsuccess = await fs.readFile(templateSuccessPath, 'utf8');
-        const steamFail = await fs.readFile(templateFailPath, 'utf8');
+        steamsuccess = await fs.readFile(templateSuccessPath, 'utf8');
+        steamFail = await fs.readFile(templateFailPath, 'utf8');
         console.log('Steam callback HTML templates loaded successfully.');
     } catch (error) {
         console.error('FATAL ERROR: Could not load Steam callback HTML template:', error);
