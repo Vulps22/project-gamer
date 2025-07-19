@@ -10,7 +10,7 @@ module.exports = {
     choosePlayersMessage,
     chooseStoresMessage,
     LFGMessage,
-    steamLinkMessage
+    steamLinkMessage,
     successMessage
 }
 
