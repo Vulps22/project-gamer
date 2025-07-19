@@ -16,8 +16,8 @@ jest.mock('../../../services/steamManagerService', () => ({
 }));
 
 jest.mock('../../../services/gameManagerService', () => ({
-    // CORRECTED: The mock functions are now inside a `gameManager` object.
-    gameManager: {
+    // CORRECTED: Match the actual export structure with gameManagerService
+    gameManagerService: {
         getKnownGames: jest.fn(),
         registerNewGames: jest.fn(),
     }
@@ -26,6 +26,12 @@ jest.mock('../../../services/gameManagerService', () => ({
 jest.mock('../../../services/userLibraryManagerService', () => ({
     userLibraryManagerService: {
        syncUserLibrary: jest.fn(),
+    }
+}));
+
+jest.mock('../../../services', () => ({
+    steamManagerService: {
+        getSteamLibrary: jest.fn(),
     }
 }));
 
@@ -39,8 +45,8 @@ jest.mock('../../../lib', () => ({
 // --- Service Imports (after mocks) ---
 // These imports will now correctly receive the mocked structures.
 const userManagerService = require('../../../services/userManagerService');
-const steamManagerService = require('../../../services/steamManagerService');
-const { gameManager } = require('../../../services/gameManagerService');
+const { steamManagerService } = require('../../../services');
+const { gameManagerService } = require('../../../services/gameManagerService');
 const { userLibraryManagerService } = require('../../../services/userLibraryManagerService');
 const { logger } = require('../../../lib');
 
@@ -93,10 +99,10 @@ describe('Sync Command', () => {
             { appid: '2', name: 'Game Two' },
             { appid: '3', name: 'Game Three' }
         ]);
-        gameManager.getKnownGames.mockResolvedValue([
+        gameManagerService.getKnownGames.mockResolvedValue([
             { storeGameId: '1', gameStoreId: 'gs1' }
         ]);
-        gameManager.registerNewGames.mockResolvedValue(['gs2', 'gs3']);
+        gameManagerService.registerNewGames.mockResolvedValue(['gs2', 'gs3']);
         userLibraryManagerService.syncUserLibrary.mockResolvedValue(3);
 
         // Act
@@ -104,7 +110,7 @@ describe('Sync Command', () => {
 
         // Assert
         expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith("Starting sync... this may take a moment.");
-        expect(gameManager.registerNewGames).toHaveBeenCalledWith(1, [
+        expect(gameManagerService.registerNewGames).toHaveBeenCalledWith(1, [
             { appid: '2', name: 'Game Two' },
             { appid: '3', name: 'Game Three' }
         ]);
@@ -123,7 +129,7 @@ describe('Sync Command', () => {
             { appid: '1', name: 'Game One' },
             { appid: '2', name: 'Game Two' }
         ]);
-        gameManager.getKnownGames.mockResolvedValue([
+        gameManagerService.getKnownGames.mockResolvedValue([
             { storeGameId: '1', gameStoreId: 'gs1' },
             { storeGameId: '2', gameStoreId: 'gs2' }
         ]);
@@ -134,7 +140,7 @@ describe('Sync Command', () => {
 
         // Assert
         expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith("Starting sync... this may take a moment.");
-        expect(gameManager.registerNewGames).not.toHaveBeenCalled();
+        expect(gameManagerService.registerNewGames).not.toHaveBeenCalled();
         expect(userLibraryManagerService.syncUserLibrary).toHaveBeenCalledWith('123456789', ['gs1', 'gs2']);
         expect(mockInteraction.editReply).toHaveBeenCalledWith(
             "Sync complete! ✨\n" +
