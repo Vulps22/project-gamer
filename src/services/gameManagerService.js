@@ -195,13 +195,25 @@ class GameManagerService {
             return [];
         }
 
-        const users = ids.map(row => {
-            const user = client.users.cache.get(row.id);
+        const users = await Promise.all(ids.map(async row => {
+            let user = client.users.cache.get(row.id);
+            
+            // If user is not in cache, try to fetch from Discord
+            if (!user) {
+                try {
+                    user = await client.users.fetch(row.id);
+                    console.log(`Fetched user ${row.id} from Discord API: ${user.username}`);
+                } catch (error) {
+                    console.error(`Failed to fetch user ${row.id} from Discord API:`, error.message);
+                    // User might have deleted their account or bot lacks permissions
+                }
+            }
+            
             return {
                 id: row.id,
                 username: user ? user.username : 'Unknown User',
             }
-        });
+        }));
         console.log('getUsersForGame found users:', users);
 
         return users;
