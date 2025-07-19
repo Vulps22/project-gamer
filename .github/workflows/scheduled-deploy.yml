@@ -147,10 +147,10 @@ jobs:
                       echo "• $PR_TITLE by @$PR_AUTHOR in #$PR_NUM" >> changelog.md
                     fi
                   else
-                    echo "• Failed to get PR #${PR_NUM} details" >> changelog.md
+                    echo "❌ Failed to get PR #${PR_NUM} details"
                   fi
                 else
-                  echo "• $COMMIT_MSG (GitHub CLI not available)" >> changelog.md
+                  echo "❌ $COMMIT_MSG (GitHub CLI not available)"
                 fi
               fi
               # Skip non-PR merges (like "Merge branch 'main'") - don't output anything
