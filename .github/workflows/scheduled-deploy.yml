@@ -1,0 +1,250 @@
+# .github/workflows/scheduled-deploy.yml
+
+name: Scheduled Deployment
+
+on:
+  schedule:
+    # Deploy on 2nd Saturday of the month at 9am UTC (week 2: days 8-14)
+    - cron: '0 9 8-14 * 6'
+    # Deploy on 4th Saturday of the month at 9am UTC (week 4: days 22-28)
+    - cron: '0 9 22-28 * 6'
+  # Allow manual triggering for testing
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run Tests
+        run: |
+          npm test
+          # Ensure tests either passed or were skipped (no failures)
+          if [ $? -ne 0 ]; then
+            echo "Tests failed. Deployment cannot proceed."
+            exit 1
+          fi
+
+  create-release:
+    name: Create Release Tag and Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for changelog generation
+          
+      - name: Calculate Release Tag
+        id: release_tag
+        run: |
+          # Get current date components
+          YEAR=$(date +%Y)
+          MONTH=$(date +%m)
+          DAY=$(date +%d)
+          
+          # Determine which release this is (R1 for 2nd Saturday, R2 for 4th Saturday)
+          if [ $DAY -ge 8 ] && [ $DAY -le 14 ]; then
+            RELEASE_NUM=1
+          elif [ $DAY -ge 22 ] && [ $DAY -le 28 ]; then
+            RELEASE_NUM=2
+          else
+            echo "Error: This should only run on 2nd or 4th Saturdays"
+            exit 1
+          fi
+          
+          # Create release tag
+          RELEASE_TAG="v${YEAR}.${MONTH}.R${RELEASE_NUM}"
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "Creating release tag: ${RELEASE_TAG}"
+          
+      - name: Check if Tag Already Exists
+        id: check_tag
+        run: |
+          TAG="${{ steps.release_tag.outputs.RELEASE_TAG }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists. Skipping deployment."
+            echo "TAG_EXISTS=true" >> $GITHUB_OUTPUT
+          else
+            echo "TAG_EXISTS=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Get Last Release Tag for Changelog
+        id: last_release
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
+        run: |
+          # Get the most recent release tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous tags found. Using initial commit."
+            LAST_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          echo "LAST_TAG=${LAST_TAG}" >> $GITHUB_OUTPUT
+          echo "Last release tag: ${LAST_TAG}"
+          
+      - name: Generate Enhanced Changelog
+        id: changelog
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
+        run: |
+          TAG="${{ steps.release_tag.outputs.RELEASE_TAG }}"
+          LAST_TAG="${{ steps.last_release.outputs.LAST_TAG }}"
+          
+          echo "## What's Changed" > changelog.md
+          echo "" >> changelog.md
+          
+          # Get merge commits since last release (these represent PRs)
+          if [ "$LAST_TAG" != "" ]; then
+            MERGE_COMMITS=$(git log --merges --pretty=format:"%H|%s" ${LAST_TAG}..HEAD)
+          else
+            MERGE_COMMITS=$(git log --merges --pretty=format:"%H|%s")
+          fi
+          
+          if [ -z "$MERGE_COMMITS" ]; then
+            echo "No merge commits found since last release." >> changelog.md
+            echo "" >> changelog.md
+            if [ "$LAST_TAG" != "" ]; then
+              git log --no-merges --pretty=format:"• %s by @%an" ${LAST_TAG}..HEAD | head -10 >> changelog.md
+            else
+              git log --no-merges --pretty=format:"• %s by @%an" | head -10 >> changelog.md
+            fi
+          else
+            # Process each merge commit, but only GitHub PR merges
+            while IFS='|' read -r commit COMMIT_MSG; do <<< "$MERGE_COMMITS"
+              # Only process GitHub PR merge commits (not manual merges)
+              if [[ $COMMIT_MSG =~ ^Merge\ pull\ request\ \#([0-9]+)\ from ]]; then
+                PR_NUM=${BASH_REMATCH[1]}
+                
+                # Get PR details using GitHub CLI
+                if command -v gh &> /dev/null; then
+                  PR_DATA=$(gh pr view $PR_NUM --json title,author,body 2>/dev/null || echo "")
+                  if [ -n "$PR_DATA" ]; then
+                    PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // "Unknown Title"')
+                    PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login // "Unknown Author"')
+                    
+                    # Extract issue number from branch name in the merge commit message
+                    # Format: "Merge pull request #123 from user/40-branch-name"
+                    LINKED_ISSUE=""
+                    if [[ $COMMIT_MSG =~ from\ [^/]+/([0-9]+)- ]]; then
+                      LINKED_ISSUE=${BASH_REMATCH[1]}
+                      echo "• $PR_TITLE by @$PR_AUTHOR for #$LINKED_ISSUE" >> changelog.md
+                    else
+                      echo "• $PR_TITLE by @$PR_AUTHOR in #$PR_NUM" >> changelog.md
+                    fi
+                  else
+                    echo "❌ Failed to get PR #${PR_NUM} details"
+                  fi
+                else
+                  echo "❌ $COMMIT_MSG (GitHub CLI not available)"
+                fi
+              fi
+              # Skip non-PR merges (like "Merge branch 'main'") - don't output anything
+            done
+          fi
+          
+          # Add contributor section
+          echo "" >> changelog.md
+          echo "## New Contributors" >> changelog.md
+          
+          # Get unique contributors since last release
+          if [ "$LAST_TAG" != "" ]; then
+            CONTRIBUTORS=$(git log --pretty=format:"%an" ${LAST_TAG}..HEAD | sort | uniq)
+          else
+            CONTRIBUTORS=$(git log --pretty=format:"%an" | sort | uniq)
+          fi
+          
+          while IFS= read -r contributor; do
+            if [ ! -z "$contributor" ]; then
+              echo "• @$contributor made their contributions" >> changelog.md
+            fi
+          done <<< "$CONTRIBUTORS"
+          
+          # Add full changelog link
+          echo "" >> changelog.md
+          if [ "$LAST_TAG" != "" ]; then
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${LAST_TAG}...${TAG}" >> changelog.md
+          else
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/${TAG}" >> changelog.md
+          fi
+          
+          # Read changelog content for release notes
+          CHANGELOG_CONTENT=$(cat changelog.md)
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Create Release Tag
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
+        run: |
+          TAG="${{ steps.release_tag.outputs.RELEASE_TAG }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Automated release $TAG"
+          git push origin "$TAG"
+          
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
+        run: |
+          TAG="${{ steps.release_tag.outputs.RELEASE_TAG }}"
+          CHANGELOG="${{ steps.changelog.outputs.CHANGELOG }}"
+          
+          # Create GitHub release using gh CLI
+          gh release create "$TAG" \
+            --title "Release $TAG" \
+            --notes "$CHANGELOG" \
+            --latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Wait for Deployment to Complete
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
+        run: |
+          echo "Release tag created. The deployment workflow will be triggered automatically."
+          echo "Waiting for deployment to start..."
+          sleep 30
+          
+          # Monitor the deployment workflow
+          TAG="${{ steps.release_tag.outputs.RELEASE_TAG }}"
+          echo "Monitoring deployment for tag: $TAG"
+          
+          # Wait up to 10 minutes for deployment to complete
+          for i in {1..60}; do
+            # Check if deployment workflow is running
+            WORKFLOW_STATUS=$(gh run list --workflow=deploy.yml --json status,conclusion --limit 1 | jq -r '.[0].status // "not_found"')
+            
+            if [ "$WORKFLOW_STATUS" = "completed" ]; then
+              CONCLUSION=$(gh run list --workflow=deploy.yml --json status,conclusion --limit 1 | jq -r '.[0].conclusion')
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "Deployment completed successfully!"
+                break
+              else
+                echo "Deployment failed with conclusion: $CONCLUSION"
+                exit 1
+              fi
+            elif [ "$WORKFLOW_STATUS" = "in_progress" ]; then
+              echo "Deployment in progress... (attempt $i/60)"
+            else
+              echo "Waiting for deployment to start... (attempt $i/60)"
+            fi
+            
+            sleep 10
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -10,12 +10,12 @@ module.exports = {
         .setDescription('Displays a list of all available commands.'),
     administrator: false,
     /**
-     * @param {BotInteraction} interaction 
+     * @param {BotInteraction} interaction
      */
     async execute(interaction) {
         // Get the command list from the client
         const commands = interaction.client.commands;
-        
+
         // Get the server URL from your config service
         const serverUrl = config.get(ConfigOption.DISCORD_SUPPORT_SERVER_URL, 'https://lfgamesync.com');
 

@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-unused-vars
-const { Events, Interaction } = require('discord.js');
+const { Events, Interaction, User, PermissionsBitField } = require('discord.js');
 const { logger } = require('../lib');
-const { userManagerServiceInstance } = require('../services');
+const { userManagerService } = require('../services');
 const { clientProvider } = require('../provider');
 const { BotInteraction, BotButtonInteraction } = require('../structures');
 
@@ -130,7 +130,7 @@ async function handleButtonInteraction(interaction) {
 
     try {
         const button = clientProvider.getClient().buttons.get(interaction.baseId);
-        console.log('Buttton:', button);
+        console.log('Button:', button);
 
 
         if (!button) {
@@ -155,6 +155,10 @@ async function handleButtonInteraction(interaction) {
     }
 }
 
+/**
+ *
+ * @param interaction
+ */
 async function handleAutoComplete(interaction) {
     const command = getCommand(interaction.client, interaction.commandName);
 
@@ -167,6 +171,7 @@ async function handleAutoComplete(interaction) {
 
 /**
  * Retrieves a command by its name.
+ * @param client
  * @param {string} commandName
  * @returns {Command}
  */
@@ -183,16 +188,17 @@ function getCommand(client, commandName) {
 
 /**
  * Determines if a command should be executed based on permissions and other criteria.
- * @param {Interaction} interaction
+ * @param {BotInteraction} interaction
  * @param {*} command
  * @param {Server} server
  * @returns
  */
 function shouldExecute(interaction, command) {
 
+
     // Check for Administrator role for commands that require it
-    if (command.administrator && !interaction.member.permissions.has('Administrator')) {
-        logger.editLog(interaction.logMessage, `${logInteraction} || Interaction Aborted: User was not Administrator`);
+    if (command.administrator && !interaction.isAdministrator()) {
+        logger.editLog(interaction.logMessage, `${interaction.logInteraction} || Interaction Aborted: User was not Administrator`);
         interaction.reply('You need the Administrator role to use this command.');
         return false;
     }
@@ -202,8 +208,8 @@ function shouldExecute(interaction, command) {
 
 /**
  * Check the user Id exists in the database, if not create a new user.
- * @param {*} interaction 
- * @return {boolean} Returns true if the user was saved or already exists, false if no userId was found.
+ * @param {*} interaction
+ * @returns {boolean} Returns true if the user was saved or already exists, false if no userId was found.
  */
 async function saveUser(interaction) {
     const userId = interaction.user.id;
@@ -213,13 +219,13 @@ async function saveUser(interaction) {
         return false;
     }
 
-    user = await userManagerServiceInstance.getOrCreateUser(userId);
+    const user = await userManagerService.getOrCreateUser(userId);
 
     if (!user) {
         return;
     }
 
-    await userManagerServiceInstance.addUserToServer(userId, interaction.guildId);
+    await userManagerService.addUserToServer(userId, interaction.guildId);
 
     return true;
 

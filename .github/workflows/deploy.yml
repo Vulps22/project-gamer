@@ -54,4 +54,6 @@ jobs:
           script: |
             cd /opt/discord-bots/lfgamesync
             docker compose pull bot
+            # Deploy Discord commands before starting the bot
+            docker compose run --rm bot node deploy-commands.js
             docker compose up -d bot

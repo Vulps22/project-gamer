@@ -1,6 +1,6 @@
 // At the top of your file
-const { StringSelectMenuInteraction, TextDisplayBuilder, ContainerBuilder} = require('discord.js');
-const { gameManager } = require('../services/GameManagerService');
+const { StringSelectMenuInteraction, TextDisplayBuilder, ContainerBuilder } = require('discord.js');
+const { gameManagerService } = require('../services/gameManagerService');
 const { LFGMessage, getSuccessMessage } = require('../messages/lfgMessage');
 
 module.exports = {
@@ -10,7 +10,7 @@ module.exports = {
     },
 
     /**
-     * @param {StringSelectMenuInteraction} interaction 
+     * @param {StringSelectMenuInteraction} interaction
      */
     async execute(interaction) {
         const selectedPlayers = interaction.values;
@@ -29,13 +29,13 @@ module.exports = {
             return parts[1];
         });
 
-        const game = await gameManager.getGameById(gameId);
+        const game = await gameManagerService.getGameById(gameId);
 
         if (!game) {
             return interaction.ephemeralReply('Game not found.');
         }
 
-        const links = await gameManager.getStoreUrlsForGame(gameId);
+        const links = await gameManagerService.getStoreUrlsForGame(gameId);
         const lfgMessage = LFGMessage(game, links, interaction.user.id, userIds);
 
         await interaction.channel.send(lfgMessage);

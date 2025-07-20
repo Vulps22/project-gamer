@@ -8,8 +8,7 @@ class Database {
     constructor() {
         // --- Singleton Pattern ---
         // If an instance already exists, return it instead of creating a new one.
-        if (Database.instance)
-            return Database.instance;
+        if (Database.instance) {return Database.instance;}
         // -------------------------
 
         // --- Use process.env directly ---
@@ -66,16 +65,28 @@ class Database {
         }
     }
 
+
+    /**
+     * Gets a single connection from the pool. This is the first step for any transaction.
+     * The connection MUST be released manually using connection.release().
+     * @returns {Promise<mysql.PoolConnection>}
+     */
+    async getConnection() {
+        return this.pool.getConnection();
+    }
+
     /**
      * Runs any SQL query using prepared statements.
-     * @param {string} sql - The SQL query with ? placeholders.
-     * @param {Array<any>} [params=[]] - An array of parameters to substitute.
-     * @returns {Promise<any>} - Returns rows for SELECT, or OkPacket for others.
+     * Can run on the main pool or on a specific connection for transactions.
+     * @param {string} sql - The SQL query with ? or :named placeholders.
+     * @param {Array<any>|object} [params] - Parameters to substitute.
+     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
+     * @returns {Promise<any>}
      */
-    async query(sql, params = []) {
+    async query(sql, params = [], connection = null) {
+        const executor = connection || this.pool;
         try {
-            // .execute uses prepared statements
-            const [rows] = await this.pool.execute(sql, params);
+            const [rows] = await executor.execute(sql, params);
             return rows;
         } catch (error) {
             console.error('SQL Error:', error.message);
@@ -88,9 +99,9 @@ class Database {
     /**
      * Selects data from a table. Basic version.
      * @param {string} table
-     * @param {string} [columns='*']
-     * @param {string} [where=''] - e.g., 'id = ? AND status = ?'
-     * @param {Array<any>} [params=[]]
+     * @param {string} [columns]
+     * @param {string} [where] - e.g., 'id = ? AND status = ?'
+     * @param {Array<any>} [params]
      * @returns {Promise<Array<object>>}
      */
     async select(table, columns = '*', where = '', params = []) {
@@ -103,14 +114,15 @@ class Database {
      * Inserts data into a table.
      * @param {string} table
      * @param {object} data - e.g., { name: 'Test', value: 123 }
+     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - The insertId.
      */
-    async insert(table, data) {
+    async insert(table, data, connection = null) {
         const columns = Object.keys(data).map(col => `\`${col}\``).join(', ');
         const placeholders = Object.keys(data).map(() => '?').join(', ');
         const values = Object.values(data);
         const sql = `INSERT INTO \`${table}\` (${columns}) VALUES (${placeholders})`;
-        const result = await this.query(sql, values);
+        const result = await this.query(sql, values, connection);
         return result.insertId;
     }
 
@@ -120,13 +132,14 @@ class Database {
      * @param {object} data - The fields to update.
      * @param {string} where - The WHERE clause (e.g., 'id = ?').
      * @param {Array<any>} params - Parameters for the WHERE clause.
+     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - Number of affected rows.
      */
-    async update(table, data, where, params = []) {
+    async update(table, data, where, params = [], connection = null) {
         const updates = Object.keys(data).map(col => `\`${col}\` = ?`).join(', ');
         const values = [...Object.values(data), ...params];
         const sql = `UPDATE \`${table}\` SET ${updates} WHERE ${where}`;
-        const result = await this.query(sql, values);
+        const result = await this.query(sql, values, connection);
         return result.affectedRows;
     }
 
@@ -135,11 +148,12 @@ class Database {
      * @param {string} table
      * @param {string} where - The WHERE clause (e.g., 'id = ?').
      * @param {Array<any>} params - Parameters for the WHERE clause.
+     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - Number of affected rows.
      */
-    async delete(table, where, params = []) {
+    async delete(table, where, params = [], connection = null) {
         const sql = `DELETE FROM \`${table}\` WHERE ${where}`;
-        const result = await this.query(sql, params);
+        const result = await this.query(sql, params, connection);
         return result.affectedRows;
     }
 
@@ -153,5 +167,5 @@ class Database {
 }
 
 // Export a single instance (Singleton Pattern)
-const dbInstance = new Database();
-module.exports = dbInstance;
+const db = new Database();
+module.exports = db;

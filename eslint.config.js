@@ -1,17 +1,25 @@
 const js = require('@eslint/js');
+const jsdoc = require('eslint-plugin-jsdoc'); // Import the JSDoc plugin
 
 module.exports = [
     js.configs.recommended,
     {
+        plugins: {
+            jsdoc: jsdoc // Properly define the plugin in flat config format
+        },
         languageOptions: {
             ecmaVersion: 'latest',
         },
         rules: {
+            // JSDoc recommended rules (manually specified for flat config)
+            ...jsdoc.configs.recommended.rules,
+
+            // Custom rules
             'arrow-spacing': ['warn', { before: true, after: true }],
             'brace-style': ['error', '1tbs', { allowSingleLine: true }],
             'comma-spacing': 'error',
             'comma-style': 'error',
-            curly: ['error', 'all', 'consistent'],
+            curly: ['error', 'multi-line'],
             'dot-location': ['error', 'property'],
             'handle-callback-err': 'off',
             indent: ['error', 4],
@@ -21,14 +29,13 @@ module.exports = [
             'no-console': 'off',
             'no-empty-function': 'error',
             'no-floating-decimal': 'error',
-            'no-inline-comments': 'error',
             'no-lonely-if': 'error',
             'no-multi-spaces': 'error',
             'no-multiple-empty-lines': ['error', { max: 2, maxEOF: 1, maxBOF: 0 }],
             'no-shadow': ['error', { allow: ['err', 'resolve', 'reject'] }],
             'no-trailing-spaces': ['error'],
             'no-var': 'error',
-            'no-undef': 'off',
+            'no-undef': 'off', // Keep this off if you're not using environments that define globals
             'object-curly-spacing': ['error', 'always'],
             'prefer-const': 'error',
             quotes: ['error', 'single'],
@@ -44,6 +51,15 @@ module.exports = [
             'space-unary-ops': 'error',
             'spaced-comment': 'error',
             yoda: 'error',
+
+            // JSDoc rules
+            'jsdoc/no-undefined-types': [
+                'error',
+                {
+                    'markVariablesAsUsed': true
+                }
+            ],
+
         },
     },
 ];

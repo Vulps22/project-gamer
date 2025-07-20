@@ -1,5 +1,5 @@
 // /structures/BotInteraction.js
-const { MessageFlags, Interaction } = require('discord.js');
+const { MessageFlags, Interaction, PermissionsBitField } = require('discord.js');
 
 class BotInteraction {
     /**
@@ -11,6 +11,7 @@ class BotInteraction {
 
     // --- PROXY PROPERTIES ---
     get user() { return this._interaction.user; }
+    get member() { return this._interaction.member; }
     get channel() { return this._interaction.channel; }
     get guild() { return this._interaction.guild; }
     get client() { return this._interaction.client; }
@@ -22,7 +23,7 @@ class BotInteraction {
     get id() { return this._interaction.id; }
     get guildId() { return this._interaction.guildId; }
     get values() { return this._interaction.values; }
-    
+
     // --- PROXY METHODS ---
     reply(options) { return this._interaction.reply(options); }
     editReply(options) { return this._interaction.editReply(options); }
@@ -52,6 +53,11 @@ class BotInteraction {
         const finalOptions = { ...options, flags: combinedFlags };
 
         return this.sendReply(content, finalOptions);
+    }
+
+    isAdministrator() {
+        // Check if the user has the Administrator permission
+        return this.member.permissions.has(PermissionsBitField.Flags.Administrator);
     }
 }
 

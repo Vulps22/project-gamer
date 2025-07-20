@@ -1,8 +1,7 @@
-
 const { db } = require('../lib');
 
 class ServerManagerService {
-  async init() {
+    async init() {
         if (ServerManagerService.instance) {
             return ServerManagerService.instance;
         }
@@ -11,7 +10,7 @@ class ServerManagerService {
         console.log('ServerManagerService initialized.');
     }
 
-    async getServerById(serverId) { 
+    async getServerById(serverId) {
 
         try {
             const server = await db.query('SELECT * FROM server WHERE id = :serverId', { serverId: serverId });
@@ -77,5 +76,5 @@ class ServerManagerService {
 
 }
 
-const serverManagerServiceInstance = new ServerManagerService();
-module.exports = serverManagerServiceInstance;
+const serverManagerService = new ServerManagerService();
+module.exports = serverManagerService;

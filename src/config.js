@@ -11,7 +11,9 @@ const ConfigOption = Object.freeze({
     DISCORD_SUPPORT_SERVER: 'discord_support_server_id',
     DISCORD_SUPPORT_SERVER_URL: 'discord_support_server_url',
     TOP_GG_TOKEN: 'top_gg_token',
+    DISCORD_LOGGER_WEBHOOK: 'logger_webhook_url',
     UPTIME_KUMA_URL: 'uptime_kuma_url',
+    STEAM_API_TOKEN: 'steam_api_token',
     ENVIRONMENT: 'env',
 });
 
@@ -25,9 +27,9 @@ class Config {
     }
 
     /**
-   * Loads configuration from the database based on NODE_ENV.
-   * This MUST be called asynchronously at startup.
-   */
+     * Loads configuration from the database based on NODE_ENV.
+     * This MUST be called asynchronously at startup.
+     */
     async init() {
         if (this.isInitialized) {
             console.warn('Config already initialized.');
@@ -56,11 +58,11 @@ class Config {
     }
 
     /**
-   * Gets a configuration value by its key.
-   * @param {ConfigOption} key - The configuration key (matches a column name in `configs`).
-   * @param {any} [defaultValue=null] - A value to return if the key isn't found.
-   * @returns {any} The configuration value.
-   */
+     * Gets a configuration value by its key.
+     * @param {ConfigOption} key - The configuration key (matches a column name in `configs`).
+     * @param {any} [defaultValue] - A value to return if the key isn't found.
+     * @returns {any} The configuration value.
+     */
     get(key, defaultValue = null) {
         if (!this.isInitialized) {
             console.warn(`Attempted to get config key '${key}' before initialization. This might work for .env vars but not DB vars.`);
@@ -73,9 +75,9 @@ class Config {
     }
 
     /**
-   * Gets all loaded settings.
-   * @returns {object}
-   */
+     * Gets all loaded settings.
+     * @returns {object}
+     */
     getAll() {
         if (!this.isInitialized) throw new Error('Configuration accessed before initialization is complete.');
 
@@ -84,5 +86,5 @@ class Config {
 }
 
 // Export a single instance (Singleton Pattern)
-const configInstance = new Config();
-module.exports = { config: configInstance, ConfigOption };
+const config = new Config();
+module.exports = { config: config, ConfigOption };

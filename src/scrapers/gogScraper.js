@@ -1,6 +1,6 @@
 // src/scrapers/gogScraper.js
 
-const cheerio = require("cheerio");
+const cheerio = require('cheerio');
 
 /**
  * Scrapes game data from a GOG store page.
@@ -58,7 +58,7 @@ async function scrape($, url) {
         const tempCheerio = cheerio.load(data.title);
         data.title = tempCheerio.root().text();
     }
-    
+
     return data;
 }
 
