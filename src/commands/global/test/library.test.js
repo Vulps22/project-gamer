@@ -1,13 +1,17 @@
-const { SlashCommandBuilder } = require('discord.js');
 const { execute, autoComplete } = require('../library');
 
 // Mock dependencies
-jest.mock('../../../services/gameManagerService', () => ({
+jest.mock('../../../services', () => ({
     gameManagerService: {
         searchUserGamesByName: jest.fn(),
         searchGamesByName: jest.fn(),
         getStoresForGame: jest.fn(),
         getAllStoresForGame: jest.fn(),
+    },
+    userLibraryManagerService: {
+        addGameToUserLibrary: jest.fn(),
+        getUserLibrary: jest.fn(),
+        syncUserLibrary: jest.fn(),
     }
 }));
 
@@ -16,16 +20,16 @@ jest.mock('../../../messages', () => ({
     GlobalMessages: {}
 }));
 
-const { gameManagerService } = require('../../../services/gameManagerService');
+const { gameManagerService, userLibraryManagerService } = require('../../../services');
 const { chooseStoresMessage } = require('../../../messages');
 
 describe('Library Command', () => {
     let mockInteraction;
     let mockAutocompleteInteraction;
-    
+
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         mockInteraction = {
             options: {
                 getSubcommand: jest.fn(),
@@ -126,17 +130,21 @@ describe('Library Command', () => {
         test('should return info message for view subcommand', async () => {
             // Arrange
             mockInteraction.options.getSubcommand.mockReturnValue('view');
+            userLibraryManagerService.getUserLibrary.mockResolvedValue({
+                Steam: ['Half-Life', 'Portal'],
+                Meta: ['Beat Saber'],
+            });
 
             // Act
             await execute(mockInteraction);
 
             // Assert
+            expect(userLibraryManagerService.getUserLibrary).toHaveBeenCalledWith('user123');
             expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith(
-                "Hello! We plan to flesh this out in the future," +
-                " but felt it was important to give everyone a way to see which games they have already added to their library." +
-                " For now, you can use `/library view` to see your games in the autocomplete."
+                '**Your Game Library**:\n\n' +
+                '__Steam__:\n• Half-Life\n• Portal\n\n' +
+                '__Meta__:\n• Beat Saber'
             );
-            expect(gameManagerService.getStoresForGame).not.toHaveBeenCalled();
         });
 
         test('should handle add subcommand', async () => {
@@ -145,7 +153,7 @@ describe('Library Command', () => {
             mockInteraction.options.getString.mockReturnValue('123');
             const mockStores = [{ id: 1, name: 'Steam' }];
             const mockMessage = { content: 'Choose store message' };
-            
+
             gameManagerService.getStoresForGame.mockResolvedValue(mockStores);
             chooseStoresMessage.mockReturnValue(mockMessage);
 
@@ -164,7 +172,7 @@ describe('Library Command', () => {
             mockInteraction.options.getString.mockReturnValue('456');
             const mockAllStores = [{ id: 1, name: 'Steam' }, { id: 2, name: 'Epic' }];
             const mockMessage = { content: 'Choose store to remove message' };
-            
+
             gameManagerService.getAllStoresForGame.mockResolvedValue(mockAllStores);
             chooseStoresMessage.mockReturnValue(mockMessage);
 

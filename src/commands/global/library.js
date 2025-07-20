@@ -1,6 +1,6 @@
-const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
-const { gameManagerService } = require('../../services');
-const { chooseStoresMessage, GlobalMessages } = require('../../messages');
+const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandSubcommandBuilder } = require('discord.js');
+const { gameManagerService, userLibraryManagerService } = require('../../services');
+const { chooseStoresMessage} = require('../../messages');
 const { BotInteraction } = require('../../structures');
 const { AutocompleteInteraction } = require('discord.js');
 
@@ -76,9 +76,24 @@ module.exports = {
     async execute(interaction) {
 
         if (interaction.options.getSubcommand() === 'view') {
-            return interaction.ephemeralReply("Hello! We plan to flesh this out in the future,"
-                + " but felt it was important to give everyone a way to see which games they have already added to their library."
-                + " For now, you can use `/library view` to see your games in the autocomplete.");
+            // return interaction.ephemeralReply('Hello! We plan to flesh this out in the future,'
+            //     + ' but felt it was important to give everyone a way to see which games they have already added to their library.'
+            //     + ' For now, you can use `/library view` to see your games in the autocomplete.');
+
+            const library = await userLibraryManagerService.getUserLibrary(interaction.user.id);
+
+            if (!library || Object.keys(library).length === 0) {
+                return interaction.ephemeralReply('Your library is currently empty.');
+            }
+
+            let message = '**Your Game Library**:\n';
+            for (const [store, games] of Object.entries(library)) {
+                message += `\n__${store}__:\n• ${games.join('\n• ')}\n`;
+            }
+
+            await interaction.ephemeralReply(message.trim());
+
+            return;
         }
 
         const game = interaction.options.getString('game');
