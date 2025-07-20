@@ -16,6 +16,7 @@ CREATE TABLE `configs` (
   `discord_support_server_url` varchar(255) NOT NULL DEFAULT 'https://discord.gg/PxjD25Cc85',
   `top_gg_token` varchar(255) DEFAULT NULL,
   `uptime_kuma_url` varchar(255) DEFAULT NULL,
+  `steam_api_token` varchar(255) DEFAULT NULL,
   `env` varchar(50) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -38,6 +39,7 @@ ALTER TABLE `configs`
   ALTER COLUMN `discord_support_server_url` SET COMMENT 'Invite URL for the Discord support server',
   ALTER COLUMN `top_gg_token` SET COMMENT 'Token for Top.gg integration',
   ALTER COLUMN `uptime_kuma_url` SET COMMENT 'URL for Uptime Kuma monitoring',
+  ALTER COLUMN `steam_api_token` SET COMMENT 'Steam Web API token for accessing Steam user data and libraries',
   ALTER COLUMN `env` SET COMMENT 'Environment for the configuration (e.g., production, development)',
   ALTER COLUMN `created_at` SET COMMENT 'Timestamp when the configuration was created',
   ALTER COLUMN `updated_at` SET COMMENT 'Timestamp when the configuration was last updated';
