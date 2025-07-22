@@ -51,10 +51,23 @@ async function processIncludes(sqlContent) {
 }
 
 /**
+ * Check if migration_log table exists
+ * @returns {Promise<boolean>} - True if table exists, false otherwise
+ */
+async function migrationLogTableExists() {
+    try {
+        await db.query('SELECT 1 FROM migration_log LIMIT 1');
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
  *
  */
 async function main() {
-    console.log('Starting database migration script...');
+    console.log('Starting database rollout script...');
 
     try {
     // Enable migration mode to use elevated credentials
@@ -63,7 +76,7 @@ async function main() {
         // Ensure the release directory exists, create it if it doesn't.
         await fs.mkdir(RELEASE_DIR, { recursive: true });
 
-        // 1. Get and sort all migration files.
+        // 1. Get and sort all rollout files.
         // Sorting ensures that files like '001_...'.sql run before '002_...'.sql
         const files = await fs.readdir(FUTURE_DIR);
         const sqlFiles = files
@@ -71,26 +84,21 @@ async function main() {
             .sort(); // Alphabetical sort is predictable and reliable with a good naming convention.
 
         if (sqlFiles.length === 0) {
-            console.log('✅ No migration files found in /future. Database is up to date.');
+            console.log('✅ No rollout files found in /future. Database is up to date.');
             return; // Exit gracefully
         }
 
-        // 2. Check migration status and filter based on environment and migration history
+        // 2. Check rollout status and filter based on environment and rollout history
         const currentEnv = process.env.ENVIRONMENT || 'dev';
-        const pendingMigrations = [];
+        const pendingRollouts = [];
         
-        // Check if migration_log table exists
-        let migrationLogExists = false;
-        try {
-            await db.query('SELECT 1 FROM migration_log LIMIT 1');
-            migrationLogExists = true;
-        } catch {
-            console.log('📋 Migration log table not found - running all migrations (first-time setup)');
-        }
+        // Check if migration_log table exists (initial check)
+        let migrationLogExists = await migrationLogTableExists();
         
         if (!migrationLogExists) {
-            // Fallback: run all migrations if migration_log doesn't exist yet
-            pendingMigrations.push(...sqlFiles);
+            // Fallback: run all rollouts if migration_log doesn't exist yet
+            console.log('📋 Migration log table not found - running all rollouts (first-time setup)');
+            pendingRollouts.push(...sqlFiles);
         } else {
             // Universal logic with rollout/rollback checking for all environments
             for (const file of sqlFiles) {
@@ -113,49 +121,58 @@ async function main() {
                         
                         if (rollbackAfterRollout.length === 0) {
                             const envMessage = currentEnv === 'dev' ? 'Roll it back first!' : 'Use rollback script to revert before re-running.';
-                            console.log(`\t⚠️  Skipping ${file}: Migration already applied! ${envMessage}`);
+                            console.log(`\t⚠️  Skipping ${file}: Rollout already applied! ${envMessage}`);
                             continue;
                         }
                     }
                 }
                 
-                // Allow both rollouts and rollbacks in all environments
+                // Always allow rollbacks and rollouts in all environments
                 // Rollouts are allowed if: never run, or previously rolled back
                 // Rollbacks are always allowed (for emergency reverts)
-                pendingMigrations.push(file);
+                pendingRollouts.push(file);
             }
         }
 
-        if (pendingMigrations.length === 0) {
-            console.log(`✅ No new migrations to run in ${currentEnv} environment. Database is up to date.`);
+        if (pendingRollouts.length === 0) {
+            console.log(`✅ No new rollouts to run in ${currentEnv} environment. Database is up to date.`);
             return;
         }
 
         const rerunMessage = ' (rollouts require rollback first, rollbacks always allowed)';
-        console.log(`📂 Found ${pendingMigrations.length} migration(s) to run in ${currentEnv} environment${rerunMessage}...`);
+        console.log(`📂 Found ${pendingRollouts.length} rollout(s) to run in ${currentEnv} environment${rerunMessage}...`);
 
-        // 4. Execute each pending migration
-        for (const file of pendingMigrations) {
+        // 4. Execute each pending rollout
+        for (const file of pendingRollouts) {
             const sourcePath = path.join(FUTURE_DIR, file);
             const migrationName = file.replace(/_(rollout|rollback)\.sql$/i, '');
             const migrationType = file.includes('_rollback') ? 'rollback' : 'rollout';
 
-            console.log(`\t- Running migration: ${file}`);
+            console.log(`\t- Running rollout: ${file}`);
+
+            // Check if migration_log table exists before attempting to log
+            migrationLogExists = await migrationLogTableExists();
 
             // Log migration start (only if migration_log table exists)
             let logId = null;
             const startTime = Date.now();
             
             if (migrationLogExists) {
-                logId = await db.insert('migration_log', {
-                    migration_name: migrationName,
-                    file_name: file,
-                    migration_type: migrationType,
-                    environment: currentEnv,
-                    result: 'in_progress',
-                    executed_by: process.env.USER || process.env.USERNAME || 'system',
-                    executed_at: new Date()
-                });
+                try {
+                    logId = await db.insert('migration_log', {
+                        migration_name: migrationName,
+                        file_name: file,
+                        migration_type: migrationType,
+                        environment: currentEnv,
+                        result: 'in_progress',
+                        executed_by: process.env.USER || process.env.USERNAME || 'system',
+                        executed_at: new Date()
+                    });
+                } catch {
+                    // Ignore if migration_log table doesn't exist
+                    migrationLogExists = false;
+                    console.log('\t📋 Note: Migration logging unavailable (table not found)');
+                }
             }
 
             try {
@@ -166,42 +183,54 @@ async function main() {
                 
                 await db.queryMultiple(processedSQL); // Use database with migration credentials
 
-                // Update log with success (only if migration_log table exists)
+                // Update log with success (recheck if migration_log table exists)
                 const executionTime = Date.now() - startTime;
+                migrationLogExists = await migrationLogTableExists();
                 if (migrationLogExists && logId) {
-                    await db.update('migration_log',
-                        { result: 'success', execution_time_ms: executionTime },
-                        'id = ?',
-                        [logId]
-                    );
+                    try {
+                        await db.update('migration_log',
+                            { result: 'success', execution_time_ms: executionTime },
+                            'id = ?',
+                            [logId]
+                        );
+                    } catch {
+                        // Ignore if migration_log table doesn't exist
+                        console.log('\t📋 Note: Could not update migration log (table not found)');
+                    }
                 }
 
-                console.log(`\t- ✅ Success! Migration ${file} completed in ${executionTime}ms`);
+                console.log(`\t- ✅ Success! Rollout ${file} completed in ${executionTime}ms`);
 
             } catch (error) {
-                // Update log with failure (only if migration_log table exists)
+                // Update log with failure (recheck if migration_log table exists)
                 const executionTime = Date.now() - startTime;
+                migrationLogExists = await migrationLogTableExists();
                 if (migrationLogExists && logId) {
-                    await db.update('migration_log',
-                        {
-                            result: 'failed',
-                            execution_time_ms: executionTime,
-                            error_message: error.message
-                        },
-                        'id = ?',
-                        [logId]
-                    );
+                    try {
+                        await db.update('migration_log',
+                            {
+                                result: 'failed',
+                                execution_time_ms: executionTime,
+                                error_message: error.message
+                            },
+                            'id = ?',
+                            [logId]
+                        );
+                    } catch {
+                        // Ignore if migration_log table doesn't exist
+                        console.log('\t📋 Note: Could not update migration log (table not found)');
+                    }
                 }
 
-                console.error(`\t- ❌ FAILED to execute ${file}. Halting all migrations.`);
+                console.error(`\t- ❌ FAILED to execute ${file}. Halting all rollouts.`);
                 throw error; // Re-throw the error to stop the loop
             }
         }
 
-        console.log('🎉 All migrations completed successfully.');
+        console.log('🎉 All rollouts completed successfully.');
 
     } catch (error) {
-        console.error('\nA critical error occurred during the migration process. No further scripts were executed.');
+        console.error('\nA critical error occurred during the rollout process. No further scripts were executed.');
         console.error('Error Details:', error.message);
         process.exitCode = 1; // Exit with an error code
     } finally {

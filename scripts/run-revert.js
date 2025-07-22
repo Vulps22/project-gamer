@@ -1,4 +1,4 @@
-// This script reverts a specific migration by running its rollback script.
+// This script reverts a specific rollout by running its rollback script.
 // Usage: node scripts/run-revert.js <issue_number>
 // Example: node scripts/run-revert.js 26
 
@@ -96,15 +96,21 @@ async function main() {
         const startTime = Date.now();
         
         if (migrationLogExists) {
-            logId = await db.insert('migration_log', {
-                migration_name: issueNumber,
-                file_name: rollbackFile,
-                migration_type: 'rollback',
-                environment: currentEnv,
-                result: 'in_progress',
-                executed_by: process.env.USER || process.env.USERNAME || 'system',
-                executed_at: new Date()
-            });
+            try {
+                logId = await db.insert('migration_log', {
+                    migration_name: issueNumber,
+                    file_name: rollbackFile,
+                    migration_type: 'rollback',
+                    environment: currentEnv,
+                    result: 'in_progress',
+                    executed_by: process.env.USER || process.env.USERNAME || 'system',
+                    executed_at: new Date()
+                });
+            } catch {
+                // Ignore if migration_log table doesn't exist
+                migrationLogExists = false;
+                console.log('\t📋 Note: Migration logging unavailable (table not found)');
+            }
         }
 
         try {
