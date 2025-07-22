@@ -28,27 +28,27 @@ When you need to alter the database schema (e.g., add a table, alter a column), 
     -   This will include the contents of `/src/database/migrationLog.sql` at that location.
     -   Promotes DRY principles and consistency between schema files and migrations.
 
-### Migration Commands
+### Rollout Commands
 
-Use these npm scripts to manage migrations:
+Use these npm scripts to manage rollouts:
 
 ```bash
-# Apply all pending migrations
-npm run db:migrate
+# Apply all pending rollouts
+npm run db:rollout
 
-# Rollback a specific migration (requires issue number)
+# Rollback a specific rollout (requires issue number)
 npm run db:revert 26
 
 # Apply schema files to a fresh database
 npm run db:apply
 ```
 
-### Migration Tracking
+### Rollout Tracking
 
-The system automatically tracks all migration executions in the `migration_log` table:
+The system automatically tracks all rollout executions in the `migration_log` table:
 - **Environment-aware**: Dev allows re-runs with rollback checking, staging/production are once-only
 - **Rollout/Rollback Logic**: In dev, you must roll back before re-running a rollout
-- **Error Logging**: Failed migrations are logged with error details and execution time
+- **Error Logging**: Failed rollouts are logged with error details and execution time
 
 ---
 
@@ -72,11 +72,11 @@ For a fresh installation and a new local database:
     ```
     This executes all SQL scripts in `/src/database/` to build the initial database structure.
 
-2.  **Apply Released Migrations**: 
+2.  **Apply Released Rollouts**: 
     ```bash
-    npm run db:migrate
+    npm run db:rollout
     ```
-    Runs all pending migration scripts to bring your schema up to the latest version.
+    Runs all pending rollout scripts to bring your schema up to the latest version.
 
 3.  **Configure Your Environment**: Update the `.env` file with your local database connection details.
 4.  **Add Local Configuration**: Add your development bot's information to the `configs` table.
@@ -85,13 +85,13 @@ For a fresh installation and a new local database:
 
 To update your existing local database with the latest changes:
 
-1.  **Apply Pending Migrations**: 
+1.  **Apply Pending Rollouts**: 
     ```bash
-    npm run db:migrate
+    npm run db:rollout
     ```
-    The system will automatically determine which migrations need to be run.
+    The system will automatically determine which rollouts need to be run.
 
-2.  **Rollback if Needed**: If you need to undo a migration during development:
+2.  **Rollback if Needed**: If you need to undo a rollout during development:
     ```bash
     npm run db:revert <issue-number>
     ```
@@ -99,12 +99,12 @@ To update your existing local database with the latest changes:
 ### Environment-Specific Behavior
 
 - **Development (`ENVIRONMENT=dev`)**: 
-  - Allows re-running migrations after rollback
+  - Allows re-running rollouts after rollback
   - Checks rollout/rollback history to prevent duplicate rollouts
-  - Shows helpful warning messages for already-applied migrations
+  - Shows helpful warning messages for already-applied rollouts
 
 - **Staging/Production**: 
-  - Migrations run only once per environment
+  - Rollouts run only once per environment
   - Strict execution controls prevent accidental re-runs
   - Enhanced logging and error reporting
 

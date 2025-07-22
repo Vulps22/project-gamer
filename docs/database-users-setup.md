@@ -12,7 +12,7 @@ This document explains how to set up the different database users needed for the
 
 ### 2. **Migration User** (Elevated Permissions)
 - **Username**: `dev_migration`
-- **Purpose**: Used for schema management and migrations
+- **Purpose**: Used for schema management and rollouts
 - **Permissions**: CREATE, DROP, ALTER, INDEX, REFERENCES + all bot permissions
 - **Environment Variables**: `DB_MIGRATION_USER`, `DB_MIGRATION_PASS`
 
@@ -20,10 +20,10 @@ This document explains how to set up the different database users needed for the
 
 The database module has a toggle system:
 - **Normal mode**: Uses `DB_USER`/`DB_PASS` (limited permissions)
-- **Migration mode**: Uses `DB_MIGRATION_USER`/`DB_MIGRATION_PASS` (elevated permissions)
+- **Rollout mode**: Uses `DB_MIGRATION_USER`/`DB_MIGRATION_PASS` (elevated permissions)
 
 ```javascript
-// Switch to migration mode for schema operations
+// Switch to rollout mode for schema operations
 await db.setMigrating(true);
 
 // Switch back to normal mode for bot operations  
@@ -77,8 +77,8 @@ Once configured, you can test:
 # Test schema application (uses migration user automatically)
 npm run db:apply
 
-# Test migrations (uses migration user automatically)  
-npm run db:migrate
+# Test rollouts (uses migration user automatically)  
+npm run db:rollout
 
 # Test rollback system (uses migration user automatically)
 npm run db:revert 26
@@ -90,8 +90,8 @@ npm start
 ### Available NPM Scripts
 
 - `npm run db:apply` - Apply schema files to fresh database
-- `npm run db:migrate` - Run pending migration files  
-- `npm run db:revert <issue-number>` - Rollback specific migration (requires issue number)
+- `npm run db:rollout` - Run pending rollout files  
+- `npm run db:revert <issue-number>` - Rollback specific rollout (requires issue number)
 
 ## 🛡️ Security Benefits
 
@@ -100,10 +100,10 @@ npm start
 - **Audit Trail**: Clear separation between operational and administrative database access
 - **Reduced Risk**: Compromised bot token cannot drop/alter tables
 
-## 📊 Migration Tracking
+## 📊 Rollout Tracking
 
 The system automatically creates a `migration_log` table to track:
-- Which migrations have been executed
+- Which rollouts have been executed
 - When they were executed and by whom
 - Execution time and results (success/failure)
 - Environment-specific execution history
