@@ -80,6 +80,9 @@ npm run db:apply
 # Test rollouts (uses migration user automatically)  
 npm run db:rollout
 
+# Test rollouts for specific issue (uses migration user automatically)
+npm run db:rollout 26
+
 # Test rollback system (uses migration user automatically)
 npm run db:revert 26
 
@@ -90,7 +93,8 @@ npm start
 ### Available NPM Scripts
 
 - `npm run db:apply` - Apply schema files to fresh database
-- `npm run db:rollout` - Run pending rollout files  
+- `npm run db:rollout` - Run pending rollout files (all or specific issue)
+- `npm run db:rollout <issue-number>` - Run rollouts for specific issue only
 - `npm run db:revert <issue-number>` - Rollback specific rollout (requires issue number)
 
 ## 🛡️ Security Benefits

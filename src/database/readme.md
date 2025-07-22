@@ -36,6 +36,9 @@ Use these npm scripts to manage rollouts:
 # Apply all pending rollouts
 npm run db:rollout
 
+# Apply rollouts for a specific issue (optional parameter)
+npm run db:rollout 26
+
 # Rollback a specific rollout (requires issue number)
 npm run db:revert 26
 
@@ -87,7 +90,11 @@ To update your existing local database with the latest changes:
 
 1.  **Apply Pending Rollouts**: 
     ```bash
+    # Run all pending rollouts
     npm run db:rollout
+    
+    # Or run rollouts for a specific issue only
+    npm run db:rollout 26
     ```
     The system will automatically determine which rollouts need to be run.
 
