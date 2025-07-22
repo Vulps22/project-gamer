@@ -8,7 +8,8 @@
     "test": "jest",
     "lint": "eslint .",
     "db:apply": "node scripts/apply-schema.js",
-    "db:migrate": "node scripts/run-migrations.js"
+    "db:migrate": "node scripts/run-migrations.js",
+    "db:revert": "node scripts/run-revert.js"
   },
 
   "author": "Vulps",
