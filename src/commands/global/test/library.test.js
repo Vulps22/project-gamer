@@ -22,10 +22,10 @@ const { chooseStoresMessage } = require('../../../messages');
 describe('Library Command', () => {
     let mockInteraction;
     let mockAutocompleteInteraction;
-    
+
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         mockInteraction = {
             options: {
                 getSubcommand: jest.fn(),
@@ -132,9 +132,9 @@ describe('Library Command', () => {
 
             // Assert
             expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith(
-                "Hello! We plan to flesh this out in the future," +
-                " but felt it was important to give everyone a way to see which games they have already added to their library." +
-                " For now, you can use `/library view` to see your games in the autocomplete."
+                'Hello! We plan to flesh this out in the future,' +
+                ' but felt it was important to give everyone a way to see which games they have already added to their library.' +
+                ' For now, you can use `/library view` to see your games in the autocomplete.'
             );
             expect(gameManagerService.getStoresForGame).not.toHaveBeenCalled();
         });
@@ -145,7 +145,7 @@ describe('Library Command', () => {
             mockInteraction.options.getString.mockReturnValue('123');
             const mockStores = [{ id: 1, name: 'Steam' }];
             const mockMessage = { content: 'Choose store message' };
-            
+
             gameManagerService.getStoresForGame.mockResolvedValue(mockStores);
             chooseStoresMessage.mockReturnValue(mockMessage);
 
@@ -164,7 +164,7 @@ describe('Library Command', () => {
             mockInteraction.options.getString.mockReturnValue('456');
             const mockAllStores = [{ id: 1, name: 'Steam' }, { id: 2, name: 'Epic' }];
             const mockMessage = { content: 'Choose store to remove message' };
-            
+
             gameManagerService.getAllStoresForGame.mockResolvedValue(mockAllStores);
             chooseStoresMessage.mockReturnValue(mockMessage);
 

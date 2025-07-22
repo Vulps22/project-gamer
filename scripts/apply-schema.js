@@ -1,5 +1,5 @@
 // This script applies all .sql files from the /database directory.
-// It uses the project's existing database module to ensure consistency.
+// It uses the project's database module with migration credentials.
 
 // Note: Your project has "type": "module" in package.json, but most files use
 // CommonJS (require). This script uses CommonJS to match your existing style.
@@ -10,14 +10,18 @@ const db = require('../src/lib/database.js');
 // --- Configuration ---
 // The directory where your .sql schema files are located.
 // It's relative to the project root.
-const SCHEMA_DIR = 'database';
+const SCHEMA_DIR = 'src/database';
 // -------------------
 
+/**
+ *
+ */
 async function main() {
     console.log('Starting database schema application script...');
 
     try {
-        // The `db` module singleton already handles the connection.
+        // Enable migration mode to use elevated credentials
+        await db.setMigrating(true);
 
         // 1. Disable Foreign Key Checks
         console.log('🔑 Disabling foreign key checks...');
@@ -40,8 +44,8 @@ async function main() {
                 console.log(`\t- Applying: ${file}`);
                 const sqlContent = await fs.readFile(filePath, 'utf8');
 
-                // db.query can handle multiple statements because we enabled it in database.js
-                await db.query(sqlContent);
+                // Use queryMultiple for schema files that contain multiple statements
+                await db.queryMultiple(sqlContent);
             }
             console.log('✅ All schema files applied successfully.');
         }
@@ -59,7 +63,7 @@ async function main() {
             console.error('❌ Failed to re-enable foreign key checks:', err);
         }
 
-        // Use the close method from your database module
+        // Use the close method from the database module
         await db.close();
         console.log('🚪 Database connection pool closed.');
     }
