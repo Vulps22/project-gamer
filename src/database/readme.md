@@ -117,6 +117,43 @@ To update your existing local database with the latest changes:
 
 ---
 
+## Reverting Deployed Changes
+
+If you need to revert a ticket that has already been deployed to production, you have two options:
+
+### 🤖 **Automated Reversion (Recommended)**
+
+The fastest and safest way to revert an issue is using our **one-click GitHub Actions workflow**:
+
+1. **Go to GitHub**: Repository → Actions → "Revert Issue"
+2. **Click "Run workflow"** 
+3. **Enter details**:
+   - Issue number (e.g., `27`)
+   - Reason for reversion
+   - Type `CONFIRM` to proceed
+4. **Click "Run workflow"**
+
+**What it does automatically:**
+- ✅ Validates the issue was in the latest release
+- ✅ Finds and reverts migration rollout commit (if exists)
+- ✅ Finds and reverts PR merge commit
+- ✅ Executes database rollback on production server
+- ✅ Creates hotfix release with auto-versioning
+- ✅ Triggers deployment of reverted state
+- ✅ Provides complete audit trail
+
+**Result:** Complete reversion in ~5 minutes with zero manual steps.
+
+### 🔧 **Manual Reversion Process**
+
+For complex scenarios or when automation isn't available, follow the comprehensive manual guide:
+
+📖 **[Manual Reversion Guide](./reverting%20your%20ticket.md)**
+
+**⚠️ Important**: The automated workflow is recommended for 99% of scenarios. Only use manual reversion for edge cases or when the automation fails.
+
+---
+
 ## Important Notice
 
 Use of this bot and its associated code is for **development purposes only** unless explicitly authorized by Vulps.

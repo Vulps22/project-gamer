@@ -1,0 +1,347 @@
+# .github/workflows/revert-issue.yml
+
+name: Revert Issue
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to revert (e.g., 27)'
+        required: true
+        type: string
+      reason:
+        description: 'Reason for reversion'
+        required: true
+        type: string
+      confirm_revert:
+        description: 'Type "CONFIRM" to proceed with reversion'
+        required: true
+        type: string
+
+jobs:
+  validate-input:
+    name: Validate Reversion Request
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for validation
+
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm_revert }}" != "CONFIRM" ]; then
+            echo "❌ Reversion not confirmed. You must type 'CONFIRM' to proceed."
+            exit 1
+          fi
+          echo "✅ Reversion confirmed for issue #${{ github.event.inputs.issue_number }}"
+
+      - name: Validate issue was in latest release
+        run: |
+          echo "🔍 Validating that issue #${{ github.event.inputs.issue_number }} was included in the latest release..."
+          
+          # Get current and previous release tags
+          git fetch --tags
+          CURRENT_TAG=$(git describe --tags --abbrev=0 || echo "")
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 --exclude="$CURRENT_TAG" || echo "")
+          
+          if [ -z "$CURRENT_TAG" ]; then
+            echo "❌ No release tags found in repository"
+            exit 1
+          fi
+          
+          echo "📋 Current release: $CURRENT_TAG"
+          echo "📋 Previous release: ${PREVIOUS_TAG:-"(initial release)"}"
+          
+          # Get all merge commits between previous and current release
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMIT_RANGE="${PREVIOUS_TAG}..${CURRENT_TAG}"
+          else
+            # If no previous tag, check from beginning to current tag
+            COMMIT_RANGE="$(git rev-list --max-parents=0 HEAD)..${CURRENT_TAG}"
+          fi
+          
+          echo "🔍 Checking commit range: $COMMIT_RANGE"
+          
+          # Find all merge commits and extract issue numbers
+          echo "📋 Issues included in $CURRENT_TAG:"
+          RELEASED_ISSUES=$(git log --oneline --merges --grep="Merge pull request" "$COMMIT_RANGE" | \
+            grep -oE '#[0-9]+ from [^/]+/[0-9]+' | \
+            sed -E 's/#[0-9]+ from [^/]+\/([0-9]+)/\1/' | \
+            sort -n | uniq)
+          
+          if [ -z "$RELEASED_ISSUES" ]; then
+            echo "⚠️  No issues found in release $CURRENT_TAG"
+            echo "ℹ️  This might be the first release or no merge commits with issue numbers were found"
+            echo "⚠️  Proceeding with caution - manual verification recommended"
+          else
+            echo "$RELEASED_ISSUES" | while read -r issue; do
+              echo "  - Issue #$issue"
+            done
+            
+            # Check if requested issue is in the list
+            if echo "$RELEASED_ISSUES" | grep -q "^${{ github.event.inputs.issue_number }}$"; then
+              echo "✅ Issue #${{ github.event.inputs.issue_number }} was included in release $CURRENT_TAG"
+            else
+              echo "❌ Issue #${{ github.event.inputs.issue_number }} was NOT found in release $CURRENT_TAG"
+              echo ""
+              echo "📋 Issues that CAN be reverted from $CURRENT_TAG:"
+              echo "$RELEASED_ISSUES" | while read -r issue; do
+                echo "  - Issue #$issue"
+              done
+              echo ""
+              echo "💡 Tip: Only issues from the latest release can be safely reverted. If a previously released issue is causing major problems, create a new issue with 'critical' priority."
+              exit 1
+            fi
+          fi
+
+      - name: Verify issue exists on GitHub
+        run: |
+          echo "🔍 Verifying issue #${{ github.event.inputs.issue_number }} exists on GitHub..."
+          
+          # Use GitHub CLI or API to check if issue exists
+          RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/issue_check \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.inputs.issue_number }}")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            ISSUE_TITLE=$(cat /tmp/issue_check | jq -r '.title')
+            ISSUE_STATE=$(cat /tmp/issue_check | jq -r '.state')
+            echo "✅ Issue #${{ github.event.inputs.issue_number }} exists: \"$ISSUE_TITLE\" (State: $ISSUE_STATE)"
+          elif [ "$RESPONSE" = "404" ]; then
+            echo "❌ Issue #${{ github.event.inputs.issue_number }} does not exist in this repository"
+            exit 1
+          else
+            echo "⚠️  Unable to verify issue existence (HTTP $RESPONSE)"
+            echo "🔄 Proceeding with caution..."
+          fi
+
+  revert-migration:
+    name: Revert Migration and Code
+    needs: validate-input
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Fetch all history for reverting
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action (Revert Bot)"
+
+      - name: Find commits to revert
+        id: find_commits
+        run: |
+          echo "🔍 Searching for commits related to issue #${{ github.event.inputs.issue_number }}..."
+          
+          # Find migration rollout commit (may not exist for all issues)
+          MIGRATION_COMMIT=$(git log --oneline --grep="#${{ github.event.inputs.issue_number }} - Rolled out migration" --format="%H" | head -1)
+          
+          # Find PR merge commit using the pattern: "Merge pull request #XX from username/YY-issue-title"
+          # Where XX is PR number and YY is issue number
+          PR_COMMIT=$(git log --oneline --merges --grep="Merge pull request.*/${{ github.event.inputs.issue_number }}-" --format="%H" | head -1)
+          
+          # Alternative search pattern in case the issue number format is different
+          if [ -z "$PR_COMMIT" ]; then
+            PR_COMMIT=$(git log --oneline --merges --grep="Merge pull request.*#${{ github.event.inputs.issue_number }}" --format="%H" | head -1)
+          fi
+          
+          echo "MIGRATION_COMMIT=$MIGRATION_COMMIT" >> $GITHUB_OUTPUT
+          echo "PR_COMMIT=$PR_COMMIT" >> $GITHUB_OUTPUT
+          
+          # Report findings
+          if [ -z "$MIGRATION_COMMIT" ]; then
+            echo "ℹ️  No migration rollout commit found for issue #${{ github.event.inputs.issue_number }}"
+            echo "   This is normal for issues without database changes"
+          else
+            echo "✅ Found migration commit: $MIGRATION_COMMIT"
+            git log --oneline -1 $MIGRATION_COMMIT
+          fi
+          
+          if [ -z "$PR_COMMIT" ]; then
+            echo "❌ No PR merge commit found for issue #${{ github.event.inputs.issue_number }}"
+            echo "   This suggests the issue was not properly merged or uses a different naming convention"
+            echo "🔍 Searching for any commits mentioning issue #${{ github.event.inputs.issue_number }}..."
+            git log --oneline --grep="#${{ github.event.inputs.issue_number }}" --format="%H %s" | head -5
+            exit 1
+          else
+            echo "✅ Found PR merge commit: $PR_COMMIT"
+            git log --oneline -1 $PR_COMMIT
+          fi
+          
+          # Verify we have at least the PR commit to revert
+          if [ -z "$PR_COMMIT" ]; then
+            echo "❌ Cannot proceed without finding the PR merge commit"
+            echo "💡 Tip: Ensure the issue was merged using standard GitHub PR workflow"
+            exit 1
+          fi
+
+      - name: Revert migration rollout commit
+        if: steps.find_commits.outputs.MIGRATION_COMMIT != ''
+        run: |
+          echo "🔄 Reverting migration rollout commit..."
+          git revert --no-edit ${{ steps.find_commits.outputs.MIGRATION_COMMIT }}
+          echo "✅ Migration rollout commit reverted"
+
+      - name: Check for database rollback requirements
+        run: |
+          if [ -n "${{ steps.find_commits.outputs.MIGRATION_COMMIT }}" ]; then
+            echo "🗄️ Issue #${{ github.event.inputs.issue_number }} has database migrations to rollback"
+            
+            # Check if rollback file exists in future/ directory (after revert)
+            if [ -f "src/database/future/${{ github.event.inputs.issue_number }}_rollback.sql" ]; then
+              echo "✅ Rollback file found: src/database/future/${{ github.event.inputs.issue_number }}_rollback.sql"
+              echo "📝 Database rollback will be executed during deployment"
+              echo "HAS_DATABASE_CHANGES=true" >> $GITHUB_ENV
+            else
+              echo "❌ Rollback file not found: src/database/future/${{ github.event.inputs.issue_number }}_rollback.sql"
+              echo "⚠️  Manual database rollback may be required"
+              echo "HAS_DATABASE_CHANGES=false" >> $GITHUB_ENV
+            fi
+          else
+            echo "ℹ️  Issue #${{ github.event.inputs.issue_number }} has no database migrations"
+            echo "✅ No database rollback required"
+            echo "HAS_DATABASE_CHANGES=false" >> $GITHUB_ENV
+          fi
+
+      - name: Revert PR merge commit
+        run: |
+          echo "🔄 Reverting PR merge commit..."
+          git revert --no-edit ${{ steps.find_commits.outputs.PR_COMMIT }}
+          echo "✅ PR merge commit reverted"
+
+      - name: Push revert commits
+        run: |
+          echo "📤 Pushing revert commits..."
+          git push origin main
+          echo "✅ Revert commits pushed to main branch"
+
+      - name: Get current version for hotfix
+        id: get_version
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 || echo "v1.0.0")
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "📋 Latest version: $LATEST_TAG"
+
+  execute-database-rollback:
+    name: Execute Database Rollback on Server
+    needs: [revert-migration]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Execute rollback on production server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: HAS_DATABASE_CHANGES
+          script: |
+            cd /opt/discord-bots/lfgamesync
+            
+            # Backup database before any changes
+            echo "🗄️ Creating backup before rollback..."
+            ./backup-db.sh
+            
+            # Stop the current bot to prevent interference
+            echo "🛑 Stopping current bot..."
+            docker compose stop bot
+            
+            # Execute database rollback only if there were database changes
+            # This uses the CURRENT image which still has the rollback files
+            if [ "$HAS_DATABASE_CHANGES" = "true" ]; then
+              echo "🔄 Executing database rollback for issue #${{ github.event.inputs.issue_number }}..."
+              docker compose run --rm bot npm run db:revert ${{ github.event.inputs.issue_number }}
+            else
+              echo "ℹ️  No database rollback required for issue #${{ github.event.inputs.issue_number }}"
+            fi
+            
+            echo "✅ Database rollback completed successfully"
+
+  deploy-hotfix:
+    name: Deploy Hotfix
+    needs: [execute-database-rollback]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Get latest version
+        id: get_version
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git describe --tags --abbrev=0 || echo "v1.0.0")
+          
+          # Generate hotfix number by counting existing hotfixes for this version
+          HOTFIX_COUNT=$(git tag -l "${LATEST_TAG}-H*" | wc -l)
+          NEXT_HOTFIX=$((HOTFIX_COUNT + 1))
+          HOTFIX_VERSION="${LATEST_TAG}-H${NEXT_HOTFIX}"
+          
+          echo "HOTFIX_VERSION=$HOTFIX_VERSION" >> $GITHUB_OUTPUT
+          echo "📋 Creating hotfix version: $HOTFIX_VERSION"
+
+      - name: Create hotfix release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.HOTFIX_VERSION }}
+          release_name: "Hotfix ${{ steps.get_version.outputs.HOTFIX_VERSION }} - Revert Issue #${{ github.event.inputs.issue_number }}"
+          body: |
+            ## 🔄 Hotfix Release - Revert Issue #${{ github.event.inputs.issue_number }}
+            
+            **Reason for reversion:** ${{ github.event.inputs.reason }}
+            
+            ### 📋 Reverted Changes:
+            - Database schema changes for issue #${{ github.event.inputs.issue_number }}
+            - Feature code changes for issue #${{ github.event.inputs.issue_number }}
+            
+            ### 🗄️ Database Impact:
+            - Rollback executed: `${{ github.event.inputs.issue_number }}_rollback.sql`
+            - Migration files moved back to `future/` directory
+            
+            ### ⚠️ Important Notes:
+            - This hotfix reverts all changes from issue #${{ github.event.inputs.issue_number }}
+            - Database rollback has been executed
+            - The deploy workflow will automatically start the reverted bot
+            
+            **Generated automatically by GitHub Actions Revert Workflow**
+          draft: false
+          prerelease: false
+
+  notify-completion:
+    name: Notify Completion
+    needs: [deploy-hotfix]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Post completion summary
+        run: |
+          echo "🎉 Issue #${{ github.event.inputs.issue_number }} reversion completed successfully!"
+          echo ""
+          echo "📋 Summary:"
+          echo "- Migration rollout commit reverted ✅"
+          echo "- PR merge commit reverted ✅"
+          echo "- Database rollback executed ✅"  
+          echo "- Hotfix release created ✅"
+          echo "- Deploy workflow triggered ✅"
+          echo ""
+          echo "⚠️ Next Steps:"
+          echo "1. Monitor the deploy workflow for completion"
+          echo "2. Verify application functionality after deployment"
+          echo "3. Monitor for any issues"
+          echo "4. Update issue #${{ github.event.inputs.issue_number }} status"
+          echo "5. Notify stakeholders of completion"
+          echo ""
+          echo "🔗 The deploy workflow will automatically:"
+          echo "  - Pull the new reverted Docker image"
+          echo "  - Deploy Discord commands"
+          echo "  - Start the reverted bot"
