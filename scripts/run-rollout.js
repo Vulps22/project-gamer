@@ -64,10 +64,17 @@ async function migrationLogTableExists() {
 }
 
 /**
- *
+ * Main rollout function
  */
 async function main() {
-    console.log('Starting database rollout script...');
+    // Check if specific issue number is provided
+    const issueNumber = process.argv[2];
+    
+    if (issueNumber) {
+        console.log(`Starting database rollout script for issue #${issueNumber}...`);
+    } else {
+        console.log('Starting database rollout script...');
+    }
 
     try {
     // Enable migration mode to use elevated credentials
@@ -79,11 +86,23 @@ async function main() {
         // 1. Get and sort all rollout files.
         // Sorting ensures that files like '001_...'.sql run before '002_...'.sql
         const files = await fs.readdir(FUTURE_DIR);
-        const sqlFiles = files
+        let sqlFiles = files
             .filter(file => path.extname(file).toLowerCase() === '.sql')
             .sort(); // Alphabetical sort is predictable and reliable with a good naming convention.
 
-        if (sqlFiles.length === 0) {
+        // Filter for specific issue number if provided
+        if (issueNumber) {
+            const issuePattern = new RegExp(`^${issueNumber}_(rollout|rollback)\\.sql$`, 'i');
+            sqlFiles = sqlFiles.filter(file => issuePattern.test(file));
+            
+            if (sqlFiles.length === 0) {
+                console.log(`❌ No rollout files found for issue #${issueNumber}.`);
+                console.log(`Expected files: ${issueNumber}_rollout.sql, ${issueNumber}_rollback.sql`);
+                return;
+            }
+        }
+
+        if (sqlFiles.length === 0 && !issueNumber) {
             console.log('✅ No rollout files found in /future. Database is up to date.');
             return; // Exit gracefully
         }
@@ -135,12 +154,17 @@ async function main() {
         }
 
         if (pendingRollouts.length === 0) {
-            console.log(`✅ No new rollouts to run in ${currentEnv} environment. Database is up to date.`);
+            if (issueNumber) {
+                console.log(`✅ No new rollouts to run for issue #${issueNumber} in ${currentEnv} environment.`);
+            } else {
+                console.log(`✅ No new rollouts to run in ${currentEnv} environment. Database is up to date.`);
+            }
             return;
         }
 
         const rerunMessage = ' (rollouts require rollback first, rollbacks always allowed)';
-        console.log(`📂 Found ${pendingRollouts.length} rollout(s) to run in ${currentEnv} environment${rerunMessage}...`);
+        const issueMessage = issueNumber ? ` for issue #${issueNumber}` : '';
+        console.log(`📂 Found ${pendingRollouts.length} rollout(s) to run${issueMessage} in ${currentEnv} environment${rerunMessage}...`);
 
         // 4. Execute each pending rollout
         for (const file of pendingRollouts) {
