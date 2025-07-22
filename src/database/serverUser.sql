@@ -20,6 +20,6 @@ CREATE TABLE `serverUser` (
 
 ALTER TABLE `serverUser`
   COMMENT='Junction table linking users to the servers they are members of, and storing server-specific settings.',
-  ALTER COLUMN `serverId` SET COMMENT 'Foreign key linking to the `server` table.',
-  ALTER COLUMN `userId` SET COMMENT 'Foreign key linking to the `user` table.',
-  ALTER COLUMN `sharing` SET COMMENT 'Boolean flag (0=false, 1=true) indicating if the user is sharing their game library with this specific server.';
+  MODIFY COLUMN `serverId` varchar(20) NOT NULL COMMENT 'Foreign key linking to the `server` table.',
+  MODIFY COLUMN `userId` varchar(20) NOT NULL COMMENT 'Foreign key linking to the `user` table.',
+  MODIFY COLUMN `sharing` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Boolean flag (0=false, 1=true) indicating if the user is sharing their game library with this specific server.';

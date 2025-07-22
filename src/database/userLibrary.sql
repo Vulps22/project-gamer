@@ -6,8 +6,8 @@ DROP TABLE IF EXISTS `userLibrary`;
 
 CREATE TABLE `userLibrary` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `userId` varchar(20) DEFAULT NULL,
-  `gameStoreId` int DEFAULT NULL,
+  `userId` varchar(20) NOT NULL,
+  `gameStoreId` int NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_userLibrary_user` (`userId`),
   KEY `fk_userLibrary_gameStore` (`gameStoreId`),
@@ -22,6 +22,6 @@ CREATE TABLE `userLibrary` (
 
 ALTER TABLE `userLibrary`
   COMMENT='Junction table representing a user''s game library, linking a user to a specific game on a specific store.',
-  ALTER COLUMN `id` SET COMMENT 'Internal unique identifier for the library entry.',
-  ALTER COLUMN `userId` SET COMMENT 'Foreign key linking to the `user` who owns the game.',
-  ALTER COLUMN `gameStoreId` SET COMMENT 'Foreign key linking to the `gameStore` entry, representing the specific game on a specific store.';
+  MODIFY COLUMN `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Internal unique identifier for the library entry.',
+  MODIFY COLUMN `userId` varchar(20) NOT NULL COMMENT 'Foreign key linking to the `user` who owns the game.',
+  MODIFY COLUMN `gameStoreId` int NOT NULL COMMENT 'Foreign key linking to the `gameStore` entry, representing the specific game on a specific store.';

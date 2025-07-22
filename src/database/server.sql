@@ -15,4 +15,4 @@ CREATE TABLE `server` (
 
 ALTER TABLE `server`
   COMMENT='Stores the unique IDs of Discord servers (guilds) where the bot is active.',
-  ALTER COLUMN `id` SET COMMENT 'The unique Discord server (guild) ID. This is the primary key.';
+  MODIFY COLUMN `id` varchar(20) NOT NULL COMMENT 'The unique Discord server (guild) ID. This is the primary key.';

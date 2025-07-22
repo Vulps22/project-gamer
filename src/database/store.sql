@@ -6,7 +6,7 @@ DROP TABLE IF EXISTS `store`;
 
 CREATE TABLE `store` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) NOT NULL,
+  `name` varchar(255) NOT NULL,
   `scraper_key` varchar(50) NOT NULL,
   `base_hostname` varchar(255) NOT NULL,
   `is_scrapable` tinyint(1) NOT NULL DEFAULT '1',
@@ -35,11 +35,11 @@ INSERT INTO `store` (`id`, `name`, `scraper_key`, `base_hostname`, `is_scrapable
 
 ALTER TABLE `store`
   COMMENT='Stores information and configuration for different digital game stores.',
-  ALTER COLUMN `id` SET COMMENT 'Internal unique identifier for the store record.',
-  ALTER COLUMN `name` SET COMMENT 'User-friendly display name of the store (e.g., Steam, GOG.com).',
-  ALTER COLUMN `scraper_key` SET COMMENT 'A unique key used to identify the scraper module in the application''s code.',
-  ALTER COLUMN `base_hostname` SET COMMENT 'The base hostname used for matching store URLs (e.g., store.steampowered.com).',
-  ALTER COLUMN `is_scrapable` SET COMMENT 'Boolean flag (0=false, 1=true) indicating if this store should be actively scraped for data.',
-  ALTER COLUMN `notes` SET COMMENT 'Internal developer notes about the store or its scraper (optional).',
-  ALTER COLUMN `created_at` SET COMMENT 'Timestamp when the store record was created.',
-  ALTER COLUMN `updated_at` SET COMMENT 'Timestamp when the store record was last updated.';
+  MODIFY COLUMN `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'Internal unique identifier for the store record.',
+  MODIFY COLUMN `name` varchar(255) NOT NULL COMMENT 'User-friendly display name of the store (e.g., Steam, GOG.com).',
+  MODIFY COLUMN `scraper_key` varchar(50) NOT NULL COMMENT 'A unique key used to identify the scraper module in the application''s code.',
+  MODIFY COLUMN `base_hostname` varchar(255) NOT NULL COMMENT 'The base hostname used for matching store URLs (e.g., store.steampowered.com).',
+  MODIFY COLUMN `is_scrapable` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Boolean flag (0=false, 1=true) indicating if this store should be actively scraped for data.',
+  MODIFY COLUMN `notes` text DEFAULT NULL COMMENT 'Internal developer notes about the store or its scraper (optional).',
+  MODIFY COLUMN `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Timestamp when the store record was created.',
+  MODIFY COLUMN `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Timestamp when the store record was last updated.';
