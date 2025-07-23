@@ -11,35 +11,10 @@ class Database {
         if (Database.instance) {return Database.instance;}
         // -------------------------
 
-        // --- Use process.env directly ---
-        // These MUST come from your .env file or system environment variables.
-        const dbHost = process.env.DB_HOST;
-        const dbPort = process.env.DB_PORT;
-        const dbUser = process.env.DB_USER;
-        const dbPassword = process.env.DB_PASS;
-        const dbName = process.env.DB_NAME;
-
-        if (!dbHost || !dbUser || !dbPassword || !dbName || !dbPort) {
-            console.error('FATAL ERROR: Database environment variables (DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME) are not set.');
-            process.exit(1);
-        }
-        // --------------------------------
-
-        this.pool = mysql.createPool({
-            host: dbHost,
-            port: dbPort,
-            user: dbUser,
-            password: dbPassword,
-            database: dbName,
-            waitForConnections: true,
-            connectionLimit: 10,
-            queueLimit: 0,
-            namedPlaceholders: true // <-- ADD THIS LINE
-
-            // Add timezone or other settings if needed
-        });
-
-        console.log('Database pool created.');
+        // --- Instance Variables ---
+        this.isMigrating = false; // Toggle for migration mode
+        this.pool = null; // Will be initialized when needed
+        // -------------------------
 
         // --- Singleton Pattern ---
         // Store this instance for future calls.
@@ -48,10 +23,96 @@ class Database {
     }
 
     /**
+     * Sets the migration mode and reinitializes the connection pool with appropriate credentials.
+     * @param {boolean} migrating - True to use migration credentials, false for regular bot credentials
+     */
+    async setMigrating(migrating) {
+        // Close existing pool if it exists
+        if (this.pool) {
+            await this.pool.end();
+            console.log('Closed existing database pool.');
+        }
+
+        this.isMigrating = migrating;
+        this.pool = this._createPool();
+
+        const modeText = migrating ? 'migration' : 'bot';
+        console.log(`Database pool created in ${modeText} mode.`);
+    }
+
+    /**
+     * Gets the appropriate database credentials based on current mode.
+     * @returns {object} Database connection credentials
+     */
+    getCredentials() {
+        const dbHost = process.env.DB_HOST;
+        const dbPort = process.env.DB_PORT;
+        const dbName = process.env.DB_NAME;
+
+        let dbUser, dbPassword;
+
+        if (this.isMigrating) {
+            // Use migration credentials (with fallback to regular credentials)
+            dbUser = process.env.DB_MIGRATION_USER || process.env.DB_USER;
+            dbPassword = process.env.DB_MIGRATION_PASS || process.env.DB_PASS;
+        } else {
+            // Use regular bot credentials
+            dbUser = process.env.DB_USER;
+            dbPassword = process.env.DB_PASS;
+        }
+
+        if (!dbHost || !dbUser || !dbPassword || !dbName || !dbPort) {
+            const mode = this.isMigrating ? 'migration' : 'bot';
+            console.error(`FATAL ERROR: Database environment variables for ${mode} mode are not set.`);
+            console.error('Required:', this.isMigrating ?
+                'DB_HOST, DB_PORT, DB_MIGRATION_USER, DB_MIGRATION_PASS, DB_NAME' :
+                'DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME');
+            process.exit(1);
+        }
+
+        return { dbHost, dbPort, dbUser, dbPassword, dbName };
+    }
+
+    /**
+     * Creates a new connection pool with current credentials.
+     * @returns {mysql.Pool} MySQL connection pool
+     * @private
+     */
+    _createPool() {
+        const { dbHost, dbPort, dbUser, dbPassword, dbName } = this.getCredentials();
+
+        return mysql.createPool({
+            host: dbHost,
+            port: dbPort,
+            user: dbUser,
+            password: dbPassword,
+            database: dbName,
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0,
+            namedPlaceholders: true,
+            multipleStatements: true // Required for schema files with multiple statements
+        });
+    }
+
+    /**
+     * Ensures the database pool is initialized. Creates it if it doesn't exist.
+     * @private
+     */
+    _ensurePool() {
+        if (!this.pool) {
+            this.pool = this._createPool();
+            const modeText = this.isMigrating ? 'migration' : 'bot';
+            console.log(`Database pool created in ${modeText} mode.`);
+        }
+    }
+
+    /**
      * Tests the database connection pool.
-     * @returns {Promise<boolean>}
+     * @returns {Promise<boolean>} True if connection successful
      */
     async testConnection() {
+        this._ensurePool();
         try {
             // Get a connection and immediately release it.
             const connection = await this.pool.getConnection();
@@ -69,9 +130,10 @@ class Database {
     /**
      * Gets a single connection from the pool. This is the first step for any transaction.
      * The connection MUST be released manually using connection.release().
-     * @returns {Promise<mysql.PoolConnection>}
+     * @returns {Promise<object>} Database connection
      */
     async getConnection() {
+        this._ensurePool();
         return this.pool.getConnection();
     }
 
@@ -80,10 +142,11 @@ class Database {
      * Can run on the main pool or on a specific connection for transactions.
      * @param {string} sql - The SQL query with ? or :named placeholders.
      * @param {Array<any>|object} [params] - Parameters to substitute.
-     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
-     * @returns {Promise<any>}
+     * @param {object} [connection] - An optional connection for transactions.
+     * @returns {Promise<any>} Query results
      */
     async query(sql, params = [], connection = null) {
+        this._ensurePool();
         const executor = connection || this.pool;
         try {
             const [rows] = await executor.execute(sql, params);
@@ -97,14 +160,33 @@ class Database {
     }
 
     /**
+     * Executes multiple SQL statements (for schema files).
+     * Uses .query() instead of .execute() to support multiple statements.
+     * @param {string} sql - The SQL containing multiple statements.
+     * @returns {Promise<any>} Query results
+     */
+    async queryMultiple(sql) {
+        this._ensurePool();
+        try {
+            const [rows] = await this.pool.query(sql);
+            return rows;
+        } catch (error) {
+            console.error('SQL Error:', error.message);
+            console.error('SQL Query:', sql);
+            throw error;
+        }
+    }
+
+    /**
      * Selects data from a table. Basic version.
-     * @param {string} table
-     * @param {string} [columns]
+     * @param {string} table - Table name
+     * @param {string} [columns] - Columns to select
      * @param {string} [where] - e.g., 'id = ? AND status = ?'
-     * @param {Array<any>} [params]
-     * @returns {Promise<Array<object>>}
+     * @param {Array<any>} [params] - Parameters for WHERE clause
+     * @returns {Promise<Array<object>>} Query results
      */
     async select(table, columns = '*', where = '', params = []) {
+        this._ensurePool();
         // DANGER: Ensure 'table' and 'columns' are NOT from user input without validation.
         const sql = `SELECT ${columns} FROM \`${table}\` ${where ? 'WHERE ' + where : ''}`;
         return this.query(sql, params);
@@ -112,12 +194,13 @@ class Database {
 
     /**
      * Inserts data into a table.
-     * @param {string} table
+     * @param {string} table - Table name
      * @param {object} data - e.g., { name: 'Test', value: 123 }
-     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
+     * @param {object} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - The insertId.
      */
     async insert(table, data, connection = null) {
+        this._ensurePool();
         const columns = Object.keys(data).map(col => `\`${col}\``).join(', ');
         const placeholders = Object.keys(data).map(() => '?').join(', ');
         const values = Object.values(data);
@@ -128,14 +211,15 @@ class Database {
 
     /**
      * Updates data in a table.
-     * @param {string} table
+     * @param {string} table - Table name
      * @param {object} data - The fields to update.
      * @param {string} where - The WHERE clause (e.g., 'id = ?').
      * @param {Array<any>} params - Parameters for the WHERE clause.
-     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
+     * @param {object} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - Number of affected rows.
      */
     async update(table, data, where, params = [], connection = null) {
+        this._ensurePool();
         const updates = Object.keys(data).map(col => `\`${col}\` = ?`).join(', ');
         const values = [...Object.values(data), ...params];
         const sql = `UPDATE \`${table}\` SET ${updates} WHERE ${where}`;
@@ -145,13 +229,14 @@ class Database {
 
     /**
      * Deletes data from a table.
-     * @param {string} table
+     * @param {string} table - Table name
      * @param {string} where - The WHERE clause (e.g., 'id = ?').
      * @param {Array<any>} params - Parameters for the WHERE clause.
-     * @param {mysql.PoolConnection} [connection] - An optional connection for transactions.
+     * @param {object} [connection] - An optional connection for transactions.
      * @returns {Promise<number>} - Number of affected rows.
      */
     async delete(table, where, params = [], connection = null) {
+        this._ensurePool();
         const sql = `DELETE FROM \`${table}\` WHERE ${where}`;
         const result = await this.query(sql, params, connection);
         return result.affectedRows;
@@ -161,8 +246,11 @@ class Database {
      * Closes the database connection pool. Call on graceful shutdown.
      */
     async close() {
-        await this.pool.end();
-        console.log('Database pool closed.');
+        if (this.pool) {
+            await this.pool.end();
+            this.pool = null;
+            console.log('Database pool closed.');
+        }
     }
 }
 

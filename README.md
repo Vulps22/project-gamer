@@ -44,3 +44,23 @@ The initial scope _removes_ the original steam API integration and any pre-exist
 - `/set channel-for-game <searchable:game> <channel>` - If set, when a player joins a community with the specified game, or adds the specified game to their library, automatically add the user to that channel.
 - - This approach bypasses the limits to the number of roles a discord server can have
 - `/set auto-role-management <true|false>` - If enabled, Automatically add and remove roles from users if they own a game with a registered role
+
+---
+
+## Database Management
+
+This project includes a comprehensive database migration and reversion system:
+
+### 📋 **For Developers**
+- **Database Migrations**: Use `npm run db:rollout` to apply schema changes
+- **Database Rollbacks**: Use `npm run db:revert <issue_number>` to undo changes
+- **Schema Files**: Located in `src/database/` with migration tracking
+
+### 🚀 **For Operations**  
+- **Automated Reversion**: GitHub Actions workflow for one-click issue reversion
+- **Production Deployments**: Automatic migration rollouts during releases
+- **Database Backups**: Automatic backups before all schema changes
+
+📖 **Full Documentation**: See `src/database/readme.md` for complete database management guide
+
+---

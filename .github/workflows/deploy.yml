@@ -45,6 +45,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from git tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
       - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@master
         with:
@@ -53,7 +62,66 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd /opt/discord-bots/lfgamesync
+            
+            # Backup database before rollout using local script
+            ./backup-db.sh
+            
+            # Pull latest image
             docker compose pull bot
+            
+            # Run database rollouts before deployment
+            docker compose run --rm bot npm run db:rollout
+            
             # Deploy Discord commands before starting the bot
             docker compose run --rm bot node deploy-commands.js
+            
+            # Start the bot
             docker compose up -d bot
+
+            # Clean up old backups (keep last 14 days)
+            find /opt/backups/project-gamer -name "backup_*.sql" -mtime +14 -delete
+
+      - name: Move migration files from future to release
+        run: |
+          # Create release directory if it doesn't exist
+          mkdir -p src/database/release
+          
+          # Move and commit each migration file separately for clean rollback capability
+          if [ -d "src/database/future" ] && [ "$(ls -A src/database/future)" ]; then
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            
+            for file in src/database/future/*; do
+              if [ -f "$file" ]; then
+                filename=$(basename "$file")
+                
+                # Extract issue number from filename (assumes format like "26_rollout.sql")
+                issue_num=$(echo "$filename" | grep -o '^[0-9]\+' || echo "unknown")
+                
+                # Move the file
+                mv "$file" "src/database/release/$filename"
+                
+                # Commit this specific file
+                git add "src/database/release/$filename"
+                git add "src/database/future/"
+                git commit -m "#${issue_num} - Rolled out migration for ${GITHUB_REF#refs/tags/}"
+                
+                echo "✅ Moved and committed $filename for issue #${issue_num}"
+              fi
+            done
+            
+            # Push all commits at once
+            git push
+            echo "✅ All migration files moved and committed separately"
+          else
+            echo "ℹ️  No migration files to move"
+          fi
+
+      - name: Verify migration file changes
+        run: |
+          if [ -n "$(git log --oneline -10 | grep 'Rolled out migration')" ]; then
+            echo "✅ Migration commits created successfully"
+            git log --oneline -5 | grep 'Rolled out migration' || true
+          else
+            echo "ℹ️  No migration commits were needed"
+          fi
