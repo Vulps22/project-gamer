@@ -18,4 +18,4 @@ CREATE TABLE `user` (
 ALTER TABLE `user`
   COMMENT='Stores the unique Discord IDs of users who have interacted with the bot.',
   MODIFY COLUMN `id` varchar(20) NOT NULL COMMENT 'The unique Discord user ID. This is the primary key.',
-  MODIFY COLUMN `steamId` varchar(20) DEFAULT NULL COMMENT 'The user\'s Steam ID for account linking and library syncing.';
+  MODIFY COLUMN `steamId` varchar(64) DEFAULT NULL COMMENT 'The user\'s Steam ID for account linking and library syncing.';
