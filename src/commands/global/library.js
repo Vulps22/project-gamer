@@ -32,8 +32,8 @@ module.exports = {
             .setName('view')
             .setDescription('View your library in the autocomplete')
             .addStringOption(new SlashCommandStringOption()
-                .setName('game')
-                .setDescription('The game you want to view')
+                .setName('store')
+                .setDescription('The store where you want to view all the games from that you own')
                 .setRequired(false)
                 .setAutocomplete(true)
             )
@@ -48,9 +48,13 @@ module.exports = {
     async autoComplete(interaction) {
         const name = interaction.options.getFocused();
 
+        if (interaction.options.getSubcommand() === 'view') {
+            return interaction.respond([{ name: 'Steam', value: 'Steam' }, { name: 'GOG', value: 'GOG' }, { name: 'Meta', value: 'Meta' }])
+        }
+
         let games = [];
 
-        if (interaction.options.getSubcommand() === 'remove' || interaction.options.getSubcommand() === 'view') {
+        if (interaction.options.getSubcommand() === 'remove') {
             games = await gameManagerService.searchUserGamesByName(name, interaction.user.id);
         } else {
             games = await gameManagerService.searchGamesByName(name);
@@ -66,7 +70,6 @@ module.exports = {
         console.log('Autocomplete choices:', choices);
 
         interaction.respond(choices);
-
     },
 
     /**
@@ -74,8 +77,13 @@ module.exports = {
      * @param {BotInteraction} interaction
      */
     async execute(interaction) {
-
         if (interaction.options.getSubcommand() === 'view') {
+            const store = interaction.options.getString('store');
+
+            if (store === null) {
+                return interaction.ephemeralReply("Please input a store you wish to view.")
+            }
+
             const library = await userLibraryManagerService.getUserLibrary(interaction.user.id);
 
             if (!library || Object.keys(library).length === 0) {

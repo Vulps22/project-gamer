@@ -72,8 +72,9 @@ class UserLibraryManagerService {
      * @returns {Promise<Object>} Returned array of user owned games sorted by stores.
      */
     async getUserLibrary(userId) {
+        console.log('getUserLibrary called with:', userId);
 
-        const [rows] = await db.query(`
+        const rows = await db.query(`
             SELECT 
                 store.name AS storeName,
                 game.name AS gameName
@@ -85,10 +86,12 @@ class UserLibraryManagerService {
         `, [userId]);
 
         if (!rows) {
-            return {};
+            return [];
         }
 
-        const libraryByStore = {};
+        console.log(rows);
+
+        const libraryByStore = [];
 
         for (const row of rows) {
             const { storeName, gameName } = row;
