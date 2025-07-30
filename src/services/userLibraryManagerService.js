@@ -67,6 +67,41 @@ class UserLibraryManagerService {
     }
 
     /**
+     * Grabs all the games sorted in stores that the user has in their library.
+     * @param userId {Snowflake} The Discord User ID.
+     * @returns {Promise<Object>} Returned array of user owned games sorted by stores.
+     */
+    async getUserLibrary(userId) {
+
+        const [rows] = await db.query(`
+            SELECT 
+                store.name AS storeName,
+                game.name AS gameName
+            FROM userLibrary
+                JOIN gameStore ON userLibrary.gameStoreId = gameStore.id
+                JOIN game ON gameStore.gameId = game.id
+                JOIN store ON gameStore.storeId = store.id
+            WHERE userLibrary.userId = ?
+        `, [userId]);
+
+        if (!rows) {
+            return {};
+        }
+
+        const libraryByStore = {};
+
+        for (const row of rows) {
+            const { storeName, gameName } = row;
+            if (!libraryByStore[storeName]) {
+                libraryByStore[storeName] = [];
+            }
+            libraryByStore[storeName].push(gameName);
+        }
+
+        return libraryByStore;
+    }
+
+    /**
      * Synchronizes a user's game library with the bot's database.
      * Adds all provided gameStoreIds to the user's library if they don't already exist.
      * @param {Snowflake} discordUserId The Discord User ID.
