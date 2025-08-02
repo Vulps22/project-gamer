@@ -82,7 +82,7 @@ class UserLibraryManagerService {
                      JOIN store ON gameStore.storeId = store.id
             WHERE userLibrary.userId = ?`, [userId]);
 
-        const stores = {};
+        const stores = [];
 
         if (!query) {
             return stores;
@@ -91,7 +91,7 @@ class UserLibraryManagerService {
         for (const data of query) {
             const { storeName, gameName } = data;
             if (!stores[storeName]) {
-                stores[storeName] = {};
+                stores[storeName] = [];
             }
             stores[storeName].push(gameName);
         }

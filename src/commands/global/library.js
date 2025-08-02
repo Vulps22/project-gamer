@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandSubcommandBuilder } = require('discord.js');
-const { gameManagerService, userLibraryManagerService } = require('../../services');
-const { chooseStoresMessage} = require('../../messages');
+const { gameManagerService } = require('../../services');
+const { chooseStoresMessage, chooseGameMessage } = require('../../messages');
 const { BotInteraction } = require('../../structures');
 const { AutocompleteInteraction } = require('discord.js');
 
@@ -32,8 +32,8 @@ module.exports = {
             .setName('view')
             .setDescription('View your library in the autocomplete')
             .addStringOption(new SlashCommandStringOption()
-                .setName('game')
-                .setDescription('The game you want to view')
+                .setName('store')
+                .setDescription('The store you want to view all your games from')
                 .setRequired(false)
                 .setAutocomplete(true)
             )
@@ -50,7 +50,11 @@ module.exports = {
 
         let games = [];
 
-        if (interaction.options.getSubcommand() === 'remove' || interaction.options.getSubcommand() === 'view') {
+        if (interaction.options.getSubcommand() === 'view') {
+            return interaction.respond([{ name: 'Steam', value: 'Steam' }, { name: 'GOG', value: 'GOG' }, { name: 'Meta', value: 'Meta' }]);
+        }
+
+        if (interaction.options.getSubcommand() === 'remove') {
             games = await gameManagerService.searchUserGamesByName(name, interaction.user.id);
         } else {
             games = await gameManagerService.searchGamesByName(name);
@@ -74,26 +78,16 @@ module.exports = {
      * @param {BotInteraction} interaction
      */
     async execute(interaction) {
-
         if (interaction.options.getSubcommand() === 'view') {
-            // return interaction.ephemeralReply('Hello! We plan to flesh this out in the future,'
-            //     + ' but felt it was important to give everyone a way to see which games they have already added to their library.'
-            //     + ' For now, you can use `/library view` to see your games in the autocomplete.');
+            const storeName = interaction.options.getString('store');
 
-            const library = await userLibraryManagerService.getUserLibrary(interaction.user.id);
-
-            if (!library || Object.keys(library).length === 0) {
-                return interaction.ephemeralReply('Your library is currently empty.');
+            if (storeName === null) {
+                return interaction.ephemeralReply('# Please specify a store.');
             }
 
-            let message = '**Your Game Library**:\n';
-            for (const [store, games] of Object.entries(library)) {
-                message += `\n__${store}__:\n• ${games.join('\n• ')}\n`;
-            }
+            const gamesMessage = await chooseGameMessage(interaction.user.id, storeName);
 
-            await interaction.ephemeralReply(message.trim());
-
-            return;
+            return interaction.ephemeralReply(null, gamesMessage);
         }
 
         const game = interaction.options.getString('game');
