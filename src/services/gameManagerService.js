@@ -450,8 +450,7 @@ class GameManagerService {
         SELECT
             gs.id,
             s.name
-        FROM
-            gameStore AS gs
+        FROM gameStore AS gs
         INNER JOIN
             store AS s ON gs.storeId = s.id
         WHERE

@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandSubcommandBuilder } = require('discord.js');
 const { gameManagerService } = require('../../services');
-const { chooseStoresMessage, chooseGameMessage } = require('../../messages');
+const { chooseStoresMessage, gameInformationMessage } = require('../../messages');
 const { BotInteraction } = require('../../structures');
 const { AutocompleteInteraction } = require('discord.js');
 
@@ -32,8 +32,8 @@ module.exports = {
             .setName('view')
             .setDescription('View your library in the autocomplete')
             .addStringOption(new SlashCommandStringOption()
-                .setName('store')
-                .setDescription('The store you want to view all your games from')
+                .setName('game')
+                .setDescription('View a game\' information')
                 .setRequired(false)
                 .setAutocomplete(true)
             )
@@ -51,7 +51,13 @@ module.exports = {
         let games = [];
 
         if (interaction.options.getSubcommand() === 'view') {
-            return interaction.respond([{ name: 'Steam', value: 'Steam' }, { name: 'GOG', value: 'GOG' }, { name: 'Meta', value: 'Meta' }]);
+            const gamesSearch = await gameManagerService.searchGamesByName(name);
+
+            if (!gamesSearch || gamesSearch.length === 0) {
+                return interaction.respond([{ name: 'No games found', value: 'none' }]);
+            }
+
+            return interaction.respond(gamesSearch.map(game => ({ name: game.name, value: String(game.id) })));
         }
 
         if (interaction.options.getSubcommand() === 'remove') {
@@ -74,23 +80,21 @@ module.exports = {
     },
 
     /**
-     *
      * @param {BotInteraction} interaction
      */
     async execute(interaction) {
-        if (interaction.options.getSubcommand() === 'view') {
-            const storeName = interaction.options.getString('store');
+        const game = interaction.options.getString('game');
 
+        if (interaction.options.getSubcommand() === 'view') {
             if (storeName === null) {
                 return interaction.ephemeralReply('# Please specify a store.');
             }
 
-            const gamesMessage = await chooseGameMessage(interaction.user.id, storeName);
+            const gamesMessage = await gameInformationMessage(interaction.user.id, storeName);
 
             return interaction.ephemeralReply(null, gamesMessage);
         }
 
-        const game = interaction.options.getString('game');
         const isDeleting = interaction.options.getSubcommand() === 'remove';
         let stores = await gameManagerService.getStoresForGame(game, interaction.user.id);
 
