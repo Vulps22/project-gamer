@@ -2,19 +2,19 @@ const { MessageFlags, TextDisplayBuilder, ContainerBuilder, SeparatorBuilder, Se
 const { gameManagerService } = require('../services');
 
 /**
- * @param gameName {string} Game name
+ * @param gameId {string} Game name
  * @returns {any} Message containing games.
  */
-async function gameInformationMessage(gameName) {
-    const titleComponent = new TextDisplayBuilder().setContent(`## ${gameName}`);
+async function gameInformationMessage(gameId) {
+    const game = await gameManagerService.getGameById(gameId);
+    const titleComponent = new TextDisplayBuilder().setContent(`## ${game.name}`);
 
     console.log('Title component:', titleComponent.toJSON());
 
-    const gameId = await gameManagerService.getIdByGame(gameName);
     const stores = await gameManagerService.getAllStoresForGame(gameId);
-    const storesMessage = 'Stores: ';
+    let storesMessage = 'Stores: ';
 
-    stores.forEach(store => storesMessage.concat(`\n- ${store}`));
+    stores.forEach(store => storesMessage += `\n- [${store.name}](${store.url})`);
 
     const storesComponent = new TextDisplayBuilder().setContent(storesMessage);
 

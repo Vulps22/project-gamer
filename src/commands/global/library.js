@@ -33,7 +33,7 @@ module.exports = {
             .setDescription('View your library in the autocomplete')
             .addStringOption(new SlashCommandStringOption()
                 .setName('game')
-                .setDescription('View a game\' information')
+                .setDescription('View a game\'s information')
                 .setRequired(false)
                 .setAutocomplete(true)
             )
@@ -86,11 +86,11 @@ module.exports = {
         const game = interaction.options.getString('game');
 
         if (interaction.options.getSubcommand() === 'view') {
-            if (storeName === null) {
-                return interaction.ephemeralReply('# Please specify a store.');
+            if (game === null) {
+                return interaction.ephemeralReply('# Please specify a game.');
             }
 
-            const gamesMessage = await gameInformationMessage(interaction.user.id, storeName);
+            const gamesMessage = await gameInformationMessage(game);
 
             return interaction.ephemeralReply(null, gamesMessage);
         }
