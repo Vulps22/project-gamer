@@ -17,11 +17,11 @@ jest.mock('../../../services', () => ({
 
 jest.mock('../../../messages', () => ({
     chooseStoresMessage: jest.fn(),
-    GlobalMessages: {}
+    gameInformationMessage: jest.fn(),
 }));
 
-const { gameManagerService, userLibraryManagerService } = require('../../../services');
-const { chooseStoresMessage } = require('../../../messages');
+const { gameManagerService } = require('../../../services');
+const { chooseStoresMessage, gameInformationMessage } = require('../../../messages');
 
 describe('Library Command', () => {
     let mockInteraction;
@@ -130,21 +130,21 @@ describe('Library Command', () => {
         test('should return info message for view subcommand', async () => {
             // Arrange
             mockInteraction.options.getSubcommand.mockReturnValue('view');
-            userLibraryManagerService.getUserLibrary.mockResolvedValue({
-                Steam: ['Half-Life', 'Portal'],
-                Meta: ['Beat Saber'],
-            });
+            mockInteraction.options.getString.mockReturnValue('123');
+
+            const mockMessage = {
+                flags: 64,
+                components: ['<mocked components>']
+            };
+
+            gameInformationMessage.mockResolvedValue(mockMessage);
 
             // Act
             await execute(mockInteraction);
 
             // Assert
-            expect(userLibraryManagerService.getUserLibrary).toHaveBeenCalledWith('user123');
-            expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith(
-                '**Your Game Library**:\n\n' +
-                '__Steam__:\n• Half-Life\n• Portal\n\n' +
-                '__Meta__:\n• Beat Saber'
-            );
+            expect(gameInformationMessage).toHaveBeenCalledWith('123');
+            expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith(null, mockMessage);
         });
 
         test('should handle add subcommand', async () => {

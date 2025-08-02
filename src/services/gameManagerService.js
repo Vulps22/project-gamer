@@ -449,12 +449,13 @@ class GameManagerService {
         const sql = `
         SELECT
             gs.id,
-            s.name
+            s.name,
+            gs.url,
+            g.imageURL
         FROM gameStore AS gs
-        INNER JOIN
-            store AS s ON gs.storeId = s.id
-        WHERE
-            gs.gameId = ?;
+            INNER JOIN store AS s ON gs.storeId = s.id
+            INNER JOIN game AS g ON gs.gameId = g.id
+        WHERE gs.gameId = ?;
         `;
 
         const results = await db.query(sql, [gameId]);

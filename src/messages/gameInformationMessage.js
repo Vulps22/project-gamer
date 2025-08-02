@@ -1,4 +1,7 @@
-const { MessageFlags, TextDisplayBuilder, ContainerBuilder, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
+const { MessageFlags, TextDisplayBuilder, ContainerBuilder, SeparatorBuilder, SeparatorSpacingSize, ButtonBuilder, ButtonStyle,
+    ActionRowBuilder,
+    MediaGalleryBuilder
+} = require('discord.js');
 const { gameManagerService } = require('../services');
 
 /**
@@ -7,21 +10,59 @@ const { gameManagerService } = require('../services');
  */
 async function gameInformationMessage(gameId) {
     const game = await gameManagerService.getGameById(gameId);
-    const titleComponent = new TextDisplayBuilder().setContent(`## ${game.name}`);
+    const titleComponent = new TextDisplayBuilder()
+        .setContent(`## ${game.name}`);
 
     console.log('Title component:', titleComponent.toJSON());
 
-    const stores = await gameManagerService.getAllStoresForGame(gameId);
-    let storesMessage = 'Stores: ';
+    const imageComponent = new MediaGalleryBuilder()
+        .addItems({
+            description: 'Game Image',
+            media: {
+                url: game.imageURL
+            }
+        });
 
+    const stores = await gameManagerService.getAllStoresForGame(gameId);
+
+    let storesMessage = '### Stores ';
     stores.forEach(store => storesMessage += `\n- [${store.name}](${store.url})`);
 
-    const storesComponent = new TextDisplayBuilder().setContent(storesMessage);
+    const storesComponent = new TextDisplayBuilder()
+        .setContent(storesMessage);
+
+    console.log('Stores component:', storesComponent.toJSON());
+
+    let bodyMessage = '';
+
+    bodyMessage += 'X members of this community own this game.'; // TODO: Calculate these
+    bodyMessage += '\nX members globally own this game.'; // TODO: Maybe merge stores and body message?
+
+    const bodyComponent = new TextDisplayBuilder().setContent(bodyMessage);
+
+    console.log('Body component:', bodyComponent.toJSON());
+
+    const addButton = new ButtonBuilder()
+        .setLabel('Add to Library')
+        .setStyle(ButtonStyle.Success)
+        .setCustomId('gameInformation;add;' + gameId);
+    const removeButton = new ButtonBuilder()
+        .setLabel('Remove from Library')
+        .setStyle(ButtonStyle.Danger)
+        .setCustomId('gameInformation;remove;' + gameId);
+    const actionRow = new ActionRowBuilder()
+        .addComponents([ addButton, removeButton ]);
+
+    console.log('ActionRow component:', actionRow.toJSON());
 
     const containerComponent = new ContainerBuilder()
         .addTextDisplayComponents(titleComponent)
+        .addMediaGalleryComponents(imageComponent)
         .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
-        .addTextDisplayComponents(storesComponent);
+        .addTextDisplayComponents(storesComponent)
+        .addTextDisplayComponents(bodyComponent)
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
+        .addActionRowComponents(actionRow);
 
     return {
         flags: MessageFlags.IsComponentsV2,
