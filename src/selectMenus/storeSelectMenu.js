@@ -71,9 +71,11 @@ module.exports = {
     async doRemove(interaction, selectedStores) {
         try {
             selectedStores.map(async gameStoreId => {
-                const result = gameManagerService.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
+                const result = await gameManagerService.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
 
                 const gameName = await gameManagerService.getGameById(gameStoreId);
+
+                console.log(gameName);
 
                 interaction.ephemeralReply(null, successMessage(gameName.name, result));
             });

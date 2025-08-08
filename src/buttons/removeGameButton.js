@@ -5,19 +5,17 @@ const { gameManagerService } = require('../services');
 const { BotButtonInteraction } = require('../structures');
 
 module.exports = {
-    id: 'lfg_addGame',
+    id: 'lfg_removeGame',
     administrator: false,
 
     /**
      * @param {BotButtonInteraction} interaction
      */
     async execute(interaction) {
-        console.log('LFG Add Game Button Interaction:', interaction.buttonData, 'User ID:', interaction.user.id);
+        console.log('LFG Remove Game Button Interaction:', interaction.buttonData, 'User ID:', interaction.user.id);
         const gameId = interaction.params.get('id');
-        const userId = interaction.user.id;
-        const stores = await gameManagerService.getStoresForGame(gameId, userId);
-        const message = chooseStoresMessage(stores, false);
+        const stores = await gameManagerService.getAllStoresForGame(gameId);
+        const message = chooseStoresMessage(stores, true);
         await interaction.ephemeralReply(null, message);
-
     },
 };

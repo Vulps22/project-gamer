@@ -90,7 +90,7 @@ module.exports = {
                 return interaction.ephemeralReply('# Please specify a game.');
             }
 
-            const gamesMessage = await gameInformationMessage(game);
+            const gamesMessage = await gameInformationMessage(interaction.guildId, game);
 
             return interaction.ephemeralReply(null, gamesMessage);
         }

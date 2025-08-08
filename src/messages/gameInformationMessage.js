@@ -5,10 +5,12 @@ const { MessageFlags, TextDisplayBuilder, ContainerBuilder, SeparatorBuilder, Se
 const { gameManagerService } = require('../services');
 
 /**
+ * @param serverId {string} Server id
  * @param gameId {string} Game name
+ * @param userId {Snowflake}
  * @returns {any} Message containing games.
  */
-async function gameInformationMessage(gameId) {
+async function gameInformationMessage(serverId, gameId) {
     const game = await gameManagerService.getGameById(gameId);
     const titleComponent = new TextDisplayBuilder()
         .setContent(`## ${game.name}`);
@@ -33,10 +35,13 @@ async function gameInformationMessage(gameId) {
 
     console.log('Stores component:', storesComponent.toJSON());
 
+    const communityAmount = await gameManagerService.getUserAmountWithGameInServer(serverId, gameId);
+    const overAllAmount = await gameManagerService.getUserAmountWithGame(gameId);
+
     let bodyMessage = '';
 
-    bodyMessage += 'X members of this community own this game.'; // TODO: Calculate these
-    bodyMessage += '\nX members globally own this game.'; // TODO: Maybe merge stores and body message?
+    bodyMessage += `**${communityAmount.user_count}** members of this community own this game.`; // TODO: Calculate these
+    bodyMessage += `\n**${overAllAmount.user_count}** members globally own this game.`; // TODO: Maybe merge stores and body message?
 
     const bodyComponent = new TextDisplayBuilder().setContent(bodyMessage);
 
@@ -45,11 +50,11 @@ async function gameInformationMessage(gameId) {
     const addButton = new ButtonBuilder()
         .setLabel('Add to Library')
         .setStyle(ButtonStyle.Success)
-        .setCustomId('gameInformation;add;' + gameId);
+        .setCustomId(`lfg_addGame_id:${game.id}`);
     const removeButton = new ButtonBuilder()
         .setLabel('Remove from Library')
         .setStyle(ButtonStyle.Danger)
-        .setCustomId('gameInformation;remove;' + gameId);
+        .setCustomId(`lfg_removeGame_id:${game.id}`);
     const actionRow = new ActionRowBuilder()
         .addComponents([ addButton, removeButton ]);
 

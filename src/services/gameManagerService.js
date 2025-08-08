@@ -442,7 +442,7 @@ class GameManagerService {
 
     /**
      * Get all stores for a game.
-     * @param gameId Game Id
+     * @param gameId Game ID.
      * @returns {Promise<*|*[]>} Array of all stores.
      */
     async getAllStoresForGame(gameId) {
@@ -465,6 +465,52 @@ class GameManagerService {
         }
 
         return results;
+    }
+
+    /**
+     * Gets the amount of users that have the specific game.
+     * @param gameId {string} Game ID.
+     * @returns {Promise<*|*[]>} Results of SQL Query.
+     */
+    async getUserAmountWithGame(gameId) {
+        const sql = `
+        SELECT COUNT(DISTINCT ul.userId) as user_count
+        FROM userLibrary ul
+        INNER JOIN gameStore gs ON ul.gameStoreId = gs.id
+        INNER JOIN game g ON gs.gameId = g.id
+        WHERE g.id = ?
+          AND gs.status = 'approved'
+          AND g.status = 'approved';
+        `;
+
+        const results = await db.query(sql, [gameId]);
+
+        return results[0];
+    }
+
+    /**
+     * Gets the amount of users that have the specific game in a specific server.
+     * @param serverId {string} Server ID.
+     * @param gameId {string} Game ID.
+     * @returns {Promise<*|*[]>} Results of SQL Query.
+     */
+    async getUserAmountWithGameInServer(serverId, gameId) {
+        const sql = `
+        SELECT COUNT(DISTINCT su.userId) as user_count
+        FROM serverUser su
+        INNER JOIN userLibrary ul ON su.userId = ul.userId
+        INNER JOIN gameStore gs ON ul.gameStoreId = gs.id
+        INNER JOIN game g ON gs.gameId = g.id
+        WHERE su.serverId = ?
+          AND g.id = ?
+          AND su.sharing = 1
+          AND gs.status = 'approved'
+          AND g.status = 'approved';
+        `;
+
+        const results = await db.query(sql, [serverId, gameId]);
+
+        return results[0];
     }
 }
 
