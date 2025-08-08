@@ -164,7 +164,7 @@ class GameManagerService {
             return true;
         } catch (error) {
             logger.error(`Error removing game ${gameStoreId} from user ${userId}`);
-            console.error(`Error removing game ${gameStoreId} from user ${userId}`);
+            console.error(`Error removing game ${gameStoreId} from user ${userId}`, error);
 
             return false;
         }
@@ -509,6 +509,28 @@ class GameManagerService {
         `;
 
         const results = await db.query(sql, [serverId, gameId]);
+
+        return results[0];
+    }
+
+    /**
+     * Gets game information by gameStore ID.
+     * @param {string} gameStoreId Game Store ID.
+     * @returns {Promise<*|null>} Game object or null if not found.
+     */
+    async getGameByGameStoreId(gameStoreId) {
+        const sql = `
+        SELECT g.id, g.name, g.imageURL, g.status
+        FROM game g
+        INNER JOIN gameStore gs ON g.id = gs.gameId
+        WHERE gs.id = ?;
+        `;
+
+        const results = await db.query(sql, [gameStoreId]);
+
+        if (!results || results.length === 0) {
+            return null;
+        }
 
         return results[0];
     }
