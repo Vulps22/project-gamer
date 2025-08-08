@@ -7,6 +7,9 @@ jest.mock('../../../services', () => ({
         searchGamesByName: jest.fn(),
         getStoresForGame: jest.fn(),
         getAllStoresForGame: jest.fn(),
+        getGameById: jest.fn(),
+        getUserAmountWithGameInServer: jest.fn(),
+        getUserAmountWithGame: jest.fn(),
     },
     userLibraryManagerService: {
         addGameToUserLibrary: jest.fn(),
@@ -38,6 +41,7 @@ describe('Library Command', () => {
             user: {
                 id: 'user123'
             },
+            guildId: '123',
             ephemeralReply: jest.fn(),
         };
 
@@ -132,18 +136,37 @@ describe('Library Command', () => {
             mockInteraction.options.getSubcommand.mockReturnValue('view');
             mockInteraction.options.getString.mockReturnValue('123');
 
+            const mockGameData = { id: '123', name: 'Test Game', imageURL: 'http://example.com/image.jpg' };
+            const mockStores = [{ name: 'Steam', url: 'http://steam.com' }];
+            const mockCommunityAmount = { user_count: 5 };
+            const mockGlobalAmount = { user_count: 100 };
+
+            gameManagerService.getGameById.mockResolvedValue(mockGameData);
+            gameManagerService.getAllStoresForGame.mockResolvedValue(mockStores);
+            gameManagerService.getUserAmountWithGameInServer.mockResolvedValue(mockCommunityAmount);
+            gameManagerService.getUserAmountWithGame.mockResolvedValue(mockGlobalAmount);
+
             const mockMessage = {
                 flags: 64,
                 components: ['<mocked components>']
             };
 
-            gameInformationMessage.mockResolvedValue(mockMessage);
+            gameInformationMessage.mockReturnValue(mockMessage);
 
             // Act
             await execute(mockInteraction);
 
             // Assert
-            expect(gameInformationMessage).toHaveBeenCalledWith('123');
+            expect(gameManagerService.getGameById).toHaveBeenCalledWith('123');
+            expect(gameManagerService.getAllStoresForGame).toHaveBeenCalledWith('123');
+            expect(gameManagerService.getUserAmountWithGameInServer).toHaveBeenCalledWith('123', '123');
+            expect(gameManagerService.getUserAmountWithGame).toHaveBeenCalledWith('123');
+            expect(gameInformationMessage).toHaveBeenCalledWith(
+                mockGameData,
+                mockStores,
+                { communityCount: 5, globalCount: 100 },
+                true
+            );
             expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith(null, mockMessage);
         });
 

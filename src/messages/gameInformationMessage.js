@@ -2,18 +2,23 @@ const { MessageFlags, TextDisplayBuilder, ContainerBuilder, SeparatorBuilder, Se
     ActionRowBuilder,
     MediaGalleryBuilder
 } = require('discord.js');
-const { gameManagerService } = require('../services');
 
 /**
- * @param serverId {string} Server id
- * @param gameId {string} Game name
- * @param {boolean} ephemeral Whether this is an ephemeral message (default: true)
- * @returns {any} Message containing games.
+ * Creates a game information message from provided data (pure function - no data fetching)
+ * @param {object} gameData - The game data object
+ * @param {string} gameData.name - Game name
+ * @param {string} gameData.id - Game ID
+ * @param {string} gameData.imageURL - Game image URL
+ * @param {Array} stores - Array of store objects with name and url
+ * @param {object} stats - Statistics object
+ * @param {number} stats.communityCount - Number of community members who own this game
+ * @param {number} stats.globalCount - Number of global users who own this game
+ * @param {boolean} ephemeral - Whether this is an ephemeral message (default: true)
+ * @returns {object} Discord message object
  */
-async function gameInformationMessage(serverId, gameId, ephemeral = true) {
-    const game = await gameManagerService.getGameById(gameId);
+function gameInformationMessage(gameData, stores, stats, ephemeral = true) {
     const titleComponent = new TextDisplayBuilder()
-        .setContent(`## ${game.name}`);
+        .setContent(`## ${gameData.name}`);
 
     console.log('Title component:', titleComponent.toJSON());
 
@@ -21,11 +26,9 @@ async function gameInformationMessage(serverId, gameId, ephemeral = true) {
         .addItems({
             description: 'Game Image',
             media: {
-                url: game.imageURL
+                url: gameData.imageURL
             }
         });
-
-    const stores = await gameManagerService.getAllStoresForGame(gameId);
 
     let storesMessage = '### Stores ';
     stores.forEach(store => storesMessage += `\n- [${store.name}](${store.url})`);
@@ -35,13 +38,9 @@ async function gameInformationMessage(serverId, gameId, ephemeral = true) {
 
     console.log('Stores component:', storesComponent.toJSON());
 
-    const communityAmount = await gameManagerService.getUserAmountWithGameInServer(serverId, gameId);
-    const overAllAmount = await gameManagerService.getUserAmountWithGame(gameId);
-
     let bodyMessage = '';
-
-    bodyMessage += `**${communityAmount.user_count}** members of this community own this game.`; // TODO: Calculate these
-    bodyMessage += `\n**${overAllAmount.user_count}** members globally own this game.`; // TODO: Maybe merge stores and body message?
+    bodyMessage += `**${stats.communityCount}** members of this community own this game.`;
+    bodyMessage += `\n**${stats.globalCount}** members globally own this game.`;
 
     const bodyComponent = new TextDisplayBuilder().setContent(bodyMessage);
 
@@ -59,18 +58,18 @@ async function gameInformationMessage(serverId, gameId, ephemeral = true) {
     const addButton = new ButtonBuilder()
         .setLabel('Add to Library')
         .setStyle(ButtonStyle.Success)
-        .setCustomId(`lfg_addGame_id:${game.id}`);
+        .setCustomId(`lfg_addGame_id:${gameData.id}`);
     const removeButton = new ButtonBuilder()
         .setLabel('Remove from Library')
         .setStyle(ButtonStyle.Danger)
-        .setCustomId(`library_removeGame_id:${game.id}`);
+        .setCustomId(`library_removeGame_id:${gameData.id}`);
 
     if (ephemeral) {
         // For ephemeral messages, only remove and share buttons (user already has the game)
         const shareButton = new ButtonBuilder()
             .setLabel('Share with Channel')
             .setStyle(ButtonStyle.Primary)
-            .setCustomId(`library_gameShare_id:${game.id}`);
+            .setCustomId(`library_gameShare_id:${gameData.id}`);
         const actionRow = new ActionRowBuilder()
             .addComponents([ removeButton, shareButton ]);
 

@@ -43,7 +43,7 @@ module.exports = {
     /**
      * Handles autocomplete for game search.
      * Fetches games from the database based on user input.
-     * @param {AutocompleteInteraction} interaction
+     * @param {AutocompleteInteraction} interaction The autocomplete interaction
      * @returns {Promise<void>} - Responds with game choices for autocomplete.
      */
     async autoComplete(interaction) {
@@ -84,7 +84,7 @@ module.exports = {
     },
 
     /**
-     * @param {BotInteraction} interaction
+     * @param {BotInteraction} interaction The command interaction
      * @returns {Promise<void>}
      */
     async execute(interaction) {
@@ -96,7 +96,19 @@ module.exports = {
                 return;
             }
 
-            const gamesMessage = await gameInformationMessage(interaction.guildId, game);
+            // Fetch all required data
+            const gameData = await gameManagerService.getGameById(game);
+            const stores = await gameManagerService.getAllStoresForGame(game);
+            const communityAmount = await gameManagerService.getUserAmountWithGameInServer(interaction.guildId, game);
+            const overAllAmount = await gameManagerService.getUserAmountWithGame(game);
+
+            const stats = {
+                communityCount: communityAmount.user_count,
+                globalCount: overAllAmount.user_count
+            };
+
+            // Create message (pure function - no data fetching)
+            const gamesMessage = gameInformationMessage(gameData, stores, stats, true);
 
             interaction.ephemeralReply(null, gamesMessage);
             return;
