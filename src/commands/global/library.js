@@ -44,6 +44,7 @@ module.exports = {
      * Handles autocomplete for game search.
      * Fetches games from the database based on user input.
      * @param {AutocompleteInteraction} interaction
+     * @returns {Promise<void>} - Responds with game choices for autocomplete.
      */
     async autoComplete(interaction) {
         const name = interaction.options.getFocused();
@@ -54,10 +55,12 @@ module.exports = {
             const gamesSearch = await gameManagerService.searchGamesByName(name);
 
             if (!gamesSearch || gamesSearch.length === 0) {
-                return interaction.respond([{ name: 'No games found', value: 'none' }]);
+                interaction.respond([{ name: 'No games found', value: 'none' }]);
+                return;
             }
 
-            return interaction.respond(gamesSearch.map(game => ({ name: game.name, value: String(game.id) })));
+            interaction.respond(gamesSearch.map(game => ({ name: game.name, value: String(game.id) })));
+            return;
         }
 
         if (interaction.options.getSubcommand() === 'remove') {
@@ -69,7 +72,8 @@ module.exports = {
         console.log('Autocomplete games:', games);
 
         if (!games || games.length === 0) {
-            return interaction.respond([{ name: 'No games found', value: 'none' }]);
+            interaction.respond([{ name: 'No games found', value: 'none' }]);
+            return;
         }
 
         const choices = games.map(game => ({ name: game.name, value: String(game.id) }));
@@ -81,18 +85,21 @@ module.exports = {
 
     /**
      * @param {BotInteraction} interaction
+     * @returns {Promise<void>}
      */
     async execute(interaction) {
         const game = interaction.options.getString('game');
 
         if (interaction.options.getSubcommand() === 'view') {
             if (game === null) {
-                return interaction.ephemeralReply('# Please specify a game.');
+                interaction.ephemeralReply('# Please specify a game.');
+                return;
             }
 
             const gamesMessage = await gameInformationMessage(interaction.guildId, game);
 
-            return interaction.ephemeralReply(null, gamesMessage);
+            interaction.ephemeralReply(null, gamesMessage);
+            return;
         }
 
         const isDeleting = interaction.options.getSubcommand() === 'remove';
