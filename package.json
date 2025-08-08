@@ -6,8 +6,12 @@
   "scripts": {
     "start": "node .",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:apply": "node scripts/apply-schema.js",
+    "db:rollout": "node scripts/run-rollout.js",
+    "db:revert": "node scripts/run-revert.js"
   },
+
   "author": "Vulps",
   "license": "ISC",
   "dependencies": {
