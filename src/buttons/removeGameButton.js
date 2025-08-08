@@ -5,7 +5,7 @@ const { gameManagerService } = require('../services');
 const { BotButtonInteraction } = require('../structures');
 
 module.exports = {
-    id: 'lfg_removeGame',
+    id: 'library_removeGame',
     administrator: false,
 
     /**

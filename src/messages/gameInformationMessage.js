@@ -7,10 +7,10 @@ const { gameManagerService } = require('../services');
 /**
  * @param serverId {string} Server id
  * @param gameId {string} Game name
- * @param userId {Snowflake}
+ * @param {boolean} ephemeral Whether this is an ephemeral message (default: true)
  * @returns {any} Message containing games.
  */
-async function gameInformationMessage(serverId, gameId) {
+async function gameInformationMessage(serverId, gameId, ephemeral = true) {
     const game = await gameManagerService.getGameById(gameId);
     const titleComponent = new TextDisplayBuilder()
         .setContent(`## ${game.name}`);
@@ -47,6 +47,15 @@ async function gameInformationMessage(serverId, gameId) {
 
     console.log('Body component:', bodyComponent.toJSON());
 
+    const containerComponent = new ContainerBuilder()
+        .addTextDisplayComponents(titleComponent)
+        .addMediaGalleryComponents(imageComponent)
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
+        .addTextDisplayComponents(storesComponent)
+        .addTextDisplayComponents(bodyComponent)
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large));
+
+    // Add library management buttons
     const addButton = new ButtonBuilder()
         .setLabel('Add to Library')
         .setStyle(ButtonStyle.Success)
@@ -54,20 +63,27 @@ async function gameInformationMessage(serverId, gameId) {
     const removeButton = new ButtonBuilder()
         .setLabel('Remove from Library')
         .setStyle(ButtonStyle.Danger)
-        .setCustomId(`lfg_removeGame_id:${game.id}`);
-    const actionRow = new ActionRowBuilder()
-        .addComponents([ addButton, removeButton ]);
+        .setCustomId(`library_removeGame_id:${game.id}`);
 
-    console.log('ActionRow component:', actionRow.toJSON());
+    if (ephemeral) {
+        // For ephemeral messages, only remove and share buttons (user already has the game)
+        const shareButton = new ButtonBuilder()
+            .setLabel('Share with Channel')
+            .setStyle(ButtonStyle.Primary)
+            .setCustomId(`library_gameShare_id:${game.id}`);
+        const actionRow = new ActionRowBuilder()
+            .addComponents([ removeButton, shareButton ]);
 
-    const containerComponent = new ContainerBuilder()
-        .addTextDisplayComponents(titleComponent)
-        .addMediaGalleryComponents(imageComponent)
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
-        .addTextDisplayComponents(storesComponent)
-        .addTextDisplayComponents(bodyComponent)
-        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
-        .addActionRowComponents(actionRow);
+        console.log('Ephemeral ActionRow component:', actionRow.toJSON());
+        containerComponent.addActionRowComponents(actionRow);
+    } else {
+        // For public messages, only library management buttons
+        const actionRow = new ActionRowBuilder()
+            .addComponents([ addButton, removeButton ]);
+
+        console.log('Public ActionRow component:', actionRow.toJSON());
+        containerComponent.addActionRowComponents(actionRow);
+    }
 
     return {
         flags: MessageFlags.IsComponentsV2,
