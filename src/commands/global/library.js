@@ -52,7 +52,7 @@ module.exports = {
         let games = [];
 
         if (interaction.options.getSubcommand() === 'view') {
-            const gamesSearch = await gameManagerService.searchGamesByName(name);
+            const gamesSearch = await gameManagerService.searchUserGamesByName(name, interaction.user.id);
 
             if (!gamesSearch || gamesSearch.length === 0) {
                 interaction.respond([{ name: 'No games found', value: 'none' }]);
