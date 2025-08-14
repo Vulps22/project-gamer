@@ -31,7 +31,6 @@ module.exports = {
         }
 
         interaction.respond(games.map(game => ({ name: game.name, value: String(game.id) })));
-
     },
     /**
      *

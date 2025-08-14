@@ -1,23 +1,30 @@
-const { SlashCommandBuilder } = require('discord.js');
 const { execute, autoComplete } = require('../library');
 
 // Mock dependencies
-jest.mock('../../../services/gameManagerService', () => ({
+jest.mock('../../../services', () => ({
     gameManagerService: {
         searchUserGamesByName: jest.fn(),
         searchGamesByName: jest.fn(),
         getStoresForGame: jest.fn(),
         getAllStoresForGame: jest.fn(),
+        getGameById: jest.fn(),
+        getUserAmountWithGameInServer: jest.fn(),
+        getUserAmountWithGame: jest.fn(),
+    },
+    userLibraryManagerService: {
+        addGameToUserLibrary: jest.fn(),
+        getUserLibrary: jest.fn(),
+        syncUserLibrary: jest.fn(),
     }
 }));
 
 jest.mock('../../../messages', () => ({
     chooseStoresMessage: jest.fn(),
-    GlobalMessages: {}
+    gameInformationMessage: jest.fn(),
 }));
 
-const { gameManagerService } = require('../../../services/gameManagerService');
-const { chooseStoresMessage } = require('../../../messages');
+const { gameManagerService } = require('../../../services');
+const { chooseStoresMessage, gameInformationMessage } = require('../../../messages');
 
 describe('Library Command', () => {
     let mockInteraction;
@@ -34,6 +41,7 @@ describe('Library Command', () => {
             user: {
                 id: 'user123'
             },
+            guildId: '123',
             ephemeralReply: jest.fn(),
         };
 
@@ -126,17 +134,40 @@ describe('Library Command', () => {
         test('should return info message for view subcommand', async () => {
             // Arrange
             mockInteraction.options.getSubcommand.mockReturnValue('view');
+            mockInteraction.options.getString.mockReturnValue('123');
+
+            const mockGameData = { id: '123', name: 'Test Game', imageURL: 'http://example.com/image.jpg' };
+            const mockStores = [{ name: 'Steam', url: 'http://steam.com' }];
+            const mockCommunityAmount = { user_count: 5 };
+            const mockGlobalAmount = { user_count: 100 };
+
+            gameManagerService.getGameById.mockResolvedValue(mockGameData);
+            gameManagerService.getAllStoresForGame.mockResolvedValue(mockStores);
+            gameManagerService.getUserAmountWithGameInServer.mockResolvedValue(mockCommunityAmount);
+            gameManagerService.getUserAmountWithGame.mockResolvedValue(mockGlobalAmount);
+
+            const mockMessage = {
+                flags: 64,
+                components: ['<mocked components>']
+            };
+
+            gameInformationMessage.mockReturnValue(mockMessage);
 
             // Act
             await execute(mockInteraction);
 
             // Assert
-            expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith(
-                'Hello! We plan to flesh this out in the future,' +
-                ' but felt it was important to give everyone a way to see which games they have already added to their library.' +
-                ' For now, you can use `/library view` to see your games in the autocomplete.'
+            expect(gameManagerService.getGameById).toHaveBeenCalledWith('123');
+            expect(gameManagerService.getAllStoresForGame).toHaveBeenCalledWith('123');
+            expect(gameManagerService.getUserAmountWithGameInServer).toHaveBeenCalledWith('123', '123');
+            expect(gameManagerService.getUserAmountWithGame).toHaveBeenCalledWith('123');
+            expect(gameInformationMessage).toHaveBeenCalledWith(
+                mockGameData,
+                mockStores,
+                { communityCount: 5, globalCount: 100 },
+                true
             );
-            expect(gameManagerService.getStoresForGame).not.toHaveBeenCalled();
+            expect(mockInteraction.ephemeralReply).toHaveBeenCalledWith(null, mockMessage);
         });
 
         test('should handle add subcommand', async () => {

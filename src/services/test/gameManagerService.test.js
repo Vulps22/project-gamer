@@ -274,4 +274,56 @@ describe('GameManagerService', () => {
             expect(result).toEqual([]);
         });
     });
+
+    describe('getGameByGameStoreId', () => {
+        test('should return game data when gameStoreId exists', async () => {
+            // Arrange
+            const gameStoreId = '227';
+            const mockGameData = {
+                id: '125',
+                name: 'Beat Saber',
+                imageURL: 'https://cdn.akamai.steamstatic.com/steam/apps/620980/header.jpg',
+                status: 'approved'
+            };
+            db.query.mockResolvedValue([mockGameData]);
+
+            // Act
+            const result = await gameManagerService.getGameByGameStoreId(gameStoreId);
+
+            // Assert
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringContaining('SELECT g.id, g.name, g.imageURL, g.status'),
+                [gameStoreId]
+            );
+            expect(result).toEqual(mockGameData);
+        });
+
+        test('should return null when gameStoreId does not exist', async () => {
+            // Arrange
+            const gameStoreId = '999';
+            db.query.mockResolvedValue([]);
+
+            // Act
+            const result = await gameManagerService.getGameByGameStoreId(gameStoreId);
+
+            // Assert
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringContaining('SELECT g.id, g.name, g.imageURL, g.status'),
+                [gameStoreId]
+            );
+            expect(result).toBeNull();
+        });
+
+        test('should return null when query returns null/undefined', async () => {
+            // Arrange
+            const gameStoreId = '123';
+            db.query.mockResolvedValue(null);
+
+            // Act
+            const result = await gameManagerService.getGameByGameStoreId(gameStoreId);
+
+            // Assert
+            expect(result).toBeNull();
+        });
+    });
 });
