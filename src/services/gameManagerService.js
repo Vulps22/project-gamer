@@ -164,7 +164,7 @@ class GameManagerService {
             return true;
         } catch (error) {
             logger.error(`Error removing game ${gameStoreId} from user ${userId}`);
-            console.error(`Error removing game ${gameStoreId} from user ${userId}`);
+            console.error(`Error removing game ${gameStoreId} from user ${userId}`, error);
 
             return false;
         }
@@ -442,20 +442,20 @@ class GameManagerService {
 
     /**
      * Get all stores for a game.
-     * @param gameId Game Id
+     * @param gameId Game ID.
      * @returns {Promise<*|*[]>} Array of all stores.
      */
     async getAllStoresForGame(gameId) {
         const sql = `
         SELECT
             gs.id,
-            s.name
-        FROM
-            gameStore AS gs
-        INNER JOIN
-            store AS s ON gs.storeId = s.id
-        WHERE
-            gs.gameId = ?;
+            s.name,
+            gs.url,
+            g.imageURL
+        FROM gameStore AS gs
+            INNER JOIN store AS s ON gs.storeId = s.id
+            INNER JOIN game AS g ON gs.gameId = g.id
+        WHERE gs.gameId = ?;
         `;
 
         const results = await db.query(sql, [gameId]);
@@ -465,6 +465,74 @@ class GameManagerService {
         }
 
         return results;
+    }
+
+    /**
+     * Gets the amount of users that have the specific game.
+     * @param gameId {string} Game ID.
+     * @returns {Promise<*|*[]>} Results of SQL Query.
+     */
+    async getUserAmountWithGame(gameId) {
+        const sql = `
+        SELECT COUNT(DISTINCT ul.userId) as user_count
+        FROM userLibrary ul
+        INNER JOIN gameStore gs ON ul.gameStoreId = gs.id
+        INNER JOIN game g ON gs.gameId = g.id
+        WHERE g.id = ?
+          AND gs.status = 'approved'
+          AND g.status = 'approved';
+        `;
+
+        const results = await db.query(sql, [gameId]);
+
+        return results[0];
+    }
+
+    /**
+     * Gets the amount of users that have the specific game in a specific server.
+     * @param serverId {string} Server ID.
+     * @param gameId {string} Game ID.
+     * @returns {Promise<*|*[]>} Results of SQL Query.
+     */
+    async getUserAmountWithGameInServer(serverId, gameId) {
+        const sql = `
+        SELECT COUNT(DISTINCT su.userId) as user_count
+        FROM serverUser su
+        INNER JOIN userLibrary ul ON su.userId = ul.userId
+        INNER JOIN gameStore gs ON ul.gameStoreId = gs.id
+        INNER JOIN game g ON gs.gameId = g.id
+        WHERE su.serverId = ?
+          AND g.id = ?
+          AND su.sharing = 1
+          AND gs.status = 'approved'
+          AND g.status = 'approved';
+        `;
+
+        const results = await db.query(sql, [serverId, gameId]);
+
+        return results[0];
+    }
+
+    /**
+     * Gets game information by gameStore ID.
+     * @param {string} gameStoreId Game Store ID.
+     * @returns {Promise<*|null>} Game object or null if not found.
+     */
+    async getGameByGameStoreId(gameStoreId) {
+        const sql = `
+        SELECT g.id, g.name, g.imageURL, g.status
+        FROM game g
+        INNER JOIN gameStore gs ON g.id = gs.gameId
+        WHERE gs.id = ?;
+        `;
+
+        const results = await db.query(sql, [gameStoreId]);
+
+        if (!results || results.length === 0) {
+            return null;
+        }
+
+        return results[0];
     }
 }
 

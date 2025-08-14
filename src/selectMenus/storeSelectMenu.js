@@ -71,11 +71,17 @@ module.exports = {
     async doRemove(interaction, selectedStores) {
         try {
             selectedStores.map(async gameStoreId => {
-                const result = gameManagerService.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
+                const result = await gameManagerService.removeGameFromUserLibrary(interaction.user.id, gameStoreId);
 
-                const gameName = await gameManagerService.getGameById(gameStoreId);
+                const gameName = await gameManagerService.getGameByGameStoreId(gameStoreId);
 
-                interaction.ephemeralReply(null, successMessage(gameName.name, result));
+                console.log(gameName);
+
+                if (gameName) {
+                    interaction.ephemeralReply(null, successMessage(gameName.name, result));
+                } else {
+                    interaction.ephemeralReply(null, 'Game not found or could not be removed.');
+                }
             });
         } catch (error) {
             console.error(`Failed to remove game from user ${interaction.user.id}. ${error}`);

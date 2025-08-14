@@ -1,6 +1,6 @@
-const { SlashCommandBuilder, SlashCommandStringOption, MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandSubcommandBuilder } = require('discord.js');
 const { gameManagerService } = require('../../services');
-const { chooseStoresMessage, GlobalMessages } = require('../../messages');
+const { chooseStoresMessage, gameInformationMessage } = require('../../messages');
 const { BotInteraction } = require('../../structures');
 const { AutocompleteInteraction } = require('discord.js');
 
@@ -33,7 +33,7 @@ module.exports = {
             .setDescription('View your library in the autocomplete')
             .addStringOption(new SlashCommandStringOption()
                 .setName('game')
-                .setDescription('The game you want to view')
+                .setDescription('View a game\'s information')
                 .setRequired(false)
                 .setAutocomplete(true)
             )
@@ -43,14 +43,27 @@ module.exports = {
     /**
      * Handles autocomplete for game search.
      * Fetches games from the database based on user input.
-     * @param {AutocompleteInteraction} interaction
+     * @param {AutocompleteInteraction} interaction The autocomplete interaction
+     * @returns {Promise<void>} - Responds with game choices for autocomplete.
      */
     async autoComplete(interaction) {
         const name = interaction.options.getFocused();
 
         let games = [];
 
-        if (interaction.options.getSubcommand() === 'remove' || interaction.options.getSubcommand() === 'view') {
+        if (interaction.options.getSubcommand() === 'view') {
+            const gamesSearch = await gameManagerService.searchUserGamesByName(name, interaction.user.id);
+
+            if (!gamesSearch || gamesSearch.length === 0) {
+                interaction.respond([{ name: 'No games found', value: 'none' }]);
+                return;
+            }
+
+            interaction.respond(gamesSearch.map(game => ({ name: game.name, value: String(game.id) })));
+            return;
+        }
+
+        if (interaction.options.getSubcommand() === 'remove') {
             games = await gameManagerService.searchUserGamesByName(name, interaction.user.id);
         } else {
             games = await gameManagerService.searchGamesByName(name);
@@ -59,7 +72,8 @@ module.exports = {
         console.log('Autocomplete games:', games);
 
         if (!games || games.length === 0) {
-            return interaction.respond([{ name: 'No games found', value: 'none' }]);
+            interaction.respond([{ name: 'No games found', value: 'none' }]);
+            return;
         }
 
         const choices = games.map(game => ({ name: game.name, value: String(game.id) }));
@@ -70,18 +84,36 @@ module.exports = {
     },
 
     /**
-     *
-     * @param {BotInteraction} interaction
+     * @param {BotInteraction} interaction The command interaction
+     * @returns {Promise<void>}
      */
     async execute(interaction) {
+        const game = interaction.options.getString('game');
 
         if (interaction.options.getSubcommand() === 'view') {
-            return interaction.ephemeralReply("Hello! We plan to flesh this out in the future,"
-                + " but felt it was important to give everyone a way to see which games they have already added to their library."
-                + " For now, you can use `/library view` to see your games in the autocomplete.");
+            if (game === null) {
+                interaction.ephemeralReply('# Please specify a game.');
+                return;
+            }
+
+            // Fetch all required data
+            const gameData = await gameManagerService.getGameById(game);
+            const stores = await gameManagerService.getAllStoresForGame(game);
+            const communityAmount = await gameManagerService.getUserAmountWithGameInServer(interaction.guildId, game);
+            const overAllAmount = await gameManagerService.getUserAmountWithGame(game);
+
+            const stats = {
+                communityCount: communityAmount.user_count,
+                globalCount: overAllAmount.user_count
+            };
+
+            // Create message (pure function - no data fetching)
+            const gamesMessage = gameInformationMessage(gameData, stores, stats, true);
+
+            interaction.ephemeralReply(null, gamesMessage);
+            return;
         }
 
-        const game = interaction.options.getString('game');
         const isDeleting = interaction.options.getSubcommand() === 'remove';
         let stores = await gameManagerService.getStoresForGame(game, interaction.user.id);
 

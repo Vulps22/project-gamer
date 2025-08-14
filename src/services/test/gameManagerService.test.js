@@ -22,17 +22,17 @@ const { clientProvider } = require('../../provider');
 
 describe('GameManagerService', () => {
     let mockClient;
-    
+
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         mockClient = {
             users: {
                 cache: new Map(),
                 fetch: jest.fn(),
             },
         };
-        
+
         clientProvider.getClient.mockReturnValue(mockClient);
         gameManagerService.init();
     });
@@ -47,16 +47,16 @@ describe('GameManagerService', () => {
                 { id: 'user2' },
                 { id: 'user3' }
             ];
-            
+
             db.query.mockResolvedValue(userIds);
-            
+
             // Mock that user1 is in cache, user2 and user3 are not
             const cachedUser = { id: 'user1', username: 'CachedUser' };
             const fetchedUser2 = { id: 'user2', username: 'FetchedUser2' };
             const fetchedUser3 = { id: 'user3', username: 'FetchedUser3' };
-            
+
             mockClient.users.cache.set('user1', cachedUser);
-            
+
             mockClient.users.fetch
                 .mockResolvedValueOnce(fetchedUser2) // First call for user2
                 .mockResolvedValueOnce(fetchedUser3); // Second call for user3
@@ -69,11 +69,11 @@ describe('GameManagerService', () => {
                 expect.stringContaining('SELECT DISTINCT'),
                 { serverId: guildId, gameId: gameId }
             );
-            
+
             expect(mockClient.users.fetch).toHaveBeenCalledTimes(2);
             expect(mockClient.users.fetch).toHaveBeenCalledWith('user2');
             expect(mockClient.users.fetch).toHaveBeenCalledWith('user3');
-            
+
             expect(result).toEqual([
                 { id: 'user1', username: 'CachedUser' },
                 { id: 'user2', username: 'FetchedUser2' },
@@ -86,9 +86,9 @@ describe('GameManagerService', () => {
             const gameId = '123';
             const guildId = '456';
             const userIds = [{ id: 'user1' }];
-            
+
             db.query.mockResolvedValue(userIds);
-            
+
             // User is not in cache and fetch fails
             mockClient.users.fetch.mockRejectedValue(new Error('User not found'));
 
@@ -105,7 +105,7 @@ describe('GameManagerService', () => {
         test('should return empty array when client is not available', async () => {
             // Arrange
             clientProvider.getClient.mockReturnValue(null);
-            
+
             // Act
             const result = await gameManagerService.getUsersForGame('123', '456');
 
@@ -118,13 +118,13 @@ describe('GameManagerService', () => {
             const gameId = '123';
             const guildId = '456';
             const userIds = [{ id: 'user1' }, { id: 'user2' }];
-            
+
             db.query.mockResolvedValue(userIds);
-            
+
             // Both users are in cache
             const cachedUser1 = { id: 'user1', username: 'CachedUser1' };
             const cachedUser2 = { id: 'user2', username: 'CachedUser2' };
-            
+
             mockClient.users.cache.set('user1', cachedUser1);
             mockClient.users.cache.set('user2', cachedUser2);
 
@@ -272,6 +272,58 @@ describe('GameManagerService', () => {
 
             // Assert
             expect(result).toEqual([]);
+        });
+    });
+
+    describe('getGameByGameStoreId', () => {
+        test('should return game data when gameStoreId exists', async () => {
+            // Arrange
+            const gameStoreId = '227';
+            const mockGameData = {
+                id: '125',
+                name: 'Beat Saber',
+                imageURL: 'https://cdn.akamai.steamstatic.com/steam/apps/620980/header.jpg',
+                status: 'approved'
+            };
+            db.query.mockResolvedValue([mockGameData]);
+
+            // Act
+            const result = await gameManagerService.getGameByGameStoreId(gameStoreId);
+
+            // Assert
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringContaining('SELECT g.id, g.name, g.imageURL, g.status'),
+                [gameStoreId]
+            );
+            expect(result).toEqual(mockGameData);
+        });
+
+        test('should return null when gameStoreId does not exist', async () => {
+            // Arrange
+            const gameStoreId = '999';
+            db.query.mockResolvedValue([]);
+
+            // Act
+            const result = await gameManagerService.getGameByGameStoreId(gameStoreId);
+
+            // Assert
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringContaining('SELECT g.id, g.name, g.imageURL, g.status'),
+                [gameStoreId]
+            );
+            expect(result).toBeNull();
+        });
+
+        test('should return null when query returns null/undefined', async () => {
+            // Arrange
+            const gameStoreId = '123';
+            db.query.mockResolvedValue(null);
+
+            // Act
+            const result = await gameManagerService.getGameByGameStoreId(gameStoreId);
+
+            // Assert
+            expect(result).toBeNull();
         });
     });
 });
