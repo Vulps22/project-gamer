@@ -32,7 +32,10 @@ function choosePlayersMessage(name, players, gameId) {
 
     const playerSelectComponent = new StringSelectMenuBuilder()
         .setCustomId('lfg_playerSelect')
-        .addOptions(playerArray);
+        .setPlaceholder('Select players')
+        .addOptions(playerArray)
+        .setMinValues(1)
+        .setMaxValues(Math.min(10, playerArray.length));
 
     console.log('Player select component:', playerSelectComponent.toJSON());
 
