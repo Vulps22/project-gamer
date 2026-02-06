@@ -75,8 +75,17 @@ async function handleCommandInteraction(interaction) {
     } catch (error) {
         console.error(`Error executing ${interaction.commandName}`);
         console.error(error);
-        if (!interaction.deferred) interaction.reply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
-        else interaction.editReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
+
+        // Attempt to notify the user, but don't throw if the interaction expired
+        const errorMessage = 'Something went wrong! Try another Command while we work out what went Wrong :thinking:';
+        const result = !interaction.deferred
+            ? await interaction.reply({ content: errorMessage })
+            : await interaction.editReply({ content: errorMessage });
+
+        // Log if we couldn't notify the user
+        if (!result.success) {
+            console.warn(`Could not send error message to user: ${result.error}`);
+        }
 
         logger.error(`\nCommand: ${interaction.commandName}\nError: ${error.message}`);
     }
@@ -113,7 +122,12 @@ async function handleSelectMenuInteraction(interaction) {
     } catch (error) {
         console.error(`Error executing select menu with ID ${interaction.customId}`);
         console.error(error);
-        interaction.ephemeralReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
+
+        const result = await interaction.ephemeralReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
+
+        if (!result.success) {
+            console.warn(`Could not send error message to user: ${result.error}`);
+        }
 
         logger.error(`\nSelect: ${interaction.customId}\nError: ${error.message}`);
     }
@@ -149,9 +163,14 @@ async function handleButtonInteraction(interaction) {
     } catch (error) {
         console.error(`Error executing button with ID ${interaction.customId}`);
         console.error(error);
-        interaction.ephemeralReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
 
-        logger.error(`\button: ${interaction.customId}\nError: ${error.message}`);
+        const result = await interaction.ephemeralReply('Something went wrong! Try another Command while we work out what went Wrong :thinking:');
+
+        if (!result.success) {
+            console.warn(`Could not send error message to user: ${result.error}`);
+        }
+
+        logger.error(`\nButton: ${interaction.customId}\nError: ${error.message}`);
     }
 }
 
