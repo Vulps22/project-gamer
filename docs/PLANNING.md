@@ -163,10 +163,11 @@ lfg.invitees
 ### In Scope for v2 Launch
 
 #### Steam (Optional)
-- `/steam link <profile_url>` — link a Steam profile, no login required
-- `/steam unlink` — remove Steam link
-- `/steam sync` — manual trigger for library sync
-- Auto-sync runs as a background job (BullMQ), opt-in per user
+- `/steam connect` — initiates Steam OpenID authentication; bot stores Steam ID and begins auto-sync
+- `/steam unlink` — removes Steam auth and stops sync; manually added games are kept
+- `/steam sync` — manual trigger for an immediate library sync (requires `/steam connect` first)
+- Auto-sync runs as a background job (BullMQ), only active for users who have connected Steam
+- The bot works fully without Steam — games can always be added manually via `/library add`
 
 #### Library Management
 - `/library add <url>` — add a game by store URL (Steam or Meta)
@@ -251,7 +252,7 @@ ADMIN_NEW_GAMES_CHANNEL_ID=...
 /library remove <game>
 /library view [user]
 
-/steam link <profile_url>
+/steam connect
 /steam unlink
 /steam sync
 
