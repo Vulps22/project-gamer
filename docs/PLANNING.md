@@ -336,14 +336,31 @@ The churn rate means most servers that stayed are low-activity. The cost of aski
 ### Branch Strategy
 
 ```
-main                          → always deployable; runs the DEV bot on a private test server
-feat/<issue>-short-description  → feature work
-fix/<issue>-short-description   → bug fixes
+main                             → always deployable; runs the DEV bot on a private test server
+feat/<issue>-short-description   → feature work
+fix/<issue>-short-description    → bug fixes
+release/2026.03.1                → archived release branch (one per base release)
 ```
 
 - PRs required into `main` — no direct pushes
 - Branch protection: all test jobs must pass before a PR can merge
 - If it's failing in CI, it doesn't merge. If it somehow does, it doesn't release.
+
+**Release branches** are created automatically by CI at deploy time — one per base release, not per hotfix.
+Hotfixes are commits on the existing release branch, tagged separately:
+
+```
+release/2026.03.2           ← branch created on Wednesday auto-deploy
+  │  tagged v2026.03.2
+  ├─ hotfix commit           ← tagged v2026.03.2-H1
+  └─ hotfix commit           ← tagged v2026.03.2-H2
+
+release/2026.03.3           ← new branch next Wednesday
+  │  tagged v2026.03.3
+  ...
+```
+
+`git log release/2026.03.2` gives you the full history of that release era — base deploy and all its patches — without branch sprawl.
 
 ### Test Strategy
 
