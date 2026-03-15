@@ -396,16 +396,29 @@ run test matrix (parallel jobs)
       SSH into VPS → docker compose pull && docker compose up -d (dev stack)
 ```
 
-#### On release tag `v*.*.*` (prod deploy)
+#### On release tag (prod deploy)
+
+Triggered two ways:
+
+| Trigger | When | Tag produced |
+|---------|------|-------------|
+| Wednesday cron | Automatically, if new commits exist since last tag | `v2026.03.3` |
+| `workflow_dispatch` | Manual hotfix | `v2026.03.3-H1`, `v2026.03.3-H2`, etc. |
+
+**Version calculation (scheduled):** count non-hotfix tags for current `YYYY.MM`, increment by 1.
+**Version calculation (hotfix):** find the latest tag (with or without `-H`), strip any existing `-H*` suffix to get the base, count existing hotfixes on that base, append `-H<n+1>`.
+
 ```
 run test matrix (parallel jobs)
   → any fail: abort, do not release
   → all pass:
+      run database migrations (see Database Migrations section)
       build TypeScript
-      build Docker image (tagged :latest + :v*.*.*)
+      build Docker image (tagged :latest + :v<calver>)
       push to Docker Hub
       SSH into VPS → docker compose pull && docker compose up -d (prod stack)
-      <!-- TODO: run database migrations before restart -->
+      archive migration files: move database/migrations/future/* → database/migrations/<tag>/
+      commit + push archive back to main
 ```
 
 ### Docker Compose on VPS
@@ -423,7 +436,89 @@ Services per stack:
 - `redis` — job queue backend
 - `postgres` — database
 
-<!-- TODO: database migrations — circle back -->
+---
+
+## Database Migrations
+
+### File Layout
+
+```
+database/
+  schema/
+    games/
+      tables/       catalogue.sql  store_entries.sql  submissions.sql
+    users/
+      tables/       accounts.sql  steam_links.sql  game_library.sql
+    servers/
+      tables/       config.sql  members.sql
+    lfg/
+      tables/       posts.sql  invitees.sql
+  migrations/
+    future/         ← pending migrations, not yet deployed to prod
+    v2026.03.1/     ← archived after that release deployed them
+    v2026.03.2/
+    v2026.03.2-H1/
+    ...
+```
+
+### Source Files
+
+`database/schema/**/*.sql` are the **single source of truth** for what the database looks like right now.
+
+- A fresh database is built entirely from these files — no migration history needed
+- Developers are responsible for keeping them in sync with any migration they write
+- CI enforces this — if they drift, the PR fails
+
+### Migration Files
+
+Each issue that changes the schema produces two files in `database/migrations/future/`:
+
+```
+<issue-number>_rollout.sql    ← forward migration (ALTER TABLE, CREATE TABLE, etc.)
+<issue-number>_rollback.sql   ← undo script (DROP COLUMN, DROP TABLE, etc.)
+```
+
+Naming by issue number ensures correct apply order within a release.
+Multiple issues merged into one release all land in `future/` together and are applied in issue-number order.
+
+### CI Validation (on PRs touching `database/`)
+
+Spins up two fresh PostgreSQL instances:
+
+```
+DB_A: apply schema/ from main  →  apply future/<issue>_rollout.sql
+DB_B: apply schema/ from this branch (developer's updated source files)
+
+pg_dump --schema-only DB_A  vs  pg_dump --schema-only DB_B
+
+match    → ✅ source files are in sync with the migration
+mismatch → ❌ developer forgot to update a source file — PR blocked
+```
+
+This makes it impossible to merge a migration that silently drifts from the source files.
+
+### Deploy (prod release)
+
+```
+1. SSH into VPS
+2. Run all files in database/migrations/future/ against prod DB in issue-number order
+   → any SQL error: abort deploy, do not restart bot, alert developer
+3. If successful: restart bot + worker containers
+4. CI archives: git mv database/migrations/future/* database/migrations/<tag>/
+5. CI commits + pushes archive back to main
+```
+
+Step 4–5 means the repo always reflects exactly which migrations live in which release. Rollback is: find the failed release's folder, run the `_rollback.sql` files in reverse order, redeploy previous image.
+
+### Rollback Procedure (manual)
+
+```
+1. SSH into VPS
+2. Run database/migrations/<broken-tag>/*_rollback.sql in reverse issue-number order
+3. docker compose pull (previous image tag) && docker compose up -d
+```
+
+No automated rollback — rollbacks are deliberate, manual decisions.
 
 ### GitHub Issues
 
