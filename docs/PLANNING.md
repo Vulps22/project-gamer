@@ -331,6 +331,114 @@ The churn rate means most servers that stayed are low-activity. The cost of aski
 
 ---
 
+## Development Process
+
+### Branch Strategy
+
+```
+main                          → always deployable; runs the DEV bot on a private test server
+feat/<issue>-short-description  → feature work
+fix/<issue>-short-description   → bug fixes
+```
+
+- PRs required into `main` — no direct pushes
+- Branch protection: all test jobs must pass before a PR can merge
+- If it's failing in CI, it doesn't merge. If it somehow does, it doesn't release.
+
+### Test Strategy
+
+Tests are co-located with source and grouped by folder:
+
+```
+src/
+  commands/   __tests__/
+  services/   __tests__/
+  scrapers/   __tests__/
+  jobs/       __tests__/
+  utils/      __tests__/
+```
+
+Each folder is a **separate parallel CI job**. They do not share a runner or wait on each other.
+If any one job fails, the whole pipeline aborts — no build, no deploy.
+
+This keeps individual runs fast and makes it obvious which area broke.
+In a year's time, `commands/` failing does not mean you wait for all of `services/` to finish too.
+
+```yaml
+# Conceptual GitHub Actions matrix
+jobs:
+  test:
+    strategy:
+      matrix:
+        suite: [commands, services, scrapers, jobs, utils]
+    steps:
+      - run: npx vitest run src/${{ matrix.suite }}
+```
+
+Adding a new folder = adding one word to the matrix list.
+
+### CI/CD Pipeline
+
+#### On Pull Request
+```
+run test matrix (parallel jobs)
+  → any fail: PR blocked, no merge
+```
+
+#### On merge to main (dev deploy)
+```
+run test matrix (parallel jobs)
+  → any fail: abort
+  → all pass:
+      build TypeScript
+      build Docker image (tagged :dev)
+      push to Docker Hub
+      SSH into VPS → docker compose pull && docker compose up -d (dev stack)
+```
+
+#### On release tag `v*.*.*` (prod deploy)
+```
+run test matrix (parallel jobs)
+  → any fail: abort, do not release
+  → all pass:
+      build TypeScript
+      build Docker image (tagged :latest + :v*.*.*)
+      push to Docker Hub
+      SSH into VPS → docker compose pull && docker compose up -d (prod stack)
+      <!-- TODO: run database migrations before restart -->
+```
+
+### Docker Compose on VPS
+
+Two stacks on the same VPS — dev and prod — each with their own Compose file:
+
+```
+/opt/projectgamer-dev/   docker-compose.yml  (bot-dev, worker-dev, redis-dev, postgres-dev)
+/opt/projectgamer/       docker-compose.yml  (bot, worker, redis, postgres)
+```
+
+Services per stack:
+- `bot` — Discord bot process (handles interactions, enqueues jobs)
+- `worker` — BullMQ worker process (runs sync/cleanup/scheduled jobs)
+- `redis` — job queue backend
+- `postgres` — database
+
+<!-- TODO: database migrations — circle back -->
+
+### GitHub Issues
+
+All work tracked as GitHub Issues. No Jira.
+
+Label conventions:
+- `feat` — new feature
+- `fix` — bug fix
+- `chore` — maintenance, deps, config
+- `blocked` — waiting on something external
+
+Branch names reference the issue number: `feat/42-lfg-scheduling`
+
+---
+
 ## Open Questions
 
 _None currently._
