@@ -42,7 +42,8 @@ Patching buys a slightly less broken version of something people are already rej
 | Runtime | Node.js | No change, ecosystem fits Discord bots well |
 | Discord library | discord.js v14 | No change |
 | Database | PostgreSQL | Schema namespacing, better type support, preferred |
-| ORM / Query | Kysely | TypeScript-first query builder, no magic, no surprises |
+| DB Driver | `postgres.js` | Native TypeScript, tagged template literals, clean DX |
+| DB Wrapper | Custom thin wrapper | `db.select()`, `db.get()`, `db.insert()`, `db.query()` — no ORM, no query builder, just typed SQL |
 | Job queue | BullMQ + Redis | Retries, scheduling, visibility, keeps sync off main thread |
 | Scrapers | Cheerio (Steam) + Puppeteer (Meta) | Meta has bot protections that require a real browser; carry forward knowledge, rewrite clean |
 | Testing | Vitest | Faster than Jest, native ESM, compatible with TS |
@@ -55,106 +56,14 @@ Patching buys a slightly less broken version of something people are already rej
 Rather than prefixing table names or cramming everything into `public`:
 
 ```
+store     → known stores (Steam, Meta, Xbox, RSI, Epic, GOG...) — seed data, not user-generated
 games     → game catalogue, store entries, submission queue
-users     → discord users, steam account links
+users     → discord users, steam account links, game libraries
 servers   → server config, memberships, sharing settings
-lfg       → posts, sessions, scheduled events, VC tracking
+lfg       → posts, invitees, interested users, VC tracking
 ```
 
----
-
-## Data Model
-
-### `users` schema
-
-```sql
-users.accounts
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  discord_id    TEXT UNIQUE NOT NULL
-  created_at    TIMESTAMPTZ DEFAULT now()
-
-users.steam_links
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  user_id       UUID REFERENCES users.accounts(id) ON DELETE CASCADE
-  steam_id      TEXT NOT NULL
-  linked_at     TIMESTAMPTZ DEFAULT now()
-  last_synced   TIMESTAMPTZ
-
-users.game_library
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  user_id       UUID REFERENCES users.accounts(id) ON DELETE CASCADE
-  game_id       UUID REFERENCES games.catalogue(id)
-  added_at      TIMESTAMPTZ DEFAULT now()
-  source        TEXT  -- 'manual' | 'steam_sync'
-```
-
-### `games` schema
-
-```sql
-games.catalogue
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  name          TEXT NOT NULL
-  cover_art     TEXT  -- URL
-  created_at    TIMESTAMPTZ DEFAULT now()
-
-games.store_entries
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  game_id       UUID REFERENCES games.catalogue(id)
-  store         TEXT NOT NULL  -- 'steam' | 'meta' | 'gog'
-  store_game_id TEXT NOT NULL
-  url           TEXT NOT NULL
-  UNIQUE(store, store_game_id)
-
-games.submissions
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  submitted_by  UUID REFERENCES users.accounts(id)
-  url           TEXT NOT NULL
-  store         TEXT  -- null if unrecognised
-  status        TEXT DEFAULT 'pending'  -- 'pending' | 'approved' | 'rejected'
-  submitted_at  TIMESTAMPTZ DEFAULT now()
-  reviewed_at   TIMESTAMPTZ
-  result_game_id UUID REFERENCES games.catalogue(id)  -- set on approval
-```
-
-### `servers` schema
-
-```sql
-servers.config
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  discord_id      TEXT UNIQUE NOT NULL
-  lfg_channel_id  TEXT  -- Discord channel snowflake
-  lfg_role_id     TEXT  -- Discord role snowflake (auto-created on join)
-  joined_at       TIMESTAMPTZ DEFAULT now()
-
-servers.members
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  server_id   UUID REFERENCES servers.config(id) ON DELETE CASCADE
-  user_id     UUID REFERENCES users.accounts(id) ON DELETE CASCADE
-  sharing     BOOLEAN DEFAULT true   -- defaults on: users asked why they weren't appearing in LFG lists
-  joined_at   TIMESTAMPTZ DEFAULT now()
-  UNIQUE(server_id, user_id)
-```
-
-### `lfg` schema
-
-```sql
-lfg.posts
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  server_id       UUID REFERENCES servers.config(id)
-  posted_by       UUID REFERENCES users.accounts(id)
-  game_id         UUID REFERENCES games.catalogue(id)
-  type            TEXT NOT NULL  -- 'immediate' | 'scheduled'
-  scheduled_at    TIMESTAMPTZ   -- null for immediate
-  vc_channel_id   TEXT          -- Discord VC snowflake, set after creation
-  message_id      TEXT          -- Discord message snowflake
-  status          TEXT DEFAULT 'active'  -- 'active' | 'expired' | 'cancelled'
-  created_at      TIMESTAMPTZ DEFAULT now()
-
-lfg.invitees
-  post_id     UUID REFERENCES lfg.posts(id) ON DELETE CASCADE
-  user_id     UUID REFERENCES users.accounts(id)
-  PRIMARY KEY (post_id, user_id)
-```
+Full schema in [`DATABASE.md`](./DATABASE.md).
 
 ---
 
@@ -170,12 +79,12 @@ lfg.invitees
 - The bot works fully without Steam — games can always be added manually via `/library add`
 
 #### Library Management
-- `/library add <url>` — add a game by store URL (Steam or Meta)
+- `/library add <url>` — submit a store URL; bot responds immediately with "adding your game..." and enqueues a scrape job; worker scrapes and follows up via stored interaction token; if URL is unrecognised, goes to admin approval queue
 - `/library remove <game>` — remove a game (autocomplete)
-- `/library view [user]` — view own or another user's library (if they're sharing)
+- `/library view [user]` — autocomplete list of all games in the library; selecting one shows an ephemeral embed with a "Post to Chat" button
 
 #### Sharing
-- `/sharing on|off` — toggle library visibility for the current server (per-server, per-user)
+- `/sharing <on|off>` — toggle library visibility for the current server (per-server, per-user). Idempotent — "already sharing" if called when already on.
 
 #### LFG
 The LFG post embed is a **living record** — it is edited in place as session state changes.
@@ -187,21 +96,41 @@ VC field states:
 
 The `message_id` stored on `lfg.posts` is what the bot uses to edit the post when state changes.
 
-- `/lfg play <game>` — immediate session
+**LFG list:** the `#lfg` channel itself is the list. No separate command.
+
+**Control panel thread:** when any LFG post is created, the bot creates a thread on that message. The thread's first post is a control panel visible only to the session creator, with:
+- **Change Time** (scheduled posts only)
+- **Cancel**
+
+Only the creator can interact with these buttons (validated against `posted_by`).
+
+**Interested / Not Interested buttons:** shown on open invitation posts.
+- Clicking "Interested" adds the user to `lfg.interested` and displays their name on the post
+- Clicking "Not Interested" removes them
+- Interested users are pinged when the VC goes live
+
+**VC lifecycle (event-driven, not polled):**
+- On `voiceStateUpdate`: when the last user leaves a managed VC, enqueue a delayed BullMQ job (10 min TTL)
+- If a user rejoins before the job fires, cancel the job
+- On job fire with VC still empty: delete VC, edit post to `VC: ❌ CLOSED`
+- Hard 1hr cap: always enqueue a 1hr cleanup job at VC creation time as a fallback
+
+**`/lfg play <game>`** — immediate session
   - Shows server members who have the game and are sharing
   - Select one or more players, or press "Open Invitation"
   - Open Invitation pings `@lfg`
   - Bot creates a VC named after the game, edits post to show `VC: <#channel-link>`
-  - VC auto-deletes after 1hr, or 10min after becoming empty (whichever comes first)
-  - On VC deletion, post is edited to show `VC: ❌ CLOSED`
-- `/lfg schedule <game> <time>` — scheduled session
+  - Interested users pinged on VC creation
+
+**`/lfg schedule <game> <time>`** — scheduled session
   - `<time>` is a Unix timestamp integer (users can generate these at e.g. hammertime.cyou)
   - Bot validates the timestamp is in the future
   - Same player selection flow as `/lfg play`
-  - Post displays `<t:timestamp:F>` (Discord localised timestamp, shown in each user's local timezone)
-  - Post VC field shows `⚠️ <t:timestamp:R>` until VC is created
+  - Post displays `<t:timestamp:F>` (Discord localised full timestamp)
+  - Post VC field shows `⚠️ <t:timestamp:R>` (relative — "in 2 hours") until VC is created
   - VC created 10 minutes before scheduled time, post updated to `VC: <#channel-link>`
-  - On VC deletion, post is edited to show `VC: ❌ CLOSED`
+  - Interested users pinged when VC is created
+  - On VC deletion, post edited to `VC: ❌ CLOSED`
 
 #### Server Setup (auto)
 - On `guildCreate`: bot creates `@lfg` role if it doesn't exist, stores its ID
@@ -256,8 +185,7 @@ ADMIN_NEW_GAMES_CHANNEL_ID=...
 /steam unlink
 /steam sync
 
-/sharing on
-/sharing off
+/sharing <on|off>
 
 /config lfg-channel <channel>
 
@@ -277,8 +205,10 @@ Main Process (Discord bot)
 
 BullMQ Worker Process (separate)
   └── steam.sync      — diff Steam library against user library, write new games
-  └── vc.cleanup      — check VC occupancy, delete if rules met
-  └── lfg.scheduled   — spin up VC 10min before scheduled LFG
+  └── scrape.fetch    — scrape a store URL (Cheerio or Puppeteer); follow up to user via stored Discord interaction token
+  └── vc.empty        — delayed 10min job enqueued when last user leaves a VC; deletes VC if still empty
+  └── vc.expire       — hard 1hr TTL job enqueued at VC creation; deletes VC regardless
+  └── lfg.scheduled   — spin up VC 10min before scheduled LFG, ping interested users
   └── session.cleanup — purge expired OAuth sessions
 ```
 
