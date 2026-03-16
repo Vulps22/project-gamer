@@ -489,7 +489,7 @@ _None currently._
 
 ## What We're Not Doing
 
-- No web dashboard
+- No public-facing web dashboard (an admin-only analytics tool is a separate product — see ANALYTICS.md)
 - No per-server game catalogues (one global catalogue)
 - No ELO / reputation system
 - No voice activity tracking

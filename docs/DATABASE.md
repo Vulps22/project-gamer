@@ -7,13 +7,26 @@
 
 ## Schema Namespacing
 
-| Schema | Contains |
-|--------|----------|
-| `store` | Known game stores — seed data, not user-generated |
-| `games` | Game catalogue, store entries, submission queue |
-| `users` | Discord accounts, Steam links, game libraries |
-| `servers` | Server config, memberships, sharing settings |
-| `lfg` | Posts, invitees, interested users |
+| Schema | Contains | Written by |
+|--------|----------|------------|
+| `store` | Known game stores — seed data, not user-generated | Bot (seed scripts) |
+| `games` | Game catalogue, store entries, submission queue | Bot |
+| `users` | Discord accounts, Steam links, game libraries | Bot |
+| `servers` | Server config, memberships, sharing settings | Bot |
+| `lfg` | Posts, invitees, interested users | Bot |
+| `analytics` | Report snapshots (weekly/monthly/quarterly/annual) | Analytics tool only |
+
+## Database Roles
+
+```
+bot_user         SELECT, INSERT, UPDATE, DELETE on store, games, users, servers, lfg
+                 NO permissions on analytics
+
+analytics_user   SELECT on store, games, users, servers, lfg
+                 SELECT, INSERT, UPDATE, DELETE, EXECUTE on analytics
+```
+
+See [`ANALYTICS.md`](./ANALYTICS.md) for full analytics schema and report structure.
 
 ---
 
@@ -96,12 +109,13 @@ result_game_id  UUID        REFERENCES games.catalogue(id) -- set on approval
 ### `users.accounts`
 
 ```sql
-id          UUID        PRIMARY KEY DEFAULT gen_random_uuid()
-discord_id  TEXT        NOT NULL UNIQUE
-created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid()
+discord_id           TEXT        NOT NULL UNIQUE
+created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+last_interaction_at  TIMESTAMPTZ
 ```
 
-Created on first interaction with the bot. Discord ID is the only required field — everything else is optional.
+Created on first interaction with the bot. `last_interaction_at` is updated on every command use — this is the foundation of retention analytics.
 
 ### `users.steam_links`
 
