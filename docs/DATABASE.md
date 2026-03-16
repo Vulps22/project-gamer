@@ -16,6 +16,8 @@
 | `lfg` | Posts, invitees, interested users | Bot |
 | `analytics` | Report snapshots (weekly/monthly/quarterly/annual) | Analytics tool only |
 
+---
+
 ## Database Roles
 
 ```
@@ -27,6 +29,45 @@ analytics_user   SELECT on store, games, users, servers, lfg
 ```
 
 See [`ANALYTICS.md`](./ANALYTICS.md) for full analytics schema and report structure.
+
+---
+
+## Conventions
+
+### Timestamps — every table, no exceptions
+
+Every table carries `created_at` and `updated_at`. No exceptions, including junction tables.
+
+```sql
+created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
+`updated_at` is maintained by a shared PostgreSQL trigger — the application never sets it manually:
+
+```sql
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Applied in each table's source file, e.g.:
+CREATE TRIGGER set_updated_at
+  BEFORE UPDATE ON lfg.posts
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+```
+
+**Domain-specific timestamps** are kept only where they mean something distinct from `created_at` / `updated_at`:
+
+| Column | Table | Meaning |
+|--------|-------|---------|
+| `last_interaction_at` | `users.accounts` | Last bot command use — analytics retention signal |
+| `last_synced` | `users.steam_links` | Last successful Steam library sync |
+| `reviewed_at` | `games.submissions` | When an admin approved or rejected the submission |
+| `scheduled_at` | `lfg.posts` | When the gaming session is scheduled to start |
 
 ---
 
@@ -43,6 +84,7 @@ slug        TEXT        NOT NULL UNIQUE   -- 'steam', 'meta', 'gog', 'xbox', 'ep
 base_url    TEXT                         -- 'https://store.steampowered.com'
 scraper     TEXT                         -- 'steam' | 'meta' | null
 created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 `scraper` maps to the worker's scraper implementation. `null` means no automated scraper exists — URLs from this store go straight to manual admin approval.
@@ -69,6 +111,7 @@ id          UUID        PRIMARY KEY DEFAULT gen_random_uuid()
 name        TEXT        NOT NULL
 cover_art   TEXT                    -- URL
 created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 ### `games.store_entries`
@@ -76,11 +119,13 @@ created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 Links a game in the catalogue to its listing on a specific store.
 
 ```sql
-id            UUID  PRIMARY KEY DEFAULT gen_random_uuid()
-game_id       UUID  NOT NULL REFERENCES games.catalogue(id)  ON DELETE CASCADE
-store_id      UUID  NOT NULL REFERENCES store.stores(id)
-store_game_id TEXT  NOT NULL        -- store's own identifier (Steam appid, Meta app ID, etc.)
-url           TEXT  NOT NULL
+id            UUID        PRIMARY KEY DEFAULT gen_random_uuid()
+game_id       UUID        NOT NULL REFERENCES games.catalogue(id)  ON DELETE CASCADE
+store_id      UUID        NOT NULL REFERENCES store.stores(id)
+store_game_id TEXT        NOT NULL   -- store's own identifier (Steam appid, Meta app ID, etc.)
+url           TEXT        NOT NULL
+created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 UNIQUE(store_id, store_game_id)
 ```
 
@@ -97,9 +142,10 @@ url             TEXT        NOT NULL
 store_id        UUID        REFERENCES store.stores(id)    -- null if store is unrecognised
 status          TEXT        NOT NULL DEFAULT 'pending'
                             CHECK (status IN ('pending', 'approved', 'rejected'))
-submitted_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-reviewed_at     TIMESTAMPTZ
+reviewed_at     TIMESTAMPTZ                                -- set when status changes from pending
 result_game_id  UUID        REFERENCES games.catalogue(id) -- set on approval
+created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 ---
@@ -111,11 +157,12 @@ result_game_id  UUID        REFERENCES games.catalogue(id) -- set on approval
 ```sql
 id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid()
 discord_id           TEXT        NOT NULL UNIQUE
+last_interaction_at  TIMESTAMPTZ             -- updated on every command use; retention analytics signal
 created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
-last_interaction_at  TIMESTAMPTZ
+updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
-Created on first interaction with the bot. `last_interaction_at` is updated on every command use — this is the foundation of retention analytics.
+Created on first interaction with the bot. Discord ID is the only required field — everything else is optional.
 
 ### `users.steam_links`
 
@@ -125,8 +172,9 @@ Optional. Maximum one row per user enforced by `UNIQUE(user_id)`.
 id          UUID        PRIMARY KEY DEFAULT gen_random_uuid()
 user_id     UUID        NOT NULL UNIQUE REFERENCES users.accounts(id) ON DELETE CASCADE
 steam_id    TEXT        NOT NULL
-linked_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-last_synced TIMESTAMPTZ
+last_synced TIMESTAMPTZ             -- set after each successful Steam library sync
+created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 ### `users.game_library`
@@ -135,9 +183,10 @@ last_synced TIMESTAMPTZ
 id          UUID        PRIMARY KEY DEFAULT gen_random_uuid()
 user_id     UUID        NOT NULL REFERENCES users.accounts(id) ON DELETE CASCADE
 game_id     UUID        NOT NULL REFERENCES games.catalogue(id) ON DELETE CASCADE
-added_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 source      TEXT        NOT NULL DEFAULT 'manual'
                         CHECK (source IN ('manual', 'steam_sync'))
+created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 UNIQUE(user_id, game_id)
 ```
 
@@ -155,7 +204,8 @@ id              UUID        PRIMARY KEY DEFAULT gen_random_uuid()
 discord_id      TEXT        NOT NULL UNIQUE
 lfg_channel_id  TEXT                         -- Discord channel snowflake; null until /config lfg-channel is run
 lfg_role_id     TEXT                         -- Discord role snowflake; nulled on roleDelete, recreated on next LFG or matching roleCreate
-joined_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 **`lfg_role_id` lifecycle:**
@@ -170,7 +220,8 @@ id          UUID        PRIMARY KEY DEFAULT gen_random_uuid()
 server_id   UUID        NOT NULL REFERENCES servers.config(id)  ON DELETE CASCADE
 user_id     UUID        NOT NULL REFERENCES users.accounts(id)  ON DELETE CASCADE
 sharing     BOOLEAN     NOT NULL DEFAULT true
-joined_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 UNIQUE(server_id, user_id)
 ```
 
@@ -188,13 +239,14 @@ server_id         UUID        NOT NULL REFERENCES servers.config(id)
 posted_by         UUID        NOT NULL REFERENCES users.accounts(id)
 game_id           UUID        NOT NULL REFERENCES games.catalogue(id)
 type              TEXT        NOT NULL CHECK (type IN ('immediate', 'scheduled'))
-scheduled_at      TIMESTAMPTZ              -- null for immediate posts
+scheduled_at      TIMESTAMPTZ              -- null for immediate posts; when the session is scheduled to start
 vc_channel_id     TEXT                     -- Discord VC snowflake; set after VC creation
 message_id        TEXT                     -- Discord message snowflake; used to edit the living post
 control_thread_id TEXT                     -- Discord thread snowflake for creator control panel
 status            TEXT        NOT NULL DEFAULT 'active'
                               CHECK (status IN ('active', 'expired', 'cancelled'))
 created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 **`message_id`** is what the bot uses to edit the post in place as VC state changes.
@@ -205,8 +257,10 @@ created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 Users directly selected when the LFG post was created (non-open-invitation flow).
 
 ```sql
-post_id   UUID NOT NULL REFERENCES lfg.posts(id) ON DELETE CASCADE
-user_id   UUID NOT NULL REFERENCES users.accounts(id) ON DELETE CASCADE
+post_id    UUID        NOT NULL REFERENCES lfg.posts(id) ON DELETE CASCADE
+user_id    UUID        NOT NULL REFERENCES users.accounts(id) ON DELETE CASCADE
+created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 PRIMARY KEY (post_id, user_id)
 ```
 
@@ -218,6 +272,7 @@ Users who clicked "Interested" on an open invitation post.
 post_id    UUID        NOT NULL REFERENCES lfg.posts(id) ON DELETE CASCADE
 user_id    UUID        NOT NULL REFERENCES users.accounts(id) ON DELETE CASCADE
 created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 PRIMARY KEY (post_id, user_id)
 ```
 
