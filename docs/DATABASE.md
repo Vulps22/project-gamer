@@ -102,13 +102,13 @@ CREATE TRIGGER set_updated_at
 
 ### `store.stores`
 
-The known list of game stores. Populated via seed scripts, not user input.
+The known list of game stores. Seeded by its schema file and the migration that creates it, never by user input. A store URL is matched to a store by `base_url`'s host.
 
 ```sql
 id          UUID        PRIMARY KEY DEFAULT gen_random_uuid()
 name        TEXT        NOT NULL UNIQUE   -- 'Steam', 'Meta Quest', 'GOG', 'Xbox', 'Epic Games', 'RSI'
 slug        TEXT        NOT NULL UNIQUE   -- 'steam', 'meta', 'gog', 'xbox', 'epic', 'rsi'
-base_url    TEXT                         -- 'https://store.steampowered.com'
+base_url    TEXT                         -- 'https://store.steampowered.com'; URLs are matched on its host
 scraper     TEXT                         -- 'steam' | 'meta' | null
 created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -174,6 +174,10 @@ result_game_id  UUID        REFERENCES games.catalogue(id) -- set on approval
 created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
+
+`games` installs before `users`, so the `submitted_by` foreign key is added in `users/tables/accounts.sql`, after `users.accounts` exists.
+
+When an admin approves a submission, its store entry's `store_game_id` is the ID the store's scraper reads from the URL (a Steam appid), or the URL itself for stores without a scraper.
 
 ---
 

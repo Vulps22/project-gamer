@@ -46,10 +46,10 @@ Patching buys a slightly less broken version of something people are already rej
 | Discord library | discord.js v14 | No change |
 | Database | PostgreSQL + TimescaleDB | Schema namespacing, better type support, preferred. Own database on the existing native install, not in Docker |
 | Interactions | `@vulps22/bot-interactions` | Shared interaction wrappers; provides custom ID building/parsing and flow tracking |
-| DB Driver | `postgres.js` | Native TypeScript, tagged template literals, clean DX |
-| DB Wrapper | Custom thin wrapper | `db.select()`, `db.get()`, `db.insert()`, `db.query()` — no ORM, no query builder, just typed SQL |
+| DB Driver | `pg` (node-postgres) | One driver for the bot, the worker and the migration scripts |
+| DB Wrapper | Custom thin wrapper | `db.select()`, `db.get()`, `db.query()`, `db.transaction()` — no ORM, no query builder, just typed SQL |
 | Job queue | BullMQ + Redis | Retries, scheduling, visibility, keeps sync off main thread |
-| Scrapers | Cheerio (Steam) + Puppeteer (Meta) | Meta has bot protections that require a real browser; carry forward knowledge, rewrite clean |
+| Scrapers | Steam's public `appdetails` API (Steam) + Puppeteer (Meta) | Steam's store API is more reliable than scraping its HTML. Meta has bot protections that require a real browser; carry forward knowledge, rewrite clean |
 | Logging | `@vulps22/logger` | Shared VD logger, as PE |
 | HTTP | `@vulps22/pathfinder` | File-based Express routing with bearer/HMAC auth; hosts the Steam callback and top.gg vote webhook |
 | Testing | Jest + ts-jest | Same toolchain as PE; 75% coverage threshold |
@@ -165,11 +165,7 @@ When `/library add <url>` is called with an unrecognised URL:
    - Notifies requesting user via Discord DM (this one we're actually building)
 5. **Reject** sets status to `rejected` — no further action (no DM for rejections in v2)
 
-Config required:
-```env
-ADMIN_SERVER_ID=...
-ADMIN_NEW_GAMES_CHANNEL_ID=...
-```
+Config required, in the typed config module for each environment (`src/config/<env>/Config.ts`), not env vars, since neither is a secret: `adminServerId` and `newGamesChannelId`. The bot refuses to start while either is blank.
 
 #### Top.gg
 - **Server count:** posted to top.gg across all shards.
@@ -295,16 +291,16 @@ All button, select menu, and modal IDs defined in one place, as `[prefix, action
 export const Interactions = {
   LFG_PLAYER_SELECT: ['lfg', 'playerSelect'],
   LFG_OPEN_INVITE: ['lfg', 'openInvite'],
-  LFG_STORE_SELECT: ['lfg', 'storeSelect'],
-  GAME_ADD_CONFIRM: ['game', 'addConfirm'],
-  GAME_REMOVE_CONFIRM: ['game', 'removeConfirm'],
+  LFG_INTERESTED: ['lfg', 'interested'],
+  LFG_NOT_INTERESTED: ['lfg', 'notInterested'],
+  LIBRARY_POST_GAME: ['library', 'postGame'],
   SUBMISSION_APPROVE: ['submission', 'approve'],
   SUBMISSION_REJECT: ['submission', 'reject'],
   SUBMISSION_APPROVE_MODAL: ['submission', 'approveModal'],
 } as const;
 ```
 
-Custom IDs are always built with `interaction.createCustomId(...Interactions.X, params)`, never by hand, so every component carries its flow (see [ANALYTICS.md](./ANALYTICS.md#flows)). Handlers are registered by `baseId` (`lfg_playerSelect`).
+Custom IDs are always built from these pairs, never by hand: `customIdsFor(interaction)` inside a handler (it calls `interaction.createCustomId`), or `customIdsForFlow(flowId)` in the worker, which has no interaction but carries the flow ID in the job, so every component carries its flow (see [ANALYTICS.md](./ANALYTICS.md#flows)). Handlers are registered by `baseId` (`lfg_playerSelect`).
 
 ---
 
@@ -432,11 +428,11 @@ database/
     20261105_42_create_lfg_interested.js
     ...
   scripts/
-    bootstrap.sql  fresh-install.js   migrate.js   revert.js   seed.js
+    bootstrap.sql  fresh-install.js   migrate.js   revert.js
     lib/           shared helpers (env, connection, SQL)
 ```
 
-Within a schema folder, `functions/` run first, then `tables/`, then `views/`. Schemas install in dependency order (`system, store, games, users, servers, lfg, analytics`, in `database/scripts/lib/schemaFiles.js`). Every script runs as `awesome_vd_user`.
+Within a schema folder, `functions/` run first, then `tables/`, then `views/`, each alphabetically, except for files listed in `RUN_FIRST` (in `schemaFiles.js`) because others in the folder reference them (`lfg/tables/posts.sql`). Seed data lives in its table's schema file and in the migration that creates it (`store.stores`). Schemas install in dependency order (`system, store, games, users, servers, lfg, analytics`, in `database/scripts/lib/schemaFiles.js`). Every script runs as `awesome_vd_user`.
 
 ### Schema Files
 
@@ -448,7 +444,7 @@ Within a schema folder, `functions/` run first, then `tables/`, then `views/`. S
 
 ### Migration Files
 
-One JS file per change: `YYYYMMDD_<issue>_<description>.js`. The date prefix gives the apply order. Each file exports:
+One JS file per change: `YYYYMMDD_<issue>_<description>.js`. The date prefix gives the apply order. When one issue adds several migrations on the same day, a sequence number after the issue keeps them in order (`20261110_53_1_create_store_schema.js`). Each file exports:
 
 | Export | Required | Meaning |
 |--------|----------|---------|
