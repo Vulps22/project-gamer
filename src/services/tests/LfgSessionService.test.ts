@@ -9,7 +9,7 @@ function setup(active: typeof post | null, expired = true) {
         findActiveByVc: jest.fn().mockResolvedValue(active),
         expire: jest.fn().mockResolvedValue(expired),
         details: jest.fn().mockResolvedValue({
-            post: { ...post, status: 'expired' }, gameName: 'Portal 2', coverArt: null, posterDiscordId: '1',
+            post: { ...post, status: 'expired' }, gameName: 'Portal 2', coverArt: null, storeLinks: [], posterDiscordId: '1',
             inviteeDiscordIds: [], interestedDiscordIds: [], lfgChannelId: 'lfg', lfgRoleId: null,
         }),
     };

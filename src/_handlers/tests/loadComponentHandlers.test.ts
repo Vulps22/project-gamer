@@ -8,8 +8,9 @@ describe('loadComponentHandlers', () => {
     it('answers every component by its folder and name, as PE does', () => {
         const registry = createHandlerRegistry();
         expect([...registry.buttons.keys()].sort()).toEqual([
-            'lfg_interested', 'lfg_notInterested', 'lfg_openInvite',
-            'library_haveGame', 'library_postGame',
+            'lfg_addGame', 'lfg_anyone', 'lfg_interested', 'lfg_notInterested',
+            'library_gameShare', 'library_removeGame',
+            'steam_unlink',
             'submission_approve', 'submission_reject',
         ]);
         expect([...registry.selects.keys()]).toEqual(['lfg_playerSelect']);

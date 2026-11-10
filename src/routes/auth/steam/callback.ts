@@ -2,11 +2,10 @@ import { ApiRoute } from '@vulps22/pathfinder';
 import { Request, Response } from 'express';
 import { describeError } from '../../../errors';
 import { steamCallbackUrl } from '../../../steam/SteamApi';
-import { steamLinkedView } from '../../../views/steamViews';
+import { steamSyncStartedView } from '../../../views/steamViews';
 import { steamCallbackPage } from '../../../views/steamCallbackPage';
 import { routeServices } from '../../../http/routeContext';
 
-const TRY_AGAIN = 'Go back to Discord and run /steam connect again.';
 
 /**
  * GET /auth/steam/callback: Steam sends the user here after login. Uses up the state token, has Steam
@@ -25,13 +24,13 @@ export const route: ApiRoute = {
         try {
             const session = await services.steamLogins.consume(state);
             if (!session) {
-                send(400, false, `This sign-in link has expired or was already used. ${TRY_AGAIN}`);
+                send(400, false, 'Your linking session was invalid or expired. Please initiate the linking process again from Discord.');
                 return;
             }
             const steamId = await services.steamApi.verifyLogin(query, steamCallbackUrl(services.config.publicUrl, state));
             if (!steamId) {
                 services.log.log(`Steam login for ${session.discordUserId} failed verification`);
-                send(400, false, `Steam couldn't confirm that sign-in. ${TRY_AGAIN}`);
+                send(400, false, 'Steam couldn\'t confirm that sign-in. Please try linking your Steam account again from Discord.');
                 return;
             }
 
@@ -39,7 +38,7 @@ export const route: ApiRoute = {
             await services.steam.link(account.id, steamId);
             services.log.log(`${session.discordUserId} linked Steam account ${steamId}`);
 
-            await services.discord.editInteractionReply(session.applicationId, session.interactionToken, steamLinkedView())
+            await services.discord.editInteractionReply(session.applicationId, session.interactionToken, steamSyncStartedView())
                 .catch(() => undefined); // The reply may be gone; the sync's own follow-up will try again.
             await services.jobs.enqueueSteamSync({
                 userId: account.id,
@@ -47,10 +46,10 @@ export const route: ApiRoute = {
                 reason: 'linked',
                 followUp: { applicationId: session.applicationId, interactionToken: session.interactionToken },
             });
-            send(200, true, 'Your Steam account is linked, and your games are being added to your library now. You can close this tab and go back to Discord.');
+            send(200, true, 'Your Steam account has been successfully linked to your Discord profile. Your games are being synchronized now; you may return to Discord.');
         } catch (error) {
             services.log.error(`Steam login callback failed\n${describeError(error)}`);
-            send(500, false, `Something went wrong on our side. ${TRY_AGAIN}`);
+            send(500, false, 'An internal error occurred during authentication. Please try again later.');
         }
     },
 };

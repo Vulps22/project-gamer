@@ -32,9 +32,12 @@ export async function libraryView(interaction: PgCommandInteraction, services: S
         throw new UserFacingError(`**${game.name}** isn't in ${isOwn ? 'your' : `<@${target.id}>'s`} library.`);
     }
     const ids = customIdsFor(interaction);
-    await interaction.editReply(gameView(game, await services.games.storeLinks(game.id), {
-        subtitle: isOwn ? 'In your library' : `In <@${target.id}>'s library`,
-        postButtonId: ids('library', 'postGame', { g: game.id }),
+    const [links, owners] = await Promise.all([services.games.storeLinks(game.id), services.library.ownerCounts(server.id, game.id)]);
+    // As v1: your own game can be removed or shared. Someone else's (new in v2) can be added or shared.
+    await interaction.editReply(gameView(game, links, owners, {
+        addId: isOwn ? undefined : ids('lfg', 'addGame', { g: game.id }),
+        removeId: isOwn ? ids('library', 'removeGame', { g: game.id }) : undefined,
+        shareId: ids('library', 'gameShare', { g: game.id }),
     }));
 }
 

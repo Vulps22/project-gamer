@@ -1,5 +1,6 @@
 import { Database } from '../database/Database';
-import { LfgPost } from '../types/models';
+import { LfgPost, StoreLink } from '../types/models';
+import { selectStoreLinks } from './GameService';
 
 const COLUMNS = 'id, server_id, posted_by, game_id, type, vc_channel_id, message_id, status';
 
@@ -16,6 +17,8 @@ export interface LfgPostDetails {
     post: LfgPost;
     gameName: string;
     coverArt: string | null;
+    /** Where the game is sold, for the post's "Available on" list. */
+    storeLinks: StoreLink[];
     posterDiscordId: string;
     inviteeDiscordIds: string[];
     interestedDiscordIds: string[];
@@ -82,7 +85,7 @@ export class LfgService {
         if (!post) {
             return null;
         }
-        const [header, invitees, interested] = await Promise.all([
+        const [header, invitees, interested, storeLinks] = await Promise.all([
             this.db.get<{ name: string; cover_art: string | null; discord_id: string; lfg_channel_id: string | null; lfg_role_id: string | null }>(
                 `SELECT g.name, g.cover_art, a.discord_id, s.lfg_channel_id, s.lfg_role_id FROM lfg.posts p
                  JOIN games.catalogue g ON g.id = p.game_id
@@ -93,6 +96,7 @@ export class LfgService {
             ),
             this.discordIds('invitees', postId),
             this.discordIds('interested', postId),
+            selectStoreLinks(this.db, post.game_id),
         ]);
         if (!header) {
             return null;
@@ -101,6 +105,7 @@ export class LfgService {
             post,
             gameName: header.name,
             coverArt: header.cover_art,
+            storeLinks,
             posterDiscordId: header.discord_id,
             inviteeDiscordIds: invitees,
             interestedDiscordIds: interested,

@@ -88,7 +88,7 @@ Full schema in [`DATABASE.md`](./DATABASE.md).
 #### Library Management
 - `/library add <url>` — submit a store URL; bot responds immediately with "adding your game..." and enqueues a scrape job; worker scrapes and follows up via stored interaction token; if URL is unrecognised, goes to admin approval queue
 - `/library remove <game>` — remove a game (autocomplete)
-- `/library view [user]` — autocomplete list of all games in the library; selecting one shows an ephemeral embed with a "Post to Chat" button. The posted card carries an **"I have this game"** button: anyone who clicks it gets the game added to their library (as v1's shared card did)
+- `/library view [user]` — autocomplete list of all games in the library; selecting one shows v1's game card (title, cover, stores, how many members of this community and globally own it) with **Remove from Library** and **Share with Channel**. The card shared with the channel has **Add to Library** and **Remove from Library**, as in v1.
 
 #### Sharing
 - `/sharing <on|off>` — toggle library visibility for the current server (per-server, per-user). Idempotent — "already sharing" if called when already on.
@@ -124,8 +124,9 @@ Only the creator can interact with these buttons (validated against `posted_by`)
 
 **`/lfg <game>`** — immediate session
   - Shows server members who have the game and are sharing
-  - Select one or more players, or press "Open Invitation"
-  - Open Invitation pings `@lfg`
+  - Select one or more players (v1's picker: "Who would you like to play **X** with?"), or open it up to **Anyone**
+  - Anyone (an open invitation) pings `@lfg`
+  - The post is v1's LFG post ("@user is looking for players to play **X**", the invited players, **Available on** with the **I have this game** button, the cover art), plus v2's VC line and Interested list
   - Bot creates a VC named after the game, edits post to show `VC: <#channel-link>`
   - Interested users pinged on VC creation
 

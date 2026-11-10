@@ -103,5 +103,6 @@ No colon after the verb. Enforced by `validate-pr-title.yml`.
 - Every interaction records one `analytics.events` row when its handler finishes (see `docs/ANALYTICS.md`).
 
 ### User-facing copy
+- **The UI matches v1** (`git show main:src/messages/`): its layouts, wording, buttons and button labels. Only change it where the docs add something v1 didn't have, and fit that into v1's layout.
 - The only official server link is `https://discord.vulps.co.uk` (the Vulps Community Hub), and it comes from config.
 - Don't promise anything in UI copy that isn't built yet.

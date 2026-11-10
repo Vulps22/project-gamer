@@ -1,11 +1,11 @@
 import {
-    ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, SeparatorBuilder,
+    ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize,
     StringSelectMenuBuilder, TextDisplayBuilder,
 } from 'discord.js';
 import { CustomIdFactory } from '../discord/customIds';
 import { LfgPostDetails } from '../services/LfgService';
 import { Game } from '../types/models';
-import { addCoverArt } from './coverArt';
+import { coverImage } from './coverArt';
 import { MessageView, view } from './MessageView';
 
 export interface PlayerOption {
@@ -15,72 +15,85 @@ export interface PlayerOption {
 
 /** A select menu holds at most 25 options. */
 export const MAX_PLAYER_OPTIONS = 25;
+/** As v1: at most 10 players picked for one session. */
+const MAX_PLAYERS_PICKED = 10;
+/** The picker's only option when nobody else has the game, as in v1. Picking it is refused. */
+export const NO_PLAYERS = 'none';
 
-/** The poster's private picker: choose players who own the game, or post an open invitation. */
+/** v1's player picker: choose players who own the game, or open it up to anyone. */
 export function pickPlayersView(game: Game, players: PlayerOption[], ids: CustomIdFactory): MessageView {
-    const container = new ContainerBuilder();
     const shown = players.slice(0, MAX_PLAYER_OPTIONS);
+    const options = shown.length > 0
+        ? shown.map(player => ({ label: player.label.slice(0, 100), value: player.discordId }))
+        : [{ label: 'No players found', value: NO_PLAYERS }];
 
-    if (shown.length === 0) {
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-            `## ${game.name}\nNobody else here is sharing this game yet. Post an open invitation and anyone can jump in.`,
-        ));
-    } else {
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-            `## ${game.name}\n${players.length} ${players.length === 1 ? 'person here has' : 'people here have'} this game. Pick who to invite, or post an open invitation.`,
-        ));
-        container.addActionRowComponents(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    return view(new ContainerBuilder()
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## Who would you like to play **${game.name}** with?`))
+        .addActionRowComponents(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId(ids('lfg', 'playerSelect', { g: game.id }))
-                .setPlaceholder('Choose players')
+                .setPlaceholder('Select players')
+                .addOptions(options)
                 .setMinValues(1)
-                .setMaxValues(shown.length)
-                .addOptions(shown.map(player => ({ label: player.label.slice(0, 100), value: player.discordId }))),
-        ));
-    }
-
-    container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(ids('lfg', 'openInvite', { g: game.id })).setLabel('Open Invitation').setStyle(ButtonStyle.Success),
-    ));
-    return view(container);
+                .setMaxValues(Math.min(MAX_PLAYERS_PICKED, options.length)),
+        ))
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
+        .addSectionComponents(new SectionBuilder()
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent('## Or open it up to'))
+            .setButtonAccessory(new ButtonBuilder().setCustomId(ids('lfg', 'anyone', { g: game.id })).setLabel('Anyone').setStyle(ButtonStyle.Success))));
 }
 
 /**
- * The public LFG post. It is a living record: re-rendered and edited in place as the session changes.
- * Pass `ids` to show the Interested buttons; leave it null once the session has closed.
+ * v1's LFG post, plus v2's voice channel and Interested list. It is a living record: re-rendered and edited
+ * in place as the session changes. The Interested buttons show only while the session runs.
  * Set `ping` only when the post is first sent, so edits never ping anyone again.
  */
-export function lfgPostView(details: LfgPostDetails, ids: CustomIdFactory | null, ping = false): MessageView {
+export function lfgPostView(details: LfgPostDetails, ids: CustomIdFactory, ping = false): MessageView {
     const { post } = details;
     const isOpen = details.inviteeDiscordIds.length === 0;
     const isActive = post.status === 'active';
+    const separator = (): SeparatorBuilder => new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
 
-    const lines = [`## 🎮 ${details.gameName}`, `<@${details.posterDiscordId}> wants to play **now**!`];
-    if (isOpen) {
-        const role = details.lfgRoleId ? `<@&${details.lfgRoleId}> ` : '';
-        lines.push(`${role}Open invitation: anyone with the game, jump in!`);
-    } else {
-        lines.push(`Playing with ${details.inviteeDiscordIds.map(id => `<@${id}>`).join(', ')}`);
+    const status = [vcLine(details)];
+    if (isOpen && details.lfgRoleId) {
+        status.unshift(`<@&${details.lfgRoleId}> open invitation: anyone with the game, jump in!`);
     }
-    lines.push(vcLine(details));
 
-    const container = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`## <@${details.posterDiscordId}> is looking for players to play **${details.gameName}**`),
+            new TextDisplayBuilder().setContent(status.join('\n')),
+        )
+        .addSeparatorComponents(separator());
+
+    if (!isOpen) {
+        container
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(details.inviteeDiscordIds.map(id => `- <@${id}>`).join('\n')))
+            .addSeparatorComponents(separator());
+    }
+
+    const links = details.storeLinks.map(link => `- [${link.store_name}](<${link.url}>)`).join('\n');
+    container
+        .addSectionComponents(new SectionBuilder()
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Available on:**\n${links}`))
+            .setButtonAccessory(new ButtonBuilder().setCustomId(ids('lfg', 'addGame', { g: post.game_id })).setLabel('I have this game').setStyle(ButtonStyle.Success)))
+        .addSeparatorComponents(separator());
 
     if (isOpen) {
-        const interested = details.interestedDiscordIds.length > 0
-            ? details.interestedDiscordIds.map(id => `<@${id}>`).join(', ')
-            : 'Nobody yet';
-        container.addSeparatorComponents(new SeparatorBuilder());
+        const interested = details.interestedDiscordIds.length > 0 ? details.interestedDiscordIds.map(id => `<@${id}>`).join(', ') : 'Nobody yet';
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Interested:** ${interested}`));
-        if (isActive && ids) {
+        if (isActive) {
             container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder().setCustomId(ids('lfg', 'interested', { p: post.id })).setLabel('Interested').setStyle(ButtonStyle.Success),
                 new ButtonBuilder().setCustomId(ids('lfg', 'notInterested', { p: post.id })).setLabel('Not Interested').setStyle(ButtonStyle.Secondary),
             ));
         }
+        container.addSeparatorComponents(separator());
     }
 
-    addCoverArt(container, details.coverArt, details.gameName);
+    if (details.coverArt) {
+        container.addMediaGalleryComponents(coverImage(details.coverArt, details.gameName));
+    }
 
     if (!ping) {
         return view(container);

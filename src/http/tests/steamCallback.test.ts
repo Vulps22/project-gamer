@@ -33,7 +33,7 @@ describe('GET /auth/steam/callback', () => {
         expect(services.steam.link).toHaveBeenCalledWith('acc-1', '76561197960287930');
         expect(services.jobs.enqueueSteamSync).toHaveBeenCalledWith(expect.objectContaining({ userId: 'acc-1', reason: 'linked' }));
         expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.send.mock.calls[0][0]).toContain('Steam account linked');
+        expect(res.send.mock.calls[0][0]).toContain('SteamSync Account Linked!');
     });
 
     it('refuses an expired or reused link', async () => {
@@ -41,7 +41,8 @@ describe('GET /auth/steam/callback', () => {
         await call(res);
         expect(services.steamApi.verifyLogin).not.toHaveBeenCalled();
         expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.send.mock.calls[0][0]).toContain('expired or was already used');
+        expect(res.send.mock.calls[0][0]).toContain('SteamSync Link Failed');
+        expect(res.send.mock.calls[0][0]).toContain('invalid or expired');
     });
 
     it('refuses a login Steam doesn\'t confirm, linking nothing', async () => {

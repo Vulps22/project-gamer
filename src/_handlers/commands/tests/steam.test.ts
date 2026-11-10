@@ -7,6 +7,7 @@ function interaction(subcommand: string) {
         user: { id: '111', username: 'tester' }, guildId: '9001', token: 'tok', applicationId: 'app',
         options: { getSubcommand: () => subcommand },
         deferReply: jest.fn().mockResolvedValue(undefined),
+        createCustomId: (prefix: string, action: string) => `${prefix}_${action}`,
         editReply: jest.fn().mockResolvedValue(undefined),
     } as unknown as PgCommandInteraction & { editReply: jest.Mock };
 }
@@ -40,7 +41,8 @@ describe('/steam connect', () => {
         const i = interaction('connect');
         await steam.execute(i, services);
         expect(services.steamLogins.create).not.toHaveBeenCalled();
-        expect(reply(i)).toContain('already linked');
+        expect(reply(i)).toContain('Steam Account Already Linked');
+        expect(reply(i)).toContain('steam_unlink');
     });
 });
 
@@ -50,7 +52,7 @@ describe('/steam sync', () => {
         const i = interaction('sync');
         await steam.execute(i, services);
         expect(services.jobs.enqueueSteamSync).toHaveBeenCalledWith({ userId: 'acc-1', discordUserId: '111', reason: 'requested', followUp: { applicationId: 'app', interactionToken: 'tok' } });
-        expect(reply(i)).toContain('Syncing');
+        expect(reply(i)).toContain('Starting sync');
     });
 
     it('needs a linked account', async () => {
@@ -76,6 +78,6 @@ describe('/steam unlink', () => {
         const i = interaction('unlink');
         await steam.execute(i, services);
         expect(services.steam.unlink).toHaveBeenCalledWith('acc-1');
-        expect(reply(i)).toContain('stay in your library');
+        expect(reply(i)).toContain('Steam Account Unlinked');
     });
 });

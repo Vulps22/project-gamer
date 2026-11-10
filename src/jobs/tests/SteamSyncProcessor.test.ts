@@ -20,14 +20,15 @@ describe('SteamSyncProcessor.sync', () => {
     it('reports what was added', async () => {
         const { services, processor } = setup(jest.fn().mockResolvedValue({ status: 'synced', owned: 40, newToCatalogue: 3, addedToLibrary: 5 }));
         await processor.sync(job, false);
-        expect(reply(services)).toContain('added **5** games');
+        expect(reply(services)).toContain('Added 5 games to your personal library');
+        expect(reply(services)).toContain('Found 3 new games for the bot');
         expect(services.log.log).toHaveBeenCalledWith(expect.stringContaining('5 added to library, 3 new to the catalogue'));
     });
 
     it('tells the user how to fix a private profile', async () => {
         const { services, processor } = setup(jest.fn().mockResolvedValue({ status: 'private' }));
         await processor.sync(job, false);
-        expect(reply(services)).toContain('Game details');
+        expect(reply(services)).toContain('might be private');
     });
 
     it('retries a Steam outage quietly, and tells the user on the last attempt', async () => {
@@ -38,7 +39,7 @@ describe('SteamSyncProcessor.sync', () => {
 
         const last = setup(failing);
         await expect(last.processor.sync(job, true)).rejects.toThrow('503');
-        expect(reply(last.services)).toContain('try `/steam sync` again');
+        expect(reply(last.services)).toContain('Please try again later');
     });
 
     it('has nobody to tell for an auto-sync', async () => {

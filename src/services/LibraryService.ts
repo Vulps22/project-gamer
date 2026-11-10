@@ -50,6 +50,18 @@ export class LibraryService {
         return (await this.db.get('SELECT 1 FROM users.game_library WHERE user_id = $1 AND game_id = $2', [userId, gameId])) !== null;
     }
 
+    /** How many of this server's members own the game, and how many users in all: the counts on a game card. */
+    async ownerCounts(serverId: string, gameId: string): Promise<{ community: number; global: number }> {
+        const row = await this.db.get<{ community: number; global: number }>(
+            `SELECT
+               (SELECT count(*)::int FROM servers.members m JOIN users.game_library l ON l.user_id = m.user_id
+                 WHERE m.server_id = $1 AND l.game_id = $2) AS community,
+               (SELECT count(*)::int FROM users.game_library WHERE game_id = $2) AS global`,
+            [serverId, gameId],
+        );
+        return { community: row?.community ?? 0, global: row?.global ?? 0 };
+    }
+
     /** Discord IDs of the server's members who own the game and share their library there. */
     async sharingOwners(serverId: string, gameId: string): Promise<string[]> {
         const rows = await this.db.select<{ discord_id: string }>(

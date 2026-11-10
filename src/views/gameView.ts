@@ -1,32 +1,45 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from 'discord.js';
 import { Game, StoreLink } from '../types/models';
-import { addCoverArt } from './coverArt';
+import { coverImage } from './coverArt';
 import { MessageView, view } from './MessageView';
 
-/**
- * A game card: name, store links and cover art. On /library view it has a Post to Chat button; posted in
- * chat it has an "I have this game" button, so anyone who sees it can add it to their library.
- */
-export function gameView(game: Game, links: StoreLink[], options: { subtitle?: string; postButtonId?: string; haveButtonId?: string } = {}): MessageView {
-    const lines = [`## ${game.name}`];
-    if (options.subtitle) {
-        lines.push(options.subtitle);
-    }
-    if (links.length > 0) {
-        lines.push(links.map(link => `[${link.store_name}](${link.url})`).join(' · '));
-    }
+/** Custom IDs for a game card's buttons. Each one given is shown, in v1's order: Add, Remove, Share. */
+export interface GameCardButtons {
+    addId?: string;
+    removeId?: string;
+    shareId?: string;
+}
 
-    const container = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
-    addCoverArt(container, game.cover_art, game.name);
-    const buttons: ButtonBuilder[] = [];
-    if (options.postButtonId) {
-        buttons.push(new ButtonBuilder().setCustomId(options.postButtonId).setLabel('Post to Chat').setStyle(ButtonStyle.Primary));
+/**
+ * v1's game card: title, cover art, the stores it's on, how many people own it, and buttons. Ephemeral
+ * (your own library) it has Remove from Library and Share with Channel; shared in the channel it has
+ * Add to Library and Remove from Library.
+ */
+export function gameView(game: Game, links: StoreLink[], owners: { community: number; global: number }, buttons: GameCardButtons): MessageView {
+    const container = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${game.name}`));
+    if (game.cover_art) {
+        container.addMediaGalleryComponents(coverImage(game.cover_art, game.name));
     }
-    if (options.haveButtonId) {
-        buttons.push(new ButtonBuilder().setCustomId(options.haveButtonId).setLabel('I have this game').setStyle(ButtonStyle.Success));
+    container
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(['### Stores', ...links.map(link => `- [${link.store_name}](${link.url})`)].join('\n')))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+            `**${owners.community}** members of this community own this game.\n**${owners.global}** members globally own this game.`,
+        ))
+        .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large));
+
+    const row: ButtonBuilder[] = [];
+    if (buttons.addId) {
+        row.push(new ButtonBuilder().setCustomId(buttons.addId).setLabel('Add to Library').setStyle(ButtonStyle.Success));
     }
-    if (buttons.length > 0) {
-        container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(buttons));
+    if (buttons.removeId) {
+        row.push(new ButtonBuilder().setCustomId(buttons.removeId).setLabel('Remove from Library').setStyle(ButtonStyle.Danger));
+    }
+    if (buttons.shareId) {
+        row.push(new ButtonBuilder().setCustomId(buttons.shareId).setLabel('Share with Channel').setStyle(ButtonStyle.Primary));
+    }
+    if (row.length > 0) {
+        container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(row));
     }
     return view(container);
 }

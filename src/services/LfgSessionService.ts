@@ -1,5 +1,5 @@
 import { DiscordApi } from '../discord/DiscordApi';
-import { CustomIdFactory } from '../discord/customIds';
+import { CustomIdFactory, customIdsForFlow } from '../discord/customIds';
 import { describeError } from '../errors';
 import { Log } from '../types/Log';
 import { lfgPostView } from '../views/lfgViews';
@@ -9,8 +9,8 @@ import { LfgService } from './LfgService';
 export class LfgSessionService {
     constructor(private readonly lfg: LfgService, private readonly discord: DiscordApi, private readonly log: Log) {}
 
-    /** Redraws a post from the database. `ids` builds its buttons; null once the session is over. */
-    async refresh(postId: string, ids: CustomIdFactory | null): Promise<void> {
+    /** Redraws a post from the database. `ids` builds its buttons. */
+    async refresh(postId: string, ids: CustomIdFactory): Promise<void> {
         const details = await this.lfg.details(postId);
         if (!details?.post.message_id || !details.lfgChannelId) {
             return;
@@ -30,7 +30,7 @@ export class LfgSessionService {
         const existed = await this.discord.deleteChannel(channelId);
         if (await this.lfg.expire(post.id)) {
             this.log.log(`Closed LFG session ${post.id} (${reason === 'empty' ? 'VC sat empty' : 'reached its time limit'}). VC ${channelId} ${existed ? 'deleted' : 'was already gone'}`);
-            await this.refresh(post.id, null).catch((error: unknown) => {
+            await this.refresh(post.id, customIdsForFlow(null)).catch((error: unknown) => {
                 // The post may have been deleted, or the LFG channel changed. The session is closed either way.
                 this.log.error(`Couldn't mark LFG post ${post.id} closed. The session is closed regardless.\n${describeError(error)}`);
             });

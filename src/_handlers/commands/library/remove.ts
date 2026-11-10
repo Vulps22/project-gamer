@@ -13,5 +13,5 @@ export async function libraryRemove(interaction: PgCommandInteraction, services:
     if (removed) {
         services.log.log(`${interaction.user.username} (${interaction.user.id}) removed ${game.name} (${game.id}) from their library`);
     }
-    await interaction.editReply(removed ? successView(`Removed **${game.name}** from your library.`) : noticeView(`**${game.name}** isn't in your library.`));
+    await interaction.editReply(removed ? successView(`## ${game.name} removed from your library.`) : noticeView(`## ${game.name} isn't in your library.`));
 }

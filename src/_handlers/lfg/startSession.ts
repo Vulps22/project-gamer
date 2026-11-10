@@ -63,7 +63,8 @@ export async function startSession(interaction: BotComponentInteraction, service
     services.log.log(`${interaction.user.username} (${interaction.user.id}) started an LFG session for ${game.name} in server ${guild.name} (${guild.id}): `
         + `${invitees.length ? `${invitees.length} invited` : 'open invitation'}, VC ${vc.id}, post ${post.id}`);
 
-    await interaction.ephemeralFollowUp(successView(
-        `Your session is up: https://discord.com/channels/${guild.id}/${server.lfg_channel_id}/${messageId}\nJump in: <#${vc.id}>`,
+    // As v1, the picker becomes the confirmation. v2 adds where the post and its voice channel are.
+    await interaction.editReply(successView(
+        `## Successfully Submitted LFG.\nhttps://discord.com/channels/${guild.id}/${server.lfg_channel_id}/${messageId} · Jump in: <#${vc.id}>`,
     ));
 }

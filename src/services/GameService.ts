@@ -30,11 +30,7 @@ export class GameService {
     }
 
     async storeLinks(gameId: string): Promise<StoreLink[]> {
-        return this.db.select<StoreLink>(
-            `SELECT s.name AS store_name, e.url FROM games.store_entries e
-             JOIN store.stores s ON s.id = e.store_id WHERE e.game_id = $1 ORDER BY s.name`,
-            [gameId],
-        );
+        return selectStoreLinks(this.db, gameId);
     }
 
     async stores(): Promise<Store[]> {
@@ -106,6 +102,15 @@ export class GameService {
         );
         return created;
     }
+}
+
+/** Where a game is sold: its store entries with the store names. */
+export function selectStoreLinks(db: Database, gameId: string): Promise<StoreLink[]> {
+    return db.select<StoreLink>(
+        `SELECT s.name AS store_name, e.url FROM games.store_entries e
+         JOIN store.stores s ON s.id = e.store_id WHERE e.game_id = $1 ORDER BY s.name`,
+        [gameId],
+    );
 }
 
 function findStoreByName(db: Database, name: string, slug: string): Promise<Store | null> {

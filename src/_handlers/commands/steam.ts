@@ -1,10 +1,11 @@
 import { InteractionContextType, SlashCommandBuilder } from 'discord.js';
+import { customIdsFor } from '../../discord/customIds';
 import { PgCommandInteraction } from '../../discord/interactions';
 import { Services } from '../../services';
 import { steamCallbackUrl } from '../../steam/SteamApi';
 import { CommandHandler } from '../../types/Handler';
-import { noticeView, successView } from '../../views/MessageView';
-import { steamAlreadyLinkedView, steamConnectView } from '../../views/steamViews';
+import { noticeView } from '../../views/MessageView';
+import { steamAlreadyLinkedView, steamConnectView, steamNotLinkedView, steamSyncStartedView, steamUnlinkedView } from '../../views/steamViews';
 import { guildContext } from '../context';
 import { EPHEMERAL } from '../shared/ephemeral';
 
@@ -40,7 +41,7 @@ export const steam: CommandHandler = {
 async function connect(interaction: PgCommandInteraction, services: Services): Promise<void> {
     const { account } = await guildContext(interaction, services);
     if (await services.steam.getLink(account.id)) {
-        await interaction.editReply(steamAlreadyLinkedView());
+        await interaction.editReply(steamAlreadyLinkedView(customIdsFor(interaction)));
         return;
     }
     const state = await services.steamLogins.create({
@@ -57,7 +58,7 @@ async function sync(interaction: PgCommandInteraction, services: Services): Prom
     const { account } = await guildContext(interaction, services);
     const link = await services.steam.getLink(account.id);
     if (!link) {
-        await interaction.editReply(noticeView('You haven\'t linked a Steam account yet. Use `/steam connect` first.'));
+        await interaction.editReply(steamNotLinkedView());
         return;
     }
     const since = link.last_synced ? Date.now() - link.last_synced.getTime() : Infinity;
@@ -72,15 +73,15 @@ async function sync(interaction: PgCommandInteraction, services: Services): Prom
         reason: 'requested',
         followUp: { applicationId: interaction.applicationId, interactionToken: interaction.token },
     });
-    await interaction.editReply(noticeView(queued ? 'Syncing your Steam games…' : 'Your Steam games are already being synced.'));
+    await interaction.editReply(queued ? steamSyncStartedView() : noticeView('Your Steam games are already being synced.'));
 }
 
 async function unlink(interaction: PgCommandInteraction, services: Services): Promise<void> {
     const { account } = await guildContext(interaction, services);
     if (!await services.steam.unlink(account.id)) {
-        await interaction.editReply(noticeView('You don\'t have a Steam account linked.'));
+        await interaction.editReply(steamNotLinkedView());
         return;
     }
     services.log.log(`${interaction.user.username} (${interaction.user.id}) unlinked their Steam account`);
-    await interaction.editReply(successView('Steam account unlinked. The games it added stay in your library; remove any you like with `/library remove`.'));
+    await interaction.editReply(steamUnlinkedView());
 }
