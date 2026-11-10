@@ -1,7 +1,13 @@
 # Project Gamer — Database Reference
 
 > PostgreSQL. This document is the canonical reference for schema design.
-> `database/schema/` contains the actual SQL source files — keep them in sync.
+> `database/schemas/` contains the actual SQL source files — keep them in sync (see [Database Migrations](./PLANNING.md#database-migrations)).
+
+---
+
+## Hosting
+
+PG has its own database, `project-gamer`, on the existing native PostgreSQL installation on the VPS (the same installation as Project Encourage, which already has TimescaleDB installed). PostgreSQL does not run in Docker.
 
 ---
 
@@ -9,26 +15,47 @@
 
 | Schema | Contains | Written by |
 |--------|----------|------------|
-| `store` | Known game stores — seed data, not user-generated | Bot (seed scripts) |
-| `games` | Game catalogue, store entries, submission queue | Bot |
-| `users` | Discord accounts, Steam links, game libraries | Bot |
+| `store` | Known game stores — seed data, not user-generated | Rollout (seed data) |
+| `games` | Game catalogue, store entries, submission queue | Bot, worker |
+| `users` | Discord accounts, Steam links, game libraries | Bot, worker |
 | `servers` | Server config, memberships, sharing settings | Bot |
-| `lfg` | Posts, invitees, interested users | Bot |
-| `analytics` | Report snapshots (weekly/monthly/quarterly/annual) | Analytics tool only |
+| `lfg` | Posts, invitees, interested users | Bot, worker |
+| `analytics` | Interaction events (bot, INSERT only) and report snapshots (analytics tool) | Bot (events), analytics tool (reports) |
+| `system` | Migration tracking (`system.migrations`) | Migration runner |
 
 ---
 
 ## Database Roles
 
-```
-bot_user         SELECT, INSERT, UPDATE, DELETE on store, games, users, servers, lfg
-                 NO permissions on analytics
+Zero trust, as Project Encourage: every role holds only the privileges its task needs, and every privilege is granted explicitly.
 
-analytics_user   SELECT on store, games, users, servers, lfg
-                 SELECT, INSERT, UPDATE, DELETE, EXECUTE on analytics
+PG uses PE's users, which already exist on the installation. Dev and prod use the same users; only the database differs (`project-gamer-dev` / `project-gamer`).
+
+| User | Used by | Granted |
+|------|---------|---------|
+| `awesome_vd_user` | Migrations (`migrate`, `revert`, `fresh-install`) | `CREATE` on the database, so it creates, and owns, every schema and everything in it |
+| `bot_user` | Bot and worker | Per table, only the verbs they use on it. `INSERT` only on `analytics.events`. |
+| `analytics_user` | Analytics tool | `SELECT` on `analytics.events`, its aggregates, and the operational tables it reports on. `SELECT, INSERT, UPDATE` on `analytics.reports`. |
+
+- Grants live in each table's source file, under its `CREATE TABLE`, as PE does. For example:
+  ```sql
+  GRANT SELECT, INSERT, UPDATE ON "users"."game_library" TO bot_user;
+  ```
+- `USAGE` on a schema is granted only to users that hold a grant on something inside it.
+- `bot_user` has no `DELETE` on a table unless a feature deletes from it, and owns nothing.
+- Rollout credentials exist only in the VPS's env file in prod. Prod migrations run on the VPS, never from CI.
+
+### Superuser
+
+The `postgres` superuser has no password. It is used only for one-time bootstrap, through `sudo` on the VPS:
+
+```
+sudo -u postgres psql -v ON_ERROR_STOP=1 -p 49154 -d postgres -v db=project-gamer < database/scripts/bootstrap.sql
 ```
 
-See [`ANALYTICS.md`](./ANALYTICS.md) for full analytics schema and report structure.
+`bootstrap.sql` creates the database (owned by `postgres`, so no other role can drop it), grants `CREATE` on it to `awesome_vd_user`, and runs `CREATE EXTENSION timescaledb` and `CREATE EXTENSION timescaledb_toolkit`. It is never used by the bot, the worker, CI or the migration runner.
+
+See [`ANALYTICS.md`](./ANALYTICS.md) for the analytics schema and report structure.
 
 ---
 
@@ -43,10 +70,10 @@ created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
-`updated_at` is maintained by a shared PostgreSQL trigger — the application never sets it manually:
+`updated_at` is maintained by a shared PostgreSQL trigger — the application never sets it manually. The function is `system.set_updated_at()` (`database/schemas/system/functions/set_updated_at.sql`):
 
 ```sql
-CREATE OR REPLACE FUNCTION set_updated_at()
+CREATE OR REPLACE FUNCTION "system"."set_updated_at"()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
@@ -57,14 +84,14 @@ $$ LANGUAGE plpgsql;
 -- Applied in each table's source file, e.g.:
 CREATE TRIGGER set_updated_at
   BEFORE UPDATE ON lfg.posts
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION "system"."set_updated_at"();
 ```
 
 **Domain-specific timestamps** are kept only where they mean something distinct from `created_at` / `updated_at`:
 
 | Column | Table | Meaning |
 |--------|-------|---------|
-| `last_interaction_at` | `users.accounts` | Last bot command use — analytics retention signal |
+| `last_interaction_at` | `users.accounts` | Last interaction with the bot — analytics retention signal |
 | `last_synced` | `users.steam_links` | Last successful Steam library sync |
 | `reviewed_at` | `games.submissions` | When an admin approved or rejected the submission |
 | `scheduled_at` | `lfg.posts` | When the gaming session is scheduled to start |
@@ -157,7 +184,7 @@ updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 ```sql
 id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid()
 discord_id           TEXT        NOT NULL UNIQUE
-last_interaction_at  TIMESTAMPTZ             -- updated on every command use; retention analytics signal
+last_interaction_at  TIMESTAMPTZ             -- updated on every interaction; retention analytics signal
 created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 ```

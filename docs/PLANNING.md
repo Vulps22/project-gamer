@@ -31,6 +31,9 @@ Patching buys a slightly less broken version of something people are already rej
 | Services depend on concrete DB/logger | Constructor-injected dependencies throughout |
 | Session cleanup was never scheduled | All scheduled tasks declared explicitly in job queue config |
 | Approval DM was promised but never built | Don't promise it in UI copy until it's implemented |
+| Every interaction awaited a Discord log message before running, so a burst of log lines (e.g. a Steam sync) made every command miss Discord's 3s deadline | Logging and analytics are fire-and-forget (`void`), never in the interaction's path — as PE does |
+| Config lived in a database table and was dumped to the logs on startup, token included | Typed config modules per environment; secrets only in env files, never logged |
+| Deploys ran through GitHub Actions and silently stopped for a year | No deployment in GitHub Actions. Deploying is handled outside this repo (see [Deployment](#deployment)) |
 
 ---
 
@@ -41,12 +44,15 @@ Patching buys a slightly less broken version of something people are already rej
 | Language | TypeScript (strict) | Catches the class of bugs that killed v1 |
 | Runtime | Node.js | No change, ecosystem fits Discord bots well |
 | Discord library | discord.js v14 | No change |
-| Database | PostgreSQL | Schema namespacing, better type support, preferred |
+| Database | PostgreSQL + TimescaleDB | Schema namespacing, better type support, preferred. Own database on the existing native install, not in Docker |
+| Interactions | `@vulps22/bot-interactions` | Shared interaction wrappers; provides custom ID building/parsing and flow tracking |
 | DB Driver | `postgres.js` | Native TypeScript, tagged template literals, clean DX |
 | DB Wrapper | Custom thin wrapper | `db.select()`, `db.get()`, `db.insert()`, `db.query()` — no ORM, no query builder, just typed SQL |
 | Job queue | BullMQ + Redis | Retries, scheduling, visibility, keeps sync off main thread |
 | Scrapers | Cheerio (Steam) + Puppeteer (Meta) | Meta has bot protections that require a real browser; carry forward knowledge, rewrite clean |
-| Testing | Vitest | Faster than Jest, native ESM, compatible with TS |
+| Logging | `@vulps22/logger` | Shared VD logger, as PE |
+| HTTP | `@vulps22/pathfinder` | File-based Express routing with bearer/HMAC auth; hosts the Steam callback and top.gg vote webhook |
+| Testing | Jest + ts-jest | Same toolchain as PE; 75% coverage threshold |
 | Linting | ESLint + typescript-eslint | |
 
 ---
@@ -165,6 +171,17 @@ ADMIN_SERVER_ID=...
 ADMIN_NEW_GAMES_CHANNEL_ID=...
 ```
 
+#### Top.gg
+- **Server count:** posted to top.gg across all shards.
+- **Vote webhook:** a pathfinder route (`POST /api/v1/vote`), verified with pathfinder's `auth.hmac()` against top.gg's `x-topgg-signature` header (`t=<timestamp>,v1=<signature>`, signed over `<timestamp>.<body>`), with replay protection on. `webhook.test` events get `200` and are otherwise ignored.
+- **On `vote.create`:** the bot DMs the voter a thank-you, plus a message that the #1 place to take full advantage of LFGameSync's sharing community is the **Vulps Community Hub** (https://discord.vulps.co.uk). The Hub is the official Vulps Development server: news, feedback, conversation about the bot, other VD projects (like Timey Zoney), and finding gamers with common interests.
+- **Repeat voters:** each vote sets a Redis key `vote:<userId>` with a 25h TTL (a day, plus some breathing room). If the key already exists when a vote arrives, the voter gets this DM instead, with the Hub link:
+  > Twice in one day?! You're a legend! Come join our amazing and friendly Multi-Gaming Community if you haven't already, All are welcome and the more the merrier!
+  - The key is reset on every vote, so it measures time since the voter's previous vote.
+- If the DM can't be delivered (DMs closed, or the voter shares no server with the bot), it is logged and dropped. The webhook still returns `200`.
+
+**Official server link:** `https://discord.vulps.co.uk` (the Vulps Community Hub) is the only official server link anywhere in the bot: vote DMs, `/help`, and error messages that point users to support. It lives in one config constant.
+
 ### Explicitly Out of Scope for v2 Launch (consider v2.x)
 - GOG store support
 - User-facing submission status checking ("is my game approved yet?")
@@ -200,7 +217,8 @@ ADMIN_NEW_GAMES_CHANNEL_ID=...
 
 ```
 Main Process (Discord bot)
-  └── Handles all Discord interactions
+  └── ShardingManager + pathfinder HTTP server (Steam callback, top.gg vote webhook)
+  └── Handles all Discord interactions (in the shards)
   └── Enqueues jobs, never runs them inline
 
 BullMQ Worker Process (separate)
@@ -230,23 +248,63 @@ ScraperService
   └── MetaScraper
 ```
 
+This is the one place PG deliberately differs from PE. PE's services are singletons created in a barrel file, and PG keeps constructor injection. The barrel file still exists, but it is the composition root: it builds each service with its dependencies.
+
+### Interaction Handling
+
+Follows PE's structure:
+
+```
+src/
+  _handlers/
+    commands/   buttons/   selects/   modals/
+  events/
+    interactionCreate.ts
+    interactionEvents/   CommandInteractionEvent.ts  ButtonInteractionEvent.ts  ...
+```
+
+- Every handler exports a `Handler<T>` (`name`, `execute`), where `T` is the matching bot-interactions wrapper. Component handlers are registered by `baseId`.
+- `interactionCreate` dispatches to one `InteractionEvent` class per interaction type, fire-and-forget (`void`), so one slow interaction never holds up the next.
+- **Buttons and selects call `deferUpdate()` first**, before any async work, and respond with `ephemeralFollowUp()`. Commands defer as their first line if they do any I/O.
+- Each `InteractionEvent` wraps the handler in a try/catch. On error it logs, and replies only if the interaction hasn't been replied to or deferred. A failed reply is swallowed (`.catch(() => null)`) so the error path can never throw.
+- Each `InteractionEvent` records the analytics event when the handler finishes (see [ANALYTICS.md](./ANALYTICS.md)).
+- Interactions outside a guild throw a typed `DMInteractionError`, which `interactionCreate` turns into a polite ephemeral reply.
+- Responses use Components V2 views. bot-interactions' `noticeView` / `successView` / `errorView` cover simple messages. A Components V2 message never carries `content`.
+
+### Configuration
+
+As PE: `src/config/{dev,stage,prod}/Config.ts`, selected by `ENVIRONMENT` (`dev` | `stage` | `prod`). Channel IDs, the official server link, and other non-secret values live in these typed modules. Secrets (Discord token, DB passwords, Steam API key, top.gg secrets) live only in env files, loaded with `node --env-file`. Config is never logged.
+
+### HTTP Server
+
+pathfinder's `createServer({ routesPath })` runs in the main process. Routes live in `src/routes/` as files:
+
+```
+src/routes/
+  auth/steam/callback.ts   GET  — Steam OpenID return; validates the state token and verifies the response with Steam (check_authentication)
+  api/v1/vote.ts           POST — top.gg vote webhook; auth.hmac() with replay protection
+  api/v1/ping.ts           GET  — health check
+```
+
 ### Interaction ID Constants
 
-All button, select menu, and modal IDs defined in one place:
+All button, select menu, and modal IDs defined in one place, as `[prefix, action]` pairs in bot-interactions' `prefix_action_key:value` custom ID format:
 
 ```ts
 // src/constants/interactions.ts
 export const Interactions = {
-  LFG_PLAYER_SELECT: 'lfg:playerSelect',
-  LFG_OPEN_INVITE: 'lfg:openInvite',
-  LFG_STORE_SELECT: 'lfg:storeSelect',
-  GAME_ADD_CONFIRM: 'game:addConfirm',
-  GAME_REMOVE_CONFIRM: 'game:removeConfirm',
-  SUBMISSION_APPROVE: 'submission:approve',
-  SUBMISSION_REJECT: 'submission:reject',
-  SUBMISSION_APPROVE_MODAL: 'submission:approveModal',
+  LFG_PLAYER_SELECT: ['lfg', 'playerSelect'],
+  LFG_OPEN_INVITE: ['lfg', 'openInvite'],
+  LFG_STORE_SELECT: ['lfg', 'storeSelect'],
+  GAME_ADD_CONFIRM: ['game', 'addConfirm'],
+  GAME_REMOVE_CONFIRM: ['game', 'removeConfirm'],
+  SUBMISSION_APPROVE: ['submission', 'approve'],
+  SUBMISSION_REJECT: ['submission', 'reject'],
+  SUBMISSION_APPROVE_MODAL: ['submission', 'approveModal'],
 } as const;
 ```
+
+Custom IDs are always built with `interaction.createCustomId(...Interactions.X, params)`, never by hand, so every component carries its flow (see [ANALYTICS.md](./ANALYTICS.md#flows)). Handlers are registered by `baseId` (`lfg_playerSelect`).
 
 ---
 
@@ -263,213 +321,11 @@ The churn rate means most servers that stayed are low-activity. The cost of aski
 
 ## Development Process
 
-### Branch Strategy
-
-```
-main                             → always deployable; runs the DEV bot on a private test server
-feat/<issue>-short-description   → feature work
-fix/<issue>-short-description    → bug fixes
-release/2026.03.1                → archived release branch (one per base release)
-```
-
-- PRs required into `main` — no direct pushes
-- Branch protection: all test jobs must pass before a PR can merge
-- If it's failing in CI, it doesn't merge. If it somehow does, it doesn't release.
-
-**Release branches** are created automatically by CI at deploy time — one per base release, not per hotfix.
-Hotfixes are commits on the existing release branch, tagged separately:
-
-```
-release/2026.03.2           ← branch created on Wednesday auto-deploy
-  │  tagged v2026.03.2
-  ├─ hotfix commit           ← tagged v2026.03.2-H1
-  └─ hotfix commit           ← tagged v2026.03.2-H2
-
-release/2026.03.3           ← new branch next Wednesday
-  │  tagged v2026.03.3
-  ...
-```
-
-`git log release/2026.03.2` gives you the full history of that release era — base deploy and all its patches — without branch sprawl.
-
-### Test Strategy
-
-Tests are co-located with source and grouped by folder:
-
-```
-src/
-  commands/   __tests__/
-  services/   __tests__/
-  scrapers/   __tests__/
-  jobs/       __tests__/
-  utils/      __tests__/
-```
-
-Each folder is a **separate parallel CI job**. They do not share a runner or wait on each other.
-If any one job fails, the whole pipeline aborts — no build, no deploy.
-
-This keeps individual runs fast and makes it obvious which area broke.
-In a year's time, `commands/` failing does not mean you wait for all of `services/` to finish too.
-
-```yaml
-# Conceptual GitHub Actions matrix
-jobs:
-  test:
-    strategy:
-      matrix:
-        suite: [commands, services, scrapers, jobs, utils]
-    steps:
-      - run: npx vitest run src/${{ matrix.suite }}
-```
-
-Adding a new folder = adding one word to the matrix list.
-
-### CI/CD Pipeline
-
-#### On Pull Request
-```
-run test matrix (parallel jobs)
-  → any fail: PR blocked, no merge
-```
-
-#### On merge to main (dev deploy)
-```
-run test matrix (parallel jobs)
-  → any fail: abort
-  → all pass:
-      build TypeScript
-      build Docker image (tagged :dev)
-      push to Docker Hub
-      SSH into VPS → docker compose pull && docker compose up -d (dev stack)
-```
-
-#### On release tag (prod deploy)
-
-Triggered two ways:
-
-| Trigger | When | Tag produced |
-|---------|------|-------------|
-| Wednesday cron | Automatically, if new commits exist since last tag | `v2026.03.3` |
-| `workflow_dispatch` | Manual hotfix | `v2026.03.3-H1`, `v2026.03.3-H2`, etc. |
-
-**Version calculation (scheduled):** count non-hotfix tags for current `YYYY.MM`, increment by 1.
-**Version calculation (hotfix):** find the latest tag (with or without `-H`), strip any existing `-H*` suffix to get the base, count existing hotfixes on that base, append `-H<n+1>`.
-
-```
-run test matrix (parallel jobs)
-  → any fail: abort, do not release
-  → all pass:
-      run database migrations (see Database Migrations section)
-      build TypeScript
-      build Docker image (tagged :latest + :v<calver>)
-      push to Docker Hub
-      SSH into VPS → docker compose pull && docker compose up -d (prod stack)
-      archive migration files: move database/migrations/future/* → database/migrations/<tag>/
-      commit + push archive back to main
-```
-
-### Docker Compose on VPS
-
-Two stacks on the same VPS — dev and prod — each with their own Compose file:
-
-```
-/opt/projectgamer-dev/   docker-compose.yml  (bot-dev, worker-dev, redis-dev, postgres-dev)
-/opt/projectgamer/       docker-compose.yml  (bot, worker, redis, postgres)
-```
-
-Services per stack:
-- `bot` — Discord bot process (handles interactions, enqueues jobs)
-- `worker` — BullMQ worker process (runs sync/cleanup/scheduled jobs)
-- `redis` — job queue backend
-- `postgres` — database
-
----
-
-## Database Migrations
-
-### File Layout
-
-```
-database/
-  schema/
-    games/
-      tables/       catalogue.sql  store_entries.sql  submissions.sql
-    users/
-      tables/       accounts.sql  steam_links.sql  game_library.sql
-    servers/
-      tables/       config.sql  members.sql
-    lfg/
-      tables/       posts.sql  invitees.sql
-  migrations/
-    future/         ← pending migrations, not yet deployed to prod
-    v2026.03.1/     ← archived after that release deployed them
-    v2026.03.2/
-    v2026.03.2-H1/
-    ...
-```
-
-### Source Files
-
-`database/schema/**/*.sql` are the **single source of truth** for what the database looks like right now.
-
-- A fresh database is built entirely from these files — no migration history needed
-- Developers are responsible for keeping them in sync with any migration they write
-- CI enforces this — if they drift, the PR fails
-
-### Migration Files
-
-Each issue that changes the schema produces two files in `database/migrations/future/`:
-
-```
-<issue-number>_rollout.sql    ← forward migration (ALTER TABLE, CREATE TABLE, etc.)
-<issue-number>_rollback.sql   ← undo script (DROP COLUMN, DROP TABLE, etc.)
-```
-
-Naming by issue number ensures correct apply order within a release.
-Multiple issues merged into one release all land in `future/` together and are applied in issue-number order.
-
-### CI Validation (on PRs touching `database/`)
-
-Spins up two fresh PostgreSQL instances:
-
-```
-DB_A: apply schema/ from main  →  apply future/<issue>_rollout.sql
-DB_B: apply schema/ from this branch (developer's updated source files)
-
-pg_dump --schema-only DB_A  vs  pg_dump --schema-only DB_B
-
-match    → ✅ source files are in sync with the migration
-mismatch → ❌ developer forgot to update a source file — PR blocked
-```
-
-This makes it impossible to merge a migration that silently drifts from the source files.
-
-### Deploy (prod release)
-
-```
-1. SSH into VPS
-2. Run all files in database/migrations/future/ against prod DB in issue-number order
-   → any SQL error: abort deploy, do not restart bot, alert developer
-3. If successful: restart bot + worker containers
-4. CI archives: git mv database/migrations/future/* database/migrations/<tag>/
-5. CI commits + pushes archive back to main
-```
-
-Step 4–5 means the repo always reflects exactly which migrations live in which release. Rollback is: find the failed release's folder, run the `_rollback.sql` files in reverse order, redeploy previous image.
-
-### Rollback Procedure (manual)
-
-```
-1. SSH into VPS
-2. Run database/migrations/<broken-tag>/*_rollback.sql in reverse issue-number order
-3. docker compose pull (previous image tag) && docker compose up -d
-```
-
-No automated rollback — rollbacks are deliberate, manual decisions.
+Follows PE's process. Where PG differs, it says so.
 
 ### GitHub Issues
 
-All work tracked as GitHub Issues. No Jira.
+All work is tracked as GitHub Issues. No Jira.
 
 Label conventions:
 - `feat` — new feature
@@ -477,13 +333,176 @@ Label conventions:
 - `chore` — maintenance, deps, config
 - `blocked` — waiting on something external
 
-Branch names reference the issue number: `feat/42-lfg-scheduling`
+Issues move across the project board automatically, driven by branch, PR and release events (PE's `project-*.yml` workflows).
+
+### Branches
+
+```
+main                      → integration; PRs merge here
+current-release           → what's in production
+freeze/v2026.11.1         → release candidate, cut from main
+<issue>-<issue-title-slug> → all working branches
+```
+
+- Every working branch belongs to an issue and is created with `gh issue develop`, so it links to the issue:
+  ```bash
+  gh issue develop <issue> --repo Vulps22/project-gamer --checkout --base current-release
+  ```
+- **Branch off `current-release`, never off `main`.** Every branch starts from what's actually in production, and a fix merged into `current-release` can flow into any in-flight branch without waiting for unrelated work on `main`.
+- PRs merge into `main`. No direct pushes, and all test workflows must pass first. If it's failing in CI, it doesn't merge. If it somehow does, it doesn't release.
+
+### Commits and PRs
+
+- Commit message: `#<issue> - <message up to 50 characters>`. A body only for genuinely complex commits.
+- One logical change per commit. If a file holds changes for two concerns, stage the hunks separately (`git add -p`).
+- PR title: `#<issue> - Add|Remove|Update|Revert|Refactor <summary>`, with no colon after the verb. `validate-pr-title.yml` enforces this, checks the issue is open, and links the PR to it. The changelog uses the leading verb.
+
+### Test Strategy
+
+Jest + ts-jest. Tests are co-located with source in `tests/` folders and run per folder:
+
+```
+src/
+  _handlers/commands/   tests/
+  _handlers/buttons/    tests/
+  services/             tests/
+  scrapers/             tests/
+  jobs/                 tests/
+  routes/               tests/
+  ...
+```
+
+Each folder has its own test workflow, as PE does (`test-commands.yml`, `test-services.yml`, …), running `npm test -- src/<folder>` on PRs and pushes to `main`. Workflows run in parallel and fail independently, so it's obvious which area broke. Adding a folder means adding one workflow.
+
+Coverage threshold: 75% branches, functions, lines and statements (as PE).
+
+### Versioning
+
+Versions are `vYYYY.M.N`, the Nth release of the month (no leading zero on the month, as PE). Hotfixes are `vYYYY.M.N-H<n>`.
+
+### Deployment
+
+**Out of scope for this repo.** PG contains no deploy scripts and no build, release or deploy workflows. GitHub Actions only runs tests and PR checks. Deploying is handled by a separate scheduled deploy script for the VD bots, which runs outside GitHub Actions and is still to be designed.
+
+The repo's only obligations to that script:
+- `npm run db:migrate -- --prod` must run on the VPS, and succeed, before the bot and worker are restarted (see [Database Migrations](#database-migrations)).
+- The images build from the repo's Dockerfile.
+
+### Docker
+
+Two-stage build, as PE, on Node 22. PE's CI already uses 22, but its Dockerfile is still on 20, which reached end of life in April 2026. The builder stage installs dependencies (GitHub Packages auth passed in as a build arg, then removed) and compiles TypeScript. The runtime stage copies only `dist/`, `node_modules/` and `package.json`.
+
+### Docker Compose on VPS
+
+Two stacks on the same VPS — dev and prod — each with their own Compose file, alongside the other VD bots in `/opt/discord-bots/`:
+
+```
+/opt/discord-bots/project-gamer-dev/   docker-compose.yml  (bot-dev, worker-dev, redis-dev)
+/opt/discord-bots/project-gamer/       docker-compose.yml  (bot, worker, redis)
+```
+
+Services per stack:
+- `bot` — Discord bot process (handles interactions, enqueues jobs)
+- `worker` — BullMQ worker process (runs sync/cleanup/scheduled jobs)
+- `redis` — job queue backend
+
+PostgreSQL is not part of either stack. Both connect to the native PostgreSQL install on the VPS: prod to `project-gamer`, dev to `project-gamer-dev`, with the same users (see [DATABASE.md](./DATABASE.md#database-roles)).
 
 ---
 
-## Open Questions
+## Database Migrations
 
-_None currently._
+PE's migration system.
+
+### File Layout
+
+```
+database/
+  schemas/
+    store/      tables/  stores.sql
+    games/      tables/  catalogue.sql  store_entries.sql  submissions.sql
+    users/      tables/  accounts.sql  steam_links.sql  game_library.sql
+    servers/    tables/  config.sql  members.sql
+    lfg/        tables/  posts.sql  invitees.sql  interested.sql
+    analytics/  tables/  events.sql  reports.sql
+                views/   events_weekly.sql  events_monthly.sql
+    system/     functions/  set_updated_at.sql
+                tables/  migrations.sql
+  migrations/
+    20261105_42_create_lfg_interested.js
+    ...
+  scripts/
+    bootstrap.sql  fresh-install.js   migrate.js   revert.js   seed.js
+    lib/           shared helpers (env, connection, SQL)
+```
+
+Within a schema folder, `functions/` run first, then `tables/`, then `views/`. Schemas install in dependency order (`system, store, games, users, servers, lfg, analytics`, in `database/scripts/lib/schemaFiles.js`). Every script runs as `awesome_vd_user`.
+
+### Schema Files
+
+`database/schemas/<schema>/**/*.sql` are the **single source of truth** for what the database looks like right now. Each file is one table or view, and carries its own `GRANT` statements under the `CREATE` (see [DATABASE.md](./DATABASE.md#database-roles)).
+
+- `fresh-install.js` builds a bootstrapped database entirely from these files, with no migration history needed. It drops and recreates each schema first, and records every existing migration as applied.
+- `migrate.js` creates `system.migrations` from its schema files the first time it runs on a new database.
+- Developers keep them in sync with every migration they write. CI enforces it (below).
+
+### Migration Files
+
+One JS file per change: `YYYYMMDD_<issue>_<description>.js`. The date prefix gives the apply order. Each file exports:
+
+| Export | Required | Meaning |
+|--------|----------|---------|
+| `apply(client)` | yes | Forward migration |
+| `revert(client)` | yes | Undo. The runner refuses to apply any pending migration until every one has both. |
+| `requiresSuperUser = '<reason>'` | no | The migration needs a manual superuser step first. `migrate` skips it, leaves it pending and prints the reason, until re-run with `--force-skipped`. |
+| `skipTransaction = true` | no | Runs `apply()` outside the runner's `BEGIN`/`COMMIT`, for DDL that refuses to run in a transaction (e.g. a TimescaleDB continuous aggregate and its refresh policy). No automatic rollback: on failure the runner says to run `revert` by hand. |
+
+TimescaleDB itself doesn't need `requiresSuperUser` in PG. Both extensions are created during the one-time database bootstrap, and after that, creating hypertables and continuous aggregates only needs table ownership.
+
+### Tracking
+
+Applied migrations are recorded in `system.migrations` (as PE), not by moving files on disk. Nothing in CI ever commits back to the repo.
+
+```bash
+npm run db:migrate -- --prod                   # apply pending migrations
+npm run db:migrate -- --prod --force-skipped   # also apply requiresSuperUser ones, once their manual step is done
+npm run db:revert -- <file> --prod             # revert one applied migration
+```
+
+`--dev` / `--stage` / `--prod` choose the env file.
+
+### CI Validation (on PRs touching `database/`)
+
+Spins up two fresh PostgreSQL instances (with TimescaleDB):
+
+```
+DB_A: fresh-install from main's schemas/  →  migrate (applies this PR's new migrations)
+DB_B: fresh-install from this branch's schemas/
+
+pg_dump --schema-only DB_A  vs  pg_dump --schema-only DB_B
+
+match    → ✅ schema files are in sync with the migrations
+mismatch → ❌ a schema file wasn't updated — PR blocked
+```
+
+The same job then runs `revert` on every new migration in DB_A and checks it ends up matching main's schema again, so no `revert()` goes untested.
+
+### Running in Production
+
+Migrations run **on the VPS**, as PE does. The rollout user's credentials exist only in the VPS's env file, never in GitHub secrets.
+
+- Any error stops the run. The failing migration is named, along with its `revert` command if it was a `skipTransaction` migration. Whatever deploys PG must not restart the bot or worker after a failed migration run.
+- A migration skipped by `requiresSuperUser` doesn't fail the run, but it is reported.
+
+### Rollback Procedure (manual)
+
+```
+1. SSH into VPS
+2. npm run db:revert -- <file> --prod   for each of the release's migrations, newest first
+3. docker compose pull (previous image tag) && docker compose up -d
+```
+
+No automated rollback. Rollbacks are deliberate, manual decisions.
 
 ---
 
