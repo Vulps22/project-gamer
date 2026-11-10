@@ -1,0 +1,41 @@
+name: Test Db Wrapper
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/database/**'
+      - 'package*.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/database/**'
+      - 'package*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  test-db-wrapper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Configure npm for private packages
+        run: npm config set //npm.pkg.github.com/:_authToken ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- src/database
