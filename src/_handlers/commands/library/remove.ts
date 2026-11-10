@@ -10,5 +10,8 @@ export async function libraryRemove(interaction: PgCommandInteraction, services:
     const { account } = await guildContext(interaction, services);
     const game = await requireGame(services, interaction.options.getString('game', true));
     const removed = await services.library.remove(account.id, game.id);
+    if (removed) {
+        services.log.log(`${interaction.user.username} (${interaction.user.id}) removed ${game.name} (${game.id}) from their library`);
+    }
     await interaction.editReply(removed ? successView(`Removed **${game.name}** from your library.`) : noticeView(`**${game.name}** isn't in your library.`));
 }

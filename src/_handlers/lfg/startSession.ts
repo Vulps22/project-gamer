@@ -60,6 +60,8 @@ export async function startSession(interaction: BotComponentInteraction, service
     }
     const messageId = await needsPermission('Send Messages', () => services.discord.send(server.lfg_channel_id as string, lfgPostView(details, customIdsFor(interaction), true)));
     await services.lfg.setMessage(post.id, messageId);
+    services.log.log(`${interaction.user.username} (${interaction.user.id}) started an LFG session for ${game.name} in server ${guild.name} (${guild.id}): `
+        + `${invitees.length ? `${invitees.length} invited` : 'open invitation'}, VC ${vc.id}, post ${post.id}`);
 
     await interaction.ephemeralFollowUp(successView(
         `Your session is up: https://discord.com/channels/${guild.id}/${server.lfg_channel_id}/${messageId}\nJump in: <#${vc.id}>`,

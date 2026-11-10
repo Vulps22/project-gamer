@@ -1,4 +1,5 @@
 import { Database } from '../database/Database';
+import { describeError } from '../errors';
 import { Log } from '../types/Log';
 
 export type InteractionType = 'command' | 'button' | 'select' | 'modal' | 'search';
@@ -34,7 +35,7 @@ export class AnalyticsService {
                 event.executionId, event.flowId, Math.round(event.durationMs), event.outcome, event.errorCode, event.detail,
             ],
         ).catch((error: unknown) => {
-            this.log.error(`Analytics write failed: ${error instanceof Error ? error.message : String(error)}`);
+            this.log.error(`Analytics write failed for ${event.interactionType} ${event.interactionName} (dropped)\n${describeError(error)}`);
         });
     }
 }

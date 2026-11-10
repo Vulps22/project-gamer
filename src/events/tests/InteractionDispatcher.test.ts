@@ -7,7 +7,7 @@ import { InteractionDispatcher } from '../InteractionDispatcher';
 
 function rawCommand(name = 'help') {
     return {
-        id: '1001', user: { id: '111' }, guildId: '9001', commandName: name,
+        id: '1001', user: { id: '111', username: 'tester' }, guildId: '9001', commandName: name,
         deferred: false, replied: false,
         reply: jest.fn().mockResolvedValue(undefined),
         isAutocomplete: () => false, isChatInputCommand: () => true, isButton: () => false,
@@ -18,7 +18,7 @@ function rawCommand(name = 'help') {
 
 function rawAutocomplete(focused: string) {
     return {
-        id: '1002', user: { id: '111' }, guildId: '9001', commandName: 'lfg',
+        id: '1002', user: { id: '111', username: 'tester' }, guildId: '9001', commandName: 'lfg',
         respond: jest.fn().mockResolvedValue(undefined),
         isAutocomplete: () => true,
         options: { getFocused: () => focused, getSubcommand: () => 'play' },
@@ -47,7 +47,15 @@ describe('InteractionDispatcher', () => {
         expect(recorded(services)).toMatchObject({ interactionType: 'command', interactionName: 'help', outcome: 'ok', userId: '111', flowId: '1001', executionId: '1001' });
     });
 
-    it('shows a user-facing error and records it without logging', async () => {
+    it('logs every interaction it receives', async () => {
+        const { services, dispatcher } = setup({});
+        const raw = rawCommand();
+        dispatcher.dispatch(raw as unknown as Interaction);
+        await flushPromises();
+        expect(services.log.logInteractionReceived).toHaveBeenCalledWith(raw, 'command help');
+    });
+
+    it('shows a user-facing error, and logs it as a refusal rather than an error', async () => {
         const { services, dispatcher } = setup({ execute: jest.fn().mockRejectedValue(new UserFacingError('Pick a game')) });
         const raw = rawCommand();
         dispatcher.dispatch(raw as unknown as Interaction);
@@ -55,6 +63,7 @@ describe('InteractionDispatcher', () => {
         expect(JSON.stringify(raw.reply.mock.calls[0][0])).toContain('Pick a game');
         expect(recorded(services)).toMatchObject({ outcome: 'error', errorCode: 'UserFacingError' });
         expect(services.log.error).not.toHaveBeenCalled();
+        expect(services.log.log).toHaveBeenCalledWith(expect.stringContaining('refused for tester (111) in server 9001: Pick a game'));
     });
 
     it('logs an unexpected error and shows a generic message', async () => {
@@ -62,7 +71,7 @@ describe('InteractionDispatcher', () => {
         const raw = rawCommand();
         dispatcher.dispatch(raw as unknown as Interaction);
         await flushPromises();
-        expect(services.log.error).toHaveBeenCalledWith(expect.stringContaining('db down'));
+        expect(services.log.error).toHaveBeenCalledWith(expect.stringMatching(/command help failed for tester \(111\) in server 9001\n.*db down/s));
         expect(JSON.stringify(raw.reply.mock.calls[0][0])).toContain('Something went wrong');
     });
 

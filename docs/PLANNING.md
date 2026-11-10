@@ -265,6 +265,11 @@ src/
 - Each `InteractionEvent` wraps the handler in a try/catch. On error it logs, and replies only if the interaction hasn't been replied to or deferred. A failed reply is swallowed (`.catch(() => null)`) so the error path can never throw.
 - Each `InteractionEvent` records the analytics event when the handler finishes (see [ANALYTICS.md](./ANALYTICS.md)).
 - Interactions outside a guild throw a typed `DMInteractionError`, which `interactionCreate` turns into a polite ephemeral reply.
+
+**Logging.** `@vulps22/logger` posts to two Discord channels through webhooks, set in the env file as `DISCORD_LOG_WEBHOOK_URL` and `DISCORD_ERROR_WEBHOOK_URL` (webhook URLs are secrets). Webhooks keep logging off the bot's own rate limits and need no channel permissions. Log liberally; every call is fire-and-forget.
+- **Log channel:** every interaction received (with user and server), refused interactions and why, startup and shard status, servers joined and left, library adds and removes, submissions queued / approved / rejected, new stores, LFG sessions started and closed, interest changes, VC empty / rejoined, scrapes, `/config` and sharing changes.
+- **Error channel:** every failure, with its stack: failed interactions and autocompletes (with user and server), failed jobs, stalled jobs, analytics writes dropped, submissions that couldn't be saved or posted, review cards that couldn't be put back, DMs that failed, the `@lfg` role that couldn't be created, voice and server event errors, shard deaths and errors, uncaught exceptions and unhandled rejections, and startup failures. Errors that repeat on every retry (a Redis outage) are muted for a minute after each report.
+- Messages are trimmed to fit Discord's 2000-character limit. Log lines use IDs and usernames, never mentions, so the log never pings anyone. Never log secrets, config, or a job's data (a scrape job carries an interaction token).
 - Responses use Components V2 views. bot-interactions' `noticeView` / `successView` / `errorView` cover simple messages. A Components V2 message never carries `content`.
 
 ### Configuration

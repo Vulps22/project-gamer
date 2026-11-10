@@ -26,6 +26,7 @@ export const config: CommandHandler = {
         const { server } = await guildContext(interaction, services);
         const channel = interaction.options.getChannel('channel', true);
         await services.servers.setLfgChannel(server.id, channel.id);
+        services.log.log(`${interaction.user.username} (${interaction.user.id}) set the LFG channel in server ${interaction.guild?.name ?? ''} (${interaction.guildId ?? '?'}) to ${channel.id}`);
         await interaction.editReply(successView(`LFG posts will go in <#${channel.id}>.`));
     },
 };

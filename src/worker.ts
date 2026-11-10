@@ -1,10 +1,17 @@
 import { Job, Worker } from 'bullmq';
+import { describeError } from './errors';
 import { ScrapeProcessor } from './jobs/ScrapeProcessor';
 import { JobNames, QUEUE_NAME, ScrapeJob, VcJob } from './jobs/types';
+import { reportProcessErrors, throttledErrorReporter } from './logging/discordLog';
 import { createRuntime, redisConnection } from './runtime';
+
+/** How long shutdown waits for running jobs. Closing can hang forever if Redis is unreachable. */
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 /** The BullMQ worker process. Runs every job, so the bot never blocks on one. */
 const { services } = createRuntime();
+const { log } = services;
+reportProcessErrors(log, 'Worker');
 const scrape = new ScrapeProcessor(services);
 
 async function run(job: Job): Promise<void> {
@@ -13,19 +20,38 @@ async function run(job: Job): Promise<void> {
             return scrape.process(job.data as ScrapeJob, job.attemptsMade + 1 >= (job.opts.attempts ?? 1));
         case JobNames.VC_EMPTY:
         case JobNames.VC_EXPIRE:
-            return services.lfgSessions.closeByVc((job.data as VcJob).channelId);
+            return services.lfgSessions.closeByVc((job.data as VcJob).channelId, job.name === JobNames.VC_EMPTY ? 'empty' : 'expired');
         default:
             throw new Error(`Unknown job ${job.name}`);
     }
 }
 
-const worker = new Worker(QUEUE_NAME, run, { connection: redisConnection(), concurrency: 5 });
-worker.on('ready', () => services.log.log('Worker ready'));
-worker.on('failed', (job, error) => services.log.error(`Job ${job?.name ?? '?'} (${job?.id ?? '?'}) failed: ${error.message}`));
-
-async function shutdown(): Promise<void> {
-    await worker.close();
-    process.exit(0);
+/** Never the job's data: a scrape job carries an interaction token. */
+function describeJob(job: Job | undefined): string {
+    return job ? `${job.name} (${job.id ?? '?'}, attempt ${job.attemptsMade + 1} of ${job.opts.attempts ?? 1})` : 'unknown job';
 }
-process.on('SIGTERM', () => void shutdown());
-process.on('SIGINT', () => void shutdown());
+
+const worker = new Worker(QUEUE_NAME, run, { connection: redisConnection(), concurrency: 5 });
+worker.on('ready', () => log.log('Worker ready'));
+worker.on('active', job => log.debug(`Job started: ${describeJob(job)}`));
+worker.on('completed', job => log.debug(`Job done: ${describeJob(job)}`));
+worker.on('failed', (job, error) => log.error(`Job failed: ${describeJob(job)}\n${describeError(error)}`));
+worker.on('stalled', jobId => log.error(`Job ${jobId} stalled and will be retried`));
+worker.on('error', throttledErrorReporter(log, 'Worker error'));
+
+let stopping = false;
+async function shutdown(signal: string): Promise<void> {
+    if (stopping) {
+        return;
+    }
+    stopping = true;
+    log.log(`Worker stopping (${signal})`);
+    const timedOut = new Promise<'timeout'>(resolve => setTimeout(() => resolve('timeout'), SHUTDOWN_TIMEOUT_MS).unref());
+    const result = await Promise.race([worker.close().then(() => 'closed' as const), timedOut]);
+    if (result === 'timeout') {
+        log.error(`Worker didn't stop within ${SHUTDOWN_TIMEOUT_MS / 1000}s, so it was forced to exit. Running jobs will be retried.`);
+    }
+    process.exit(result === 'closed' ? 0 : 1);
+}
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));

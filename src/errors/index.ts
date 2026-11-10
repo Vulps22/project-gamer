@@ -26,3 +26,11 @@ export function errorCode(error: unknown): string {
 export function isInteractionTimeout(error: unknown): boolean {
     return errorCode(error) === '10062';
 }
+
+/** An error as one log-ready string: the stack when there is one, so the error channel shows where it came from. */
+export function describeError(error: unknown): string {
+    if (error instanceof Error) {
+        return error.stack ?? `${error.name}: ${error.message}`;
+    }
+    return String(error);
+}

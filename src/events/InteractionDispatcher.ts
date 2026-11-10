@@ -1,7 +1,7 @@
 import { AutocompleteInteraction, Interaction } from 'discord.js';
 import { BotButtonInteraction, BotComponentInteraction, BotRepliableInteraction, BotSelectMenuInteraction } from '@vulps22/bot-interactions';
 import { PgCommandInteraction, PgModalInteraction } from '../discord/interactions';
-import { errorCode, isInteractionTimeout, UserFacingError } from '../errors';
+import { describeError, errorCode, isInteractionTimeout, UserFacingError } from '../errors';
 import { InteractionType, Outcome } from '../services/AnalyticsService';
 import { Services } from '../services';
 import { Handler } from '../types/Handler';
@@ -26,21 +26,22 @@ export class InteractionDispatcher {
         } else if (interaction.isChatInputCommand()) {
             const wrapped = new PgCommandInteraction(interaction);
             const name = [interaction.commandName, interaction.options.getSubcommand(false)].filter(Boolean).join(' ');
-            void this.run('command', name, wrapped, this.registry.commands.get(interaction.commandName));
+            void this.run('command', name, wrapped, this.registry.commands.get(interaction.commandName), interaction);
         } else if (interaction.isButton()) {
             const wrapped = new BotButtonInteraction(interaction);
-            void this.run('button', wrapped.baseId, wrapped, this.registry.buttons.get(wrapped.baseId));
+            void this.run('button', wrapped.baseId, wrapped, this.registry.buttons.get(wrapped.baseId), interaction);
         } else if (interaction.isStringSelectMenu()) {
             const wrapped = new BotSelectMenuInteraction(interaction);
-            void this.run('select', wrapped.baseId, wrapped, this.registry.selects.get(wrapped.baseId));
+            void this.run('select', wrapped.baseId, wrapped, this.registry.selects.get(wrapped.baseId), interaction);
         } else if (interaction.isModalSubmit()) {
             const wrapped = new PgModalInteraction(interaction);
-            void this.run('modal', wrapped.baseId, wrapped, this.registry.modals.get(wrapped.baseId));
+            void this.run('modal', wrapped.baseId, wrapped, this.registry.modals.get(wrapped.baseId), interaction);
         }
     }
 
-    private async run<T extends BotRepliableInteraction>(type: InteractionType, name: string, interaction: T, handler: Handler<T> | undefined): Promise<void> {
+    private async run<T extends BotRepliableInteraction>(type: InteractionType, name: string, interaction: T, handler: Handler<T> | undefined, raw: Interaction): Promise<void> {
         const started = Date.now();
+        this.services.log.logInteractionReceived(raw, `${type} ${name}`);
         let outcome: Outcome = 'ok';
         let code: string | null = null;
 
@@ -52,8 +53,10 @@ export class InteractionDispatcher {
         } catch (error) {
             outcome = isInteractionTimeout(error) ? 'timeout' : 'error';
             code = errorCode(error);
-            if (!(error instanceof UserFacingError)) {
-                this.logError(`${type} ${name}`, error);
+            if (error instanceof UserFacingError) {
+                this.services.log.log(`${type} ${name} refused for ${who(interaction)}: ${error.message}`);
+            } else {
+                this.logError(`${type} ${name} failed for ${who(interaction)}`, error);
             }
             await respondWithError(interaction, error instanceof UserFacingError ? error.message : GENERIC_ERROR);
         } finally {
@@ -95,14 +98,19 @@ export class InteractionDispatcher {
             }
         } catch (error) {
             if (!isInteractionTimeout(error)) {
-                this.logError(`autocomplete ${interaction.commandName}`, error);
+                this.logError(`autocomplete ${interaction.commandName} failed for ${who(interaction)}`, error);
             }
         }
     }
 
     private logError(context: string, error: unknown): void {
-        this.services.log.error(`${context}: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
+        this.services.log.error(`${context}\n${describeError(error)}`);
     }
+}
+
+/** Who an interaction came from and where, for the log. IDs, never mentions: a mention in the log would ping. */
+function who(interaction: { user: { username: string; id: string }; guildId: string | null }): string {
+    return `${interaction.user.username} (${interaction.user.id}) in ${interaction.guildId ? `server ${interaction.guildId}` : 'DMs'}`;
 }
 
 /** Tells the user something went wrong, however far the interaction got. Can never throw. */

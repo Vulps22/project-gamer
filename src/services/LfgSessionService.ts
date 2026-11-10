@@ -1,5 +1,6 @@
 import { DiscordApi } from '../discord/DiscordApi';
 import { CustomIdFactory } from '../discord/customIds';
+import { describeError } from '../errors';
 import { Log } from '../types/Log';
 import { lfgPostView } from '../views/lfgViews';
 import { LfgService } from './LfgService';
@@ -17,17 +18,21 @@ export class LfgSessionService {
         await this.discord.edit(details.lfgChannelId, details.post.message_id, lfgPostView(details, ids));
     }
 
-    /** Closes the session using this VC, if there still is one: deletes the VC and marks the post closed. */
-    async closeByVc(channelId: string): Promise<void> {
+    /**
+     * Closes the session using this VC, if there still is one: deletes the VC and marks the post closed.
+     * @param reason why it's closing, for the log: it sat empty, or it reached its time limit.
+     */
+    async closeByVc(channelId: string, reason: 'empty' | 'expired'): Promise<void> {
         const post = await this.lfg.findActiveByVc(channelId);
         if (!post) {
             return;
         }
-        await this.discord.deleteChannel(channelId);
+        const existed = await this.discord.deleteChannel(channelId);
         if (await this.lfg.expire(post.id)) {
+            this.log.log(`Closed LFG session ${post.id} (${reason === 'empty' ? 'VC sat empty' : 'reached its time limit'}). VC ${channelId} ${existed ? 'deleted' : 'was already gone'}`);
             await this.refresh(post.id, null).catch((error: unknown) => {
                 // The post may have been deleted, or the LFG channel changed. The session is closed either way.
-                this.log.error(`Could not mark LFG post ${post.id} closed: ${error instanceof Error ? error.message : String(error)}`);
+                this.log.error(`Couldn't mark LFG post ${post.id} closed. The session is closed regardless.\n${describeError(error)}`);
             });
         }
     }

@@ -9,7 +9,9 @@ function setup(managed: string[]) {
     } as never);
 }
 
-const state = (channelId: string | null, remaining = 0): VoiceState => ({ channelId, channel: channelId ? { members: { size: remaining } } : null }) as unknown as VoiceState;
+const state = (channelId: string | null, remaining = 0): VoiceState => ({
+    id: '111', guild: { id: '9001' }, member: { user: { username: 'tester' } }, channelId, channel: channelId ? { members: { size: remaining } } : null,
+}) as unknown as VoiceState;
 
 describe('onVoiceMove', () => {
     it('starts the close countdown when the last person leaves a session VC', async () => {

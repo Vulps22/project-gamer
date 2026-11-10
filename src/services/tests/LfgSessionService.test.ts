@@ -14,7 +14,7 @@ function setup(active: typeof post | null, expired = true) {
         }),
     };
     const discord = { deleteChannel: jest.fn().mockResolvedValue(true), edit: jest.fn().mockResolvedValue(undefined) };
-    const log = { log: jest.fn(), error: jest.fn(), debug: jest.fn() };
+    const log = { log: jest.fn(), error: jest.fn(), debug: jest.fn(), logInteractionReceived: jest.fn() };
     const sessions = new LfgSessionService(lfg as unknown as LfgService, discord as unknown as DiscordApi, log);
     return { lfg, discord, log, sessions };
 }
@@ -22,13 +22,13 @@ function setup(active: typeof post | null, expired = true) {
 describe('LfgSessionService.closeByVc', () => {
     it('does nothing for a VC with no active session', async () => {
         const { discord, sessions } = setup(null);
-        await sessions.closeByVc('vc-1');
+        await sessions.closeByVc('vc-1', 'empty');
         expect(discord.deleteChannel).not.toHaveBeenCalled();
     });
 
     it('deletes the VC, expires the post, and marks the post closed', async () => {
         const { lfg, discord, sessions } = setup(post);
-        await sessions.closeByVc('vc-1');
+        await sessions.closeByVc('vc-1', 'empty');
         expect(discord.deleteChannel).toHaveBeenCalledWith('vc-1');
         expect(lfg.expire).toHaveBeenCalledWith('post-1');
         expect(discord.edit).toHaveBeenCalledWith('lfg', 'm-1', expect.anything());
@@ -37,14 +37,14 @@ describe('LfgSessionService.closeByVc', () => {
 
     it('leaves the post alone if another job closed it first', async () => {
         const { discord, sessions } = setup(post, false);
-        await sessions.closeByVc('vc-1');
+        await sessions.closeByVc('vc-1', 'empty');
         expect(discord.edit).not.toHaveBeenCalled();
     });
 
     it('logs, rather than fails, when the post can\'t be edited', async () => {
         const { discord, log, sessions } = setup(post);
         discord.edit.mockRejectedValue(new Error('Unknown Message'));
-        await sessions.closeByVc('vc-1');
+        await sessions.closeByVc('vc-1', 'empty');
         expect(log.error).toHaveBeenCalledWith(expect.stringContaining('Unknown Message'));
     });
 });

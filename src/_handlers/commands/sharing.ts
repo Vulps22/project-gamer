@@ -22,6 +22,9 @@ export const sharing: CommandHandler = {
         const { account, server } = await guildContext(interaction, services);
         const on = interaction.options.getString('state', true) === 'on';
         const changed = await services.servers.setSharing(server.id, account.id, on);
+        if (changed) {
+            services.log.log(`${interaction.user.username} (${interaction.user.id}) turned library sharing ${on ? 'on' : 'off'} in server ${interaction.guildId ?? '?'}`);
+        }
 
         if (!changed) {
             await interaction.editReply(noticeView(on ? 'You\'re already sharing your library here.' : 'Your library is already hidden here.'));

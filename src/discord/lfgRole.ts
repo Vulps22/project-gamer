@@ -1,4 +1,5 @@
 import { Guild } from 'discord.js';
+import { describeError } from '../errors';
 import { Log } from '../types/Log';
 import { ServerService } from '../services/ServerService';
 import { Server } from '../types/models';
@@ -18,9 +19,10 @@ export async function ensureLfgRole(guild: Guild, server: Server, servers: Serve
         try {
             role = await guild.roles.create({ name: ROLE_NAME, mentionable: true, reason: 'LFGameSync pings this role for open invitations' });
         } catch (error) {
-            log.debug(`Could not create the @lfg role in ${guild.id}: ${error instanceof Error ? error.message : String(error)}`);
+            log.error(`Couldn't create the @lfg role in server ${guild.name} (${guild.id}). LFG works without the ping.\n${describeError(error)}`);
             return null;
         }
+        log.log(`Created the @lfg role in server ${guild.name} (${guild.id})`);
     }
     await servers.setLfgRole(server.id, role.id);
     return role.id;

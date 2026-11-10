@@ -1,9 +1,9 @@
 import { Queue } from 'bullmq';
 import { REST } from 'discord.js';
-import { Logger } from '@vulps22/logger';
 import { environment, loadAppConfig, requireEnv } from './config';
 import { createDatabase } from './database/Database';
 import { QUEUE_NAME } from './jobs/types';
+import { createDiscordLog, throttledErrorReporter } from './logging/discordLog';
 import { createServices, Services } from './services';
 
 /** Redis connection settings for BullMQ, from REDIS_URL. */
@@ -14,7 +14,7 @@ export function redisConnection(): { host: string; port: number; password?: stri
 
 /** Builds every service from the environment. Shared by the shards and the worker. */
 export function createRuntime(): { services: Services; queue: Queue } {
-    Logger.initialize();
+    const log = createDiscordLog();
     const config = loadAppConfig(environment);
     const db = createDatabase({
         host: requireEnv('DB_HOST'),
@@ -25,6 +25,7 @@ export function createRuntime(): { services: Services; queue: Queue } {
     });
     const rest = new REST().setToken(requireEnv('DISCORD_TOKEN'));
     const queue = new Queue(QUEUE_NAME, { connection: redisConnection() });
-    const services = createServices({ config, log: Logger, db, rest, queue, http: url => fetch(url) });
+    queue.on('error', throttledErrorReporter(log, 'Job queue error'));
+    const services = createServices({ config, log, db, rest, queue, http: url => fetch(url) });
     return { services, queue };
 }

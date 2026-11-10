@@ -18,6 +18,7 @@ export const libraryPostGame: Handler<BotButtonInteraction> = {
         }
         const card = gameView(game, await services.games.storeLinks(game.id), { subtitle: `Shared by <@${interaction.user.id}>` });
         await needsPermission('Send Messages', () => services.discord.send(channelId, card));
+        services.log.log(`${interaction.user.username} (${interaction.user.id}) posted ${game.name} in channel ${channelId}, server ${interaction.guildId ?? '?'}`);
         await interaction.ephemeralFollowUp(successView(`Posted **${game.name}** in chat.`));
     },
 };

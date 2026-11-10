@@ -26,6 +26,7 @@ export const lfgInterested: Handler<BotButtonInteraction> = {
 
         const added = await services.lfg.addInterested(post.id, account.id);
         if (added) {
+            services.log.log(`${interaction.user.username} (${interaction.user.id}) is interested in LFG session ${post.id}`);
             await services.lfgSessions.refresh(post.id, customIdsFor(interaction));
         }
         const join = post.vc_channel_id ? ` Jump in: <#${post.vc_channel_id}>` : '';
@@ -42,6 +43,7 @@ export const lfgNotInterested: Handler<BotButtonInteraction> = {
 
         const removed = await services.lfg.removeInterested(post.id, account.id);
         if (removed) {
+            services.log.log(`${interaction.user.username} (${interaction.user.id}) is no longer interested in LFG session ${post.id}`);
             await services.lfgSessions.refresh(post.id, customIdsFor(interaction));
         }
         await interaction.ephemeralFollowUp(removed ? successView('You\'re off the list.') : noticeView('You weren\'t on the list.'));
