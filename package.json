@@ -27,10 +27,13 @@
     "@vulps22/pathfinder": "https://registry.npmjs.org/@vulps22/pathfinder/-/pathfinder-2.0.0.tgz",
     "bullmq": "^6.5.1",
     "discord.js": "^14.27.0",
+    "express": "^5.3.0",
+    "ioredis": "^6.0.0",
     "pg": "^8.23.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.13.14",
     "@types/pg": "^8.11.11",
