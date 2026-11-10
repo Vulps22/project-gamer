@@ -21,7 +21,7 @@ function rawAutocomplete(focused: string) {
         id: '1002', user: { id: '111', username: 'tester' }, guildId: '9001', commandName: 'lfg',
         respond: jest.fn().mockResolvedValue(undefined),
         isAutocomplete: () => true,
-        options: { getFocused: () => focused, getSubcommand: () => 'play' },
+        options: { getFocused: () => focused, getSubcommand: () => null },
     };
 }
 
@@ -96,7 +96,7 @@ describe('InteractionDispatcher', () => {
         new InteractionDispatcher(services, registry).dispatch(raw as unknown as Interaction);
         await flushPromises();
         expect(raw.respond).toHaveBeenCalledWith([]);
-        expect(recorded(services)).toMatchObject({ interactionType: 'search', interactionName: 'lfg play', detail: 'Half-Life 3' });
+        expect(recorded(services)).toMatchObject({ interactionType: 'search', interactionName: 'lfg', detail: 'Half-Life 3' });
     });
 
     it('does not record an autocomplete that found something', async () => {

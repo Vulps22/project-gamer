@@ -14,7 +14,7 @@ export function helpView(): MessageView {
         '`/sharing <on|off>`: show or hide your library in this server',
         '',
         '**Playing**',
-        '`/lfg play <game>`: find players who own a game and open a voice channel',
+        '`/lfg <game>`: find players who own a game and open a voice channel',
         '',
         '**Admins**',
         '`/config lfg-channel <channel>`: choose where LFG posts go',

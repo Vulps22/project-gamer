@@ -121,17 +121,17 @@ Only the creator can interact with these buttons (validated against `posted_by`)
 - On job fire with VC still empty: delete VC, edit post to `VC: ❌ CLOSED`
 - Hard 1hr cap: always enqueue a 1hr cleanup job at VC creation time as a fallback
 
-**`/lfg play <game>`** — immediate session
+**`/lfg <game>`** — immediate session
   - Shows server members who have the game and are sharing
   - Select one or more players, or press "Open Invitation"
   - Open Invitation pings `@lfg`
   - Bot creates a VC named after the game, edits post to show `VC: <#channel-link>`
   - Interested users pinged on VC creation
 
-**`/lfg schedule <game> <time>`** — scheduled session
+**`/lfg <game> <time>`** — scheduled session: the same command with an optional `time` option, not a subcommand
   - `<time>` is a Unix timestamp integer (users can generate these at e.g. hammertime.cyou)
   - Bot validates the timestamp is in the future
-  - Same player selection flow as `/lfg play`
+  - Same player selection flow as an immediate `/lfg`
   - Post displays `<t:timestamp:F>` (Discord localised full timestamp)
   - Post VC field shows `⚠️ <t:timestamp:R>` (relative — "in 2 hours") until VC is created
   - VC created 10 minutes before scheduled time, post updated to `VC: <#channel-link>`
@@ -189,8 +189,7 @@ Config required, in the typed config module for each environment (`src/config/<e
 ## Command Surface
 
 ```
-/lfg play <game>
-/lfg schedule <game> <time>
+/lfg <game> [time]
 
 /library add <url>
 /library remove <game>

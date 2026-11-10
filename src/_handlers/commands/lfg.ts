@@ -11,12 +11,9 @@ export const lfg: CommandHandler = {
     name: 'lfg',
     data: new SlashCommandBuilder()
         .setName('lfg')
-        .setDescription('Find people to play with')
+        .setDescription('Play a game now: pick players who own it, or post an open invitation')
         .setContexts(InteractionContextType.Guild)
-        .addSubcommand(sub => sub
-            .setName('play')
-            .setDescription('Play a game now: pick players who own it, or post an open invitation')
-            .addStringOption(option => option.setName('game').setDescription('The game to play').setRequired(true).setAutocomplete(true)))
+        .addStringOption(option => option.setName('game').setDescription('The game to play').setRequired(true).setAutocomplete(true))
         .toJSON(),
 
     async execute(interaction, services) {

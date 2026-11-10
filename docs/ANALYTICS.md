@@ -50,7 +50,7 @@ Autocomplete fires on every keystroke, so successful searches aren't recorded. Z
 
 ### Flows
 
-A **flow** is one user journey across several interactions. For example: `/lfg play` → player select → LFG post → other users clicking "I have this game" on that post.
+A **flow** is one user journey across several interactions. For example: `/lfg` → player select → LFG post → other users clicking "I have this game" on that post.
 
 Flow tracking comes from `@vulps22/bot-interactions`:
 
@@ -138,7 +138,7 @@ annual    → built from the 4 quarterly snapshots for that year
 - Zero-result searches: the most-wanted games missing from the catalogue
 
 ### Flows (from `analytics.events`, grouped by `flow_id`)
-- **LFG conversion:** of the flows started by `/lfg play`, how many reached a posted LFG, and how many "I have this game" / "Interested" clicks each post drew from users other than the poster
+- **LFG conversion:** of the flows started by `/lfg`, how many reached a posted LFG, and how many "I have this game" / "Interested" clicks each post drew from users other than the poster
 - **Drop-off:** where flows stop. For example, users who open the store select and never submit it.
 - **Library growth path:** which flows end in a game being added (`/library add`, an LFG post's "I have this game", Steam sync)
 
