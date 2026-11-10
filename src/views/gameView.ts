@@ -1,5 +1,6 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, SectionBuilder, TextDisplayBuilder, ThumbnailBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder } from 'discord.js';
 import { Game, StoreLink } from '../types/models';
+import { addCoverArt } from './coverArt';
 import { MessageView, view } from './MessageView';
 
 /** A game card: name, cover art and store links. With a post button, so the viewer can share it in chat. */
@@ -12,15 +13,8 @@ export function gameView(game: Game, links: StoreLink[], options: { subtitle?: s
         lines.push(links.map(link => `[${link.store_name}](${link.url})`).join(' · '));
     }
 
-    const container = new ContainerBuilder();
-    const text = new TextDisplayBuilder().setContent(lines.join('\n'));
-    if (game.cover_art) {
-        container.addSectionComponents(
-            new SectionBuilder().addTextDisplayComponents(text).setThumbnailAccessory(new ThumbnailBuilder().setURL(game.cover_art)),
-        );
-    } else {
-        container.addTextDisplayComponents(text);
-    }
+    const container = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
+    addCoverArt(container, game.cover_art, game.name);
     if (options.postButtonId) {
         container.addActionRowComponents(
             new ActionRowBuilder<ButtonBuilder>().addComponents(

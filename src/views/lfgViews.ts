@@ -1,10 +1,11 @@
 import {
-    ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, SectionBuilder, SeparatorBuilder,
-    StringSelectMenuBuilder, TextDisplayBuilder, ThumbnailBuilder,
+    ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, SeparatorBuilder,
+    StringSelectMenuBuilder, TextDisplayBuilder,
 } from 'discord.js';
 import { CustomIdFactory } from '../discord/customIds';
 import { LfgPostDetails } from '../services/LfgService';
 import { Game } from '../types/models';
+import { addCoverArt } from './coverArt';
 import { MessageView, view } from './MessageView';
 
 export interface PlayerOption {
@@ -63,13 +64,7 @@ export function lfgPostView(details: LfgPostDetails, ids: CustomIdFactory | null
     }
     lines.push(vcLine(details));
 
-    const container = new ContainerBuilder();
-    const text = new TextDisplayBuilder().setContent(lines.join('\n'));
-    if (details.coverArt) {
-        container.addSectionComponents(new SectionBuilder().addTextDisplayComponents(text).setThumbnailAccessory(new ThumbnailBuilder().setURL(details.coverArt)));
-    } else {
-        container.addTextDisplayComponents(text);
-    }
+    const container = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
 
     if (isOpen) {
         const interested = details.interestedDiscordIds.length > 0
@@ -84,6 +79,8 @@ export function lfgPostView(details: LfgPostDetails, ids: CustomIdFactory | null
             ));
         }
     }
+
+    addCoverArt(container, details.coverArt, details.gameName);
 
     if (!ping) {
         return view(container);
