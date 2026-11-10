@@ -1,0 +1,44 @@
+# Reference for /opt/discord-bots/project-gamer[-dev]/docker-compose.yml on the VPS.
+# Deploying is handled outside this repo; this file only shows what the stack needs.
+#
+# PostgreSQL is the native install on the VPS, not a container. DB_HOST=host.docker.internal
+# reaches it through extra_hosts below; its pg_hba.conf must allow this stack's network.
+# Run migrations before (re)starting the bot and worker:
+#   docker compose run --rm bot npm run db:migrate -- --prod
+
+services:
+  bot:
+    image: vulps23/project-gamer:latest
+    command: ["node", "dist/index.js"]
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "127.0.0.1:3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  worker:
+    image: vulps23/project-gamer:latest
+    command: ["node", "dist/worker.js"]
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
