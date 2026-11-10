@@ -12,7 +12,7 @@ CREATE TRIGGER set_updated_at
   BEFORE UPDATE ON "store"."stores"
   FOR EACH ROW EXECUTE FUNCTION "system"."set_updated_at"();
 
-COMMENT ON TABLE "store"."stores" IS 'Known game stores. Seed data written by the rollout, never by users.';
+COMMENT ON TABLE "store"."stores" IS 'Known game stores. Seeded by the rollout; the bot adds new ones when an admin approves a game from an unknown store';
 COMMENT ON COLUMN "store"."stores"."base_url" IS 'Store front URL; store URLs are matched against its host';
 COMMENT ON COLUMN "store"."stores"."scraper" IS 'The worker scraper for this store (steam, meta), or null when URLs go to manual approval';
 
@@ -25,4 +25,5 @@ INSERT INTO "store"."stores" ("name", "slug", "base_url", "scraper") VALUES
   ('Robert Space Industries', 'rsi', 'https://robertsspaceindustries.com', NULL);
 
 GRANT USAGE ON SCHEMA "store" TO bot_user, analytics_user;
-GRANT SELECT ON "store"."stores" TO bot_user, analytics_user;
+GRANT SELECT, INSERT ON "store"."stores" TO bot_user;
+GRANT SELECT ON "store"."stores" TO analytics_user;

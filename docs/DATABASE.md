@@ -15,7 +15,7 @@ PG has its own database, `project-gamer`, on the existing native PostgreSQL inst
 
 | Schema | Contains | Written by |
 |--------|----------|------------|
-| `store` | Known game stores — seed data, not user-generated | Rollout (seed data) |
+| `store` | Known game stores — seeded, plus stores admins create when approving a game | Rollout (seed data), bot (new stores on approval) |
 | `games` | Game catalogue, store entries, submission queue | Bot, worker |
 | `users` | Discord accounts, Steam links, game libraries | Bot, worker |
 | `servers` | Server config, memberships, sharing settings | Bot |
@@ -102,7 +102,7 @@ CREATE TRIGGER set_updated_at
 
 ### `store.stores`
 
-The known list of game stores. Seeded by its schema file and the migration that creates it, never by user input. A store URL is matched to a store by `base_url`'s host.
+The known list of game stores. Seeded by its schema file and the migration that creates it. When an admin approves a submission and names a store that isn't in the list, the bot adds it (`name` as typed, `slug` generated from it, `base_url` from the submitted page's site unless another store already has that site, `scraper` null), so the list grows without a migration. `bot_user` can add stores but never change or delete them. A store URL is matched to a store by `base_url`'s host.
 
 ```sql
 id          UUID        PRIMARY KEY DEFAULT gen_random_uuid()
