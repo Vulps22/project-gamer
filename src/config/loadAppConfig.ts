@@ -9,7 +9,7 @@ const CONFIGS: Record<Environment, AppConfig> = { dev, stage, prod };
 /** The settings for an environment. Fails at startup if any required ID was left blank. */
 export function loadAppConfig(environment: Environment): AppConfig {
     const config = CONFIGS[environment];
-    const missing = (['adminServerId', 'newGamesChannelId'] as const).filter(key => !config[key]);
+    const missing = (['adminServerId', 'newGamesChannelId', 'publicUrl'] as const).filter(key => !config[key]);
     if (missing.length > 0) {
         throw new Error(`src/config/${environment}/Config.ts is missing ${missing.join(', ')}`);
     }

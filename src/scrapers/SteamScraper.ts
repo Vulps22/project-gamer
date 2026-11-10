@@ -1,3 +1,4 @@
+import { steamStoreUrl } from '../steam/SteamApi';
 import { HttpFetch, ScrapedGame, Scraper } from './Scraper';
 
 interface AppDetailsResponse {
@@ -24,7 +25,7 @@ export class SteamScraper implements Scraper {
         return {
             name: entry.data.name,
             coverArt: entry.data.header_image ?? null,
-            url: `https://store.steampowered.com/app/${appId}`,
+            url: steamStoreUrl(appId),
         };
     }
 }

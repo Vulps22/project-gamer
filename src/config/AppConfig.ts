@@ -6,4 +6,6 @@ export interface AppConfig {
     newGamesChannelId: string;
     /** Port for the pathfinder HTTP server. */
     httpPort: number;
+    /** Where the HTTP server is reached from outside, with no trailing slash. Steam sends users back here after login. */
+    publicUrl: string;
 }

@@ -78,10 +78,11 @@ Full schema in [`DATABASE.md`](./DATABASE.md).
 ### In Scope for v2 Launch
 
 #### Steam (Optional)
-- `/steam connect` — initiates Steam OpenID authentication; bot stores Steam ID and begins auto-sync
-- `/steam unlink` — removes Steam auth and stops sync; manually added games are kept
-- `/steam sync` — manual trigger for an immediate library sync (requires `/steam connect` first)
-- Auto-sync runs as a background job (BullMQ), only active for users who have connected Steam
+- `/steam connect` — replies privately with a one-time "Sign in with Steam" link (Steam OpenID). The state token lives in Redis for 15 minutes and is used up by the callback, so it can't be replayed; no cleanup job is needed. The callback (`/auth/steam/callback`, on `publicUrl` from config) has Steam confirm the login with `check_authentication` before trusting the Steam ID (v1 trusted the query, so a login could be forged), links the account, updates the `/steam connect` reply and queues the first sync.
+- `/steam unlink` — removes the link and stops sync. **Every game stays in the library**, including ones Steam sync added; users remove what they like with `/library remove`.
+- `/steam sync` — manual trigger for an immediate library sync (requires `/steam connect` first). Refused within 10 minutes of the last sync; only one sync per user is queued at a time.
+- A sync makes one call to Steam's `GetOwnedGames` (with app info). Games already in the catalogue are matched by Steam app ID; new ones are added to the catalogue from Steam's own data (name, header art, store URL), as v1 did, so a sync never needs a call per game. Everything is added to the library with source `steam_sync`, in one transaction. A private profile ("Game details" not public) syncs nothing, and the user is told how to fix it.
+- Auto-sync: a BullMQ job scheduler runs `steam.autoSync` every hour, which queues a `steam.sync` for linked users not synced in the last 24 hours (up to 200 per run).
 - The bot works fully without Steam — games can always be added manually via `/library add`
 
 #### Library Management
@@ -219,12 +220,12 @@ Main Process (Discord bot)
   └── Enqueues jobs, never runs them inline
 
 BullMQ Worker Process (separate)
-  └── steam.sync      — diff Steam library against user library, write new games
+  └── steam.sync      — add the user's Steam games to their library (new games to the catalogue too); follow up via the stored interaction token
+  └── steam.autoSync  — hourly: queue steam.sync for linked users not synced in 24 hours
   └── scrape.fetch    — scrape a store URL (Cheerio or Puppeteer); follow up to user via stored Discord interaction token
   └── vc.empty        — delayed 10min job enqueued when last user leaves a VC; deletes VC if still empty
   └── vc.expire       — hard 1hr TTL job enqueued at VC creation; deletes VC regardless
   └── lfg.scheduled   — spin up VC 10min before scheduled LFG, ping interested users
-  └── session.cleanup — purge expired OAuth sessions
 ```
 
 The worker process can crash, restart, or be scaled independently without touching the bot.
@@ -276,6 +277,8 @@ src/
 ### Configuration
 
 As PE: `src/config/{dev,stage,prod}/Config.ts`, selected by `ENVIRONMENT` (`dev` | `stage` | `prod`). Channel IDs, the official server link, and other non-secret values live in these typed modules. Secrets (Discord token, DB passwords, Steam API key, top.gg secrets) live only in env files, loaded with `node --env-file`. Config is never logged.
+
+Required config, without which the bot refuses to start: `adminServerId`, `newGamesChannelId`, and `publicUrl` (the HTTP server's public address, no trailing slash; dev is `http://localhost:3000`, which works because the Steam redirect happens in the user's own browser). Required env: `DISCORD_TOKEN`, `CLIENT_ID`, `DB_*`, `REDIS_URL`, `STEAM_API_KEY`; optional: `DISCORD_LOG_WEBHOOK_URL`, `DISCORD_ERROR_WEBHOOK_URL`.
 
 ### HTTP Server
 

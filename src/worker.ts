@@ -1,7 +1,8 @@
 import { Job, Worker } from 'bullmq';
 import { describeError } from './errors';
 import { ScrapeProcessor } from './jobs/ScrapeProcessor';
-import { JobNames, QUEUE_NAME, ScrapeJob, VcJob } from './jobs/types';
+import { SteamSyncProcessor } from './jobs/SteamSyncProcessor';
+import { JobNames, QUEUE_NAME, ScrapeJob, SteamSyncJob, VcJob } from './jobs/types';
 import { reportProcessErrors, throttledErrorReporter } from './logging/discordLog';
 import { createRuntime, redisConnection } from './runtime';
 
@@ -13,17 +14,26 @@ const { services } = createRuntime();
 const { log } = services;
 reportProcessErrors(log, 'Worker');
 const scrape = new ScrapeProcessor(services);
+const steamSync = new SteamSyncProcessor(services);
 
 async function run(job: Job): Promise<void> {
     switch (job.name) {
         case JobNames.SCRAPE_FETCH:
-            return scrape.process(job.data as ScrapeJob, job.attemptsMade + 1 >= (job.opts.attempts ?? 1));
+            return scrape.process(job.data as ScrapeJob, isLastAttempt(job));
+        case JobNames.STEAM_SYNC:
+            return steamSync.sync(job.data as SteamSyncJob, isLastAttempt(job));
+        case JobNames.STEAM_AUTO_SYNC:
+            return steamSync.autoSync();
         case JobNames.VC_EMPTY:
         case JobNames.VC_EXPIRE:
             return services.lfgSessions.closeByVc((job.data as VcJob).channelId, job.name === JobNames.VC_EMPTY ? 'empty' : 'expired');
         default:
             throw new Error(`Unknown job ${job.name}`);
     }
+}
+
+function isLastAttempt(job: Job): boolean {
+    return job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
 }
 
 /** Never the job's data: a scrape job carries an interaction token. */
@@ -33,6 +43,9 @@ function describeJob(job: Job | undefined): string {
 
 const worker = new Worker(QUEUE_NAME, run, { connection: redisConnection(), concurrency: 5 });
 worker.on('ready', () => log.log('Worker ready'));
+services.jobs.scheduleSteamAutoSync()
+    .then(() => log.log('Steam auto-sync scheduled'))
+    .catch((error: unknown) => log.error(`Couldn't schedule Steam auto-sync\n${describeError(error)}`));
 worker.on('active', job => log.debug(`Job started: ${describeJob(job)}`));
 worker.on('completed', job => log.debug(`Job done: ${describeJob(job)}`));
 worker.on('failed', (job, error) => log.error(`Job failed: ${describeJob(job)}\n${describeError(error)}`));

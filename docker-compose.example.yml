@@ -13,6 +13,8 @@ services:
     env_file: .env
     environment:
       REDIS_URL: redis://redis:6379
+    # Only on localhost: a reverse proxy serves it over HTTPS at the publicUrl in src/config/<env>/Config.ts,
+    # which Steam sends users back to after login.
     ports:
       - "127.0.0.1:3000:3000"
     extra_hosts:

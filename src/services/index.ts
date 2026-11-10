@@ -10,6 +10,8 @@ import { DiscordApi } from '../discord/DiscordApi';
 import { JobQueue } from '../jobs/JobQueue';
 import { HttpFetch, ScraperRegistry } from '../scrapers/Scraper';
 import { SteamScraper } from '../scrapers/SteamScraper';
+import { Fetch, SteamApi } from '../steam/SteamApi';
+import { SessionStore, SteamLoginSessions } from '../steam/SteamLoginSessions';
 import { Log } from '../types/Log';
 import { AnalyticsService } from './AnalyticsService';
 import { GameService } from './GameService';
@@ -18,6 +20,7 @@ import { LfgSessionService } from './LfgSessionService';
 import { LibraryService } from './LibraryService';
 import { ChannelReviewCards, ReviewQueue } from './ReviewQueue';
 import { ServerService } from './ServerService';
+import { SteamService } from './SteamService';
 import { SubmissionService } from './SubmissionService';
 import { UserService } from './UserService';
 
@@ -36,6 +39,9 @@ export interface Services {
     reviewQueue: ReviewQueue;
     lfg: LfgService;
     lfgSessions: LfgSessionService;
+    steamApi: SteamApi;
+    steamLogins: SteamLoginSessions;
+    steam: SteamService;
 }
 
 export interface ServiceDependencies {
@@ -45,9 +51,12 @@ export interface ServiceDependencies {
     rest: REST;
     queue: Queue;
     http: HttpFetch;
+    fetch: Fetch;
+    sessions: SessionStore;
+    steamApiKey: string;
 }
 
-export function createServices({ config, log, db, rest, queue, http }: ServiceDependencies): Services {
+export function createServices({ config, log, db, rest, queue, http, fetch, sessions, steamApiKey }: ServiceDependencies): Services {
     const discord = new DiscordApi(rest);
     const games = new GameService(db);
     const library = new LibraryService(db);
@@ -55,6 +64,7 @@ export function createServices({ config, log, db, rest, queue, http }: ServiceDe
     const users = new UserService(db);
     const scrapers = new ScraperRegistry({ steam: new SteamScraper(http) });
     const submissions = new SubmissionService(db, games, library);
+    const steamApi = new SteamApi(fetch, steamApiKey);
     return {
         config,
         log,
@@ -70,5 +80,8 @@ export function createServices({ config, log, db, rest, queue, http }: ServiceDe
         reviewQueue: new ReviewQueue(db, submissions, games, users, scrapers, new ChannelReviewCards(discord, config.newGamesChannelId), log),
         lfg,
         lfgSessions: new LfgSessionService(lfg, discord, log),
+        steamApi,
+        steamLogins: new SteamLoginSessions(sessions),
+        steam: new SteamService(db, steamApi),
     };
 }

@@ -14,7 +14,7 @@ describe('loadAppConfig', () => {
     });
 
     it('names the blank IDs', () => {
-        Object.assign(dev, { adminServerId: '', newGamesChannelId: '' });
-        expect(() => loadAppConfig('dev')).toThrow('src/config/dev/Config.ts is missing adminServerId, newGamesChannelId');
+        Object.assign(dev, { adminServerId: '', newGamesChannelId: '', publicUrl: '' });
+        expect(() => loadAppConfig('dev')).toThrow('src/config/dev/Config.ts is missing adminServerId, newGamesChannelId, publicUrl');
     });
 });

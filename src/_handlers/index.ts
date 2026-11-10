@@ -7,10 +7,11 @@ import { help } from './commands/help';
 import { lfg } from './commands/lfg';
 import { library } from './commands/library';
 import { sharing } from './commands/sharing';
+import { steam } from './commands/steam';
 import { submissionApproveModal } from './modals/submissionApproveModal';
 import { lfgPlayerSelect } from './selects/lfgPlayerSelect';
 
-export const commands = [config, help, lfg, library, sharing];
+export const commands = [config, help, lfg, library, sharing, steam];
 
 export function createHandlerRegistry(): HandlerRegistry {
     return new HandlerRegistry({
