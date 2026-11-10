@@ -21,7 +21,7 @@ async function main(): Promise<void> {
     await createServer({ port: config.httpPort, routesPath: path.join(__dirname, 'routes') });
     log.log(`HTTP server listening on port ${config.httpPort}`);
 
-    const manager = new ShardingManager(path.join(__dirname, 'bot.js'), { token, totalShards: config.totalShards });
+    const manager = new ShardingManager(path.join(__dirname, 'bot.js'), { token, totalShards: 'auto' });
     manager.on('shardCreate', shard => {
         log.log(`Launched shard ${shard.id}`);
         shard.on('death', child => log.error(`Shard ${shard.id} died (exit code ${'exitCode' in child ? String(child.exitCode) : 'unknown'}). Respawning.`));
