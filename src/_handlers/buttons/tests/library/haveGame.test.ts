@@ -1,7 +1,7 @@
 import { BotButtonInteraction } from '@vulps22/bot-interactions';
-import { mockServices } from '../../../tests/mocks';
-import { libraryHaveGame } from '../libraryHaveGame';
-import { libraryPostGame } from '../libraryPostGame';
+import { mockServices } from '../../../../tests/mocks';
+import haveGame from '../../library/haveGame';
+import postGame from '../../library/postGame';
 
 const game = { id: '0b6f3c2e-1d4a-4c8e-9f0a-2b3c4d5e6f70', name: 'ARC Raiders', cover_art: null };
 
@@ -31,7 +31,7 @@ describe('I have this game', () => {
     it('adds the game to the clicker\'s library', async () => {
         const services = setup(true);
         const i = button({ g: '0b6f3c2e-1d4a-4c8e-9f0a-2b3c4d5e6f70' });
-        await libraryHaveGame.execute(i, services);
+        await haveGame.execute(i, services);
         expect(i.deferUpdate).toHaveBeenCalled();
         expect(services.library.add).toHaveBeenCalledWith('acc-2', '0b6f3c2e-1d4a-4c8e-9f0a-2b3c4d5e6f70', 'manual');
         expect(followUp(i)).toContain('Added **ARC Raiders**');
@@ -40,13 +40,13 @@ describe('I have this game', () => {
     it('says so when they already have it', async () => {
         const services = setup(false);
         const i = button({ g: '0b6f3c2e-1d4a-4c8e-9f0a-2b3c4d5e6f70' });
-        await libraryHaveGame.execute(i, services);
+        await haveGame.execute(i, services);
         expect(followUp(i)).toContain('already in your library');
     });
 
     it('is on the card Post to Chat sends', async () => {
         const services = setup(true);
-        await libraryPostGame.execute(button({ g: '0b6f3c2e-1d4a-4c8e-9f0a-2b3c4d5e6f70' }), services);
+        await postGame.execute(button({ g: '0b6f3c2e-1d4a-4c8e-9f0a-2b3c4d5e6f70' }), services);
         const card = JSON.stringify((services.discord.send as jest.Mock).mock.calls[0][1]);
         expect(card).toContain('I have this game');
         expect(card).toContain('library_haveGame_g:0b6f3c2e-1d4a-4c8e-9f0a-2b3c4d5e6f70');

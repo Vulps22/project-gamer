@@ -1,13 +1,12 @@
 import { BotButtonInteraction } from '@vulps22/bot-interactions';
-import { baseId } from '../../constants/interactions';
-import { Handler } from '../../types/Handler';
-import { noticeView, successView } from '../../views/MessageView';
-import { guildContext } from '../context';
-import { requireGame } from '../shared/requireGame';
+import { Handler } from '../../../types/Handler';
+import { noticeView, successView } from '../../../views/MessageView';
+import { guildContext } from '../../context';
+import { requireGame } from '../../shared/requireGame';
 
-/** "I have this game" on a game card posted in chat: adds the game to the clicker's library. */
-export const libraryHaveGame: Handler<BotButtonInteraction> = {
-    name: baseId('LIBRARY_HAVE_GAME'),
+/** library_haveGame: "I have this game" on a game card posted in chat. Adds the game to the clicker's library. */
+const haveGame: Handler<BotButtonInteraction> = {
+    name: 'haveGame',
     async execute(interaction, services) {
         await interaction.deferUpdate();
         const { account } = await guildContext(interaction, services);
@@ -21,3 +20,5 @@ export const libraryHaveGame: Handler<BotButtonInteraction> = {
             : noticeView(`**${game.name}** is already in your library.`));
     },
 };
+
+export default haveGame;

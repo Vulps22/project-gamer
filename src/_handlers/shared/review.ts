@@ -27,3 +27,10 @@ export function requireParam(value: string | undefined, what: string): string {
     }
     return value;
 }
+
+/** The approval form's fields: built by submission_approve, read by submission_approveModal. */
+export const ApproveModalFields = {
+    TITLE: 'title',
+    STORE: 'store',
+    COVER: 'cover',
+} as const;

@@ -1,25 +1,23 @@
-import { baseId } from '../../constants/interactions';
-import { customIdsFor } from '../../discord/customIds';
-import { PgModalInteraction } from '../../discord/interactions';
-import { describeError, UserFacingError } from '../../errors';
-import { Handler } from '../../types/Handler';
-import { approvedDmView } from '../../views/submissionViews';
-import { successView } from '../../views/MessageView';
-import { ModalFields } from '../buttons/submissionButtons';
-import { requireAdminServer, requireParam } from '../shared/review';
-import { EPHEMERAL } from '../shared/ephemeral';
+import { customIdsFor } from '../../../discord/customIds';
+import { PgModalInteraction } from '../../../discord/interactions';
+import { describeError, UserFacingError } from '../../../errors';
+import { Handler } from '../../../types/Handler';
+import { approvedDmView } from '../../../views/submissionViews';
+import { successView } from '../../../views/MessageView';
+import { ApproveModalFields, requireAdminServer, requireParam } from '../../shared/review';
+import { EPHEMERAL } from '../../shared/ephemeral';
 
 /**
- * Approves a submission: adds the game (and its store, if new), puts it in the submitter's library and
+ * submission_approveModal. Approves a submission: adds the game (and its store, if new), puts it in the submitter's library and
  * updates the admin card, all in one transaction. Then DMs the submitter.
  */
-export const submissionApproveModal: Handler<PgModalInteraction> = {
-    name: baseId('SUBMISSION_APPROVE_MODAL'),
+const approveModal: Handler<PgModalInteraction> = {
+    name: 'approveModal',
     async execute(interaction, services) {
         await interaction.deferReply(EPHEMERAL);
         requireAdminServer(interaction, services);
 
-        const storeName = interaction.fields.getTextInputValue(ModalFields.STORE).trim();
+        const storeName = interaction.fields.getTextInputValue(ApproveModalFields.STORE).trim();
         if (!storeName) {
             throw new UserFacingError('Give the store a name.');
         }
@@ -27,9 +25,9 @@ export const submissionApproveModal: Handler<PgModalInteraction> = {
             submissionId: requireParam(interaction.params.get('s'), 'submission'),
             cardMessageId: requireParam(interaction.sourceMessageId ?? undefined, 'card message'),
             reviewerDiscordId: interaction.user.id,
-            gameName: interaction.fields.getTextInputValue(ModalFields.TITLE).trim(),
+            gameName: interaction.fields.getTextInputValue(ApproveModalFields.TITLE).trim(),
             storeName,
-            coverArt: optionalUrl(interaction.fields.getTextInputValue(ModalFields.COVER)),
+            coverArt: optionalUrl(interaction.fields.getTextInputValue(ApproveModalFields.COVER)),
             ids: customIdsFor(interaction),
         });
 
@@ -48,6 +46,8 @@ export const submissionApproveModal: Handler<PgModalInteraction> = {
         ));
     },
 };
+
+export default approveModal;
 
 function optionalUrl(value: string): string | null {
     const trimmed = value.trim();

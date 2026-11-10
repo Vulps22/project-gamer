@@ -34,7 +34,7 @@ export async function libraryView(interaction: PgCommandInteraction, services: S
     const ids = customIdsFor(interaction);
     await interaction.editReply(gameView(game, await services.games.storeLinks(game.id), {
         subtitle: isOwn ? 'In your library' : `In <@${target.id}>'s library`,
-        postButtonId: ids('LIBRARY_POST_GAME', { g: game.id }),
+        postButtonId: ids('library', 'postGame', { g: game.id }),
     }));
 }
 

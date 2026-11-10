@@ -25,8 +25,8 @@ export function submissionView(submission: Submission, submitterDiscordId: strin
     const container = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
     if (state.status === 'pending') {
         container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(state.ids('SUBMISSION_APPROVE', { s: submission.id })).setLabel('Approve').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(state.ids('SUBMISSION_REJECT', { s: submission.id })).setLabel('Reject').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId(state.ids('submission', 'approve', { s: submission.id })).setLabel('Approve').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(state.ids('submission', 'reject', { s: submission.id })).setLabel('Reject').setStyle(ButtonStyle.Danger),
         ));
     }
     return view(container);

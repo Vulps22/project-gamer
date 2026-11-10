@@ -4,7 +4,7 @@ import { Services } from '../services';
 
 /** Handles one command or component. Services are passed in, never imported. */
 export interface Handler<T> {
-    /** The command name, or the component's baseId. */
+    /** The command name, or the component action: the last part of its custom ID (its folders are the prefix). */
     name: string;
     execute(interaction: T, services: Services): Promise<void>;
 }

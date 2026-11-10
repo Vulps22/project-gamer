@@ -2,33 +2,23 @@ import { BotButtonInteraction, BotSelectMenuInteraction } from '@vulps22/bot-int
 import { PgModalInteraction } from '../discord/interactions';
 import { CommandHandler, Handler } from '../types/Handler';
 
-/** Handlers by command name or component baseId. */
+/** Handlers by command name, or by component custom ID (`prefix_action`). */
 export class HandlerRegistry {
     readonly commands: ReadonlyMap<string, CommandHandler>;
-    readonly buttons: ReadonlyMap<string, Handler<BotButtonInteraction>>;
-    readonly selects: ReadonlyMap<string, Handler<BotSelectMenuInteraction>>;
-    readonly modals: ReadonlyMap<string, Handler<PgModalInteraction>>;
 
-    constructor(handlers: {
-        commands: CommandHandler[];
-        buttons: Handler<BotButtonInteraction>[];
-        selects: Handler<BotSelectMenuInteraction>[];
-        modals: Handler<PgModalInteraction>[];
-    }) {
-        this.commands = byName(handlers.commands);
-        this.buttons = byName(handlers.buttons);
-        this.selects = byName(handlers.selects);
-        this.modals = byName(handlers.modals);
-    }
-}
-
-function byName<T extends { name: string }>(handlers: T[]): ReadonlyMap<string, T> {
-    const map = new Map<string, T>();
-    for (const handler of handlers) {
-        if (map.has(handler.name)) {
-            throw new Error(`Two handlers are registered as ${handler.name}`);
+    constructor(
+        commands: CommandHandler[],
+        readonly buttons: ReadonlyMap<string, Handler<BotButtonInteraction>>,
+        readonly selects: ReadonlyMap<string, Handler<BotSelectMenuInteraction>>,
+        readonly modals: ReadonlyMap<string, Handler<PgModalInteraction>>,
+    ) {
+        const byName = new Map<string, CommandHandler>();
+        for (const command of commands) {
+            if (byName.has(command.name)) {
+                throw new Error(`Two commands are named ${command.name}`);
+            }
+            byName.set(command.name, command);
         }
-        map.set(handler.name, handler);
+        this.commands = byName;
     }
-    return map;
 }

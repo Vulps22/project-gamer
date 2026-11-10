@@ -261,7 +261,7 @@ src/
     interactionEvents/   CommandInteractionEvent.ts  ButtonInteractionEvent.ts  ...
 ```
 
-- Every handler exports a `Handler<T>` (`name`, `execute`), where `T` is the matching bot-interactions wrapper. Component handlers are registered by `baseId`.
+- Every handler exports a `Handler<T>` (`name`, `execute`), where `T` is the matching bot-interactions wrapper. One handler per file. Component handlers are found by their folder and name (see [Component handlers and custom IDs](#component-handlers-and-custom-ids)).
 - `interactionCreate` dispatches to one `InteractionEvent` class per interaction type, fire-and-forget (`void`), so one slow interaction never holds up the next.
 - **Buttons and selects call `deferUpdate()` first**, before any async work, and respond with `ephemeralFollowUp()`. Commands defer as their first line if they do any I/O.
 - Each `InteractionEvent` wraps the handler in a try/catch. On error it logs, and replies only if the interaction hasn't been replied to or deferred. A failed reply is swallowed (`.catch(() => null)`) so the error path can never throw.
@@ -291,26 +291,20 @@ src/routes/
   api/v1/ping.ts           GET  — health check
 ```
 
-### Interaction ID Constants
+### Component handlers and custom IDs
 
-All button, select menu, and modal IDs defined in one place, as `[prefix, action]` pairs in bot-interactions' `prefix_action_key:value` custom ID format:
+As PE: one handler per file, and the file's place is its custom ID. A button, select or modal handler lives at `src/_handlers/{buttons,selects,modals}/<prefix>/<action>.ts`, default-exports one `Handler<T>` whose `name` is the action, and answers the custom ID `<prefix>_<action>`. `buttons/lfg/interested.ts` answers `lfg_interested`. They're loaded from their folders at startup (`loadComponentHandlers`), so there is no list or constants file to keep in step: adding a button is adding a file. Two handlers answering the same ID is a startup error.
 
-```ts
-// src/constants/interactions.ts
-export const Interactions = {
-  LFG_PLAYER_SELECT: ['lfg', 'playerSelect'],
-  LFG_OPEN_INVITE: ['lfg', 'openInvite'],
-  LFG_INTERESTED: ['lfg', 'interested'],
-  LFG_NOT_INTERESTED: ['lfg', 'notInterested'],
-  LIBRARY_POST_GAME: ['library', 'postGame'],
-  LIBRARY_HAVE_GAME: ['library', 'haveGame'],
-  SUBMISSION_APPROVE: ['submission', 'approve'],
-  SUBMISSION_REJECT: ['submission', 'reject'],
-  SUBMISSION_APPROVE_MODAL: ['submission', 'approveModal'],
-} as const;
+```
+src/_handlers/
+  buttons/   lfg/ openInvite.ts  interested.ts  notInterested.ts
+             library/ postGame.ts  haveGame.ts
+             submission/ approve.ts  reject.ts
+  selects/   lfg/ playerSelect.ts
+  modals/    submission/ approveModal.ts
 ```
 
-Custom IDs are always built from these pairs, never by hand: `customIdsFor(interaction)` inside a handler (it calls `interaction.createCustomId`), or `customIdsForFlow(flowId)` in the worker, which has no interaction but carries the flow ID in the job, so every component carries its flow (see [ANALYTICS.md](./ANALYTICS.md#flows)). Handlers are registered by `baseId` (`lfg_playerSelect`).
+Custom IDs are built with the same prefix and action, through `createCustomId` rather than a hand-written string, so every component carries its flow ID (see [ANALYTICS.md](./ANALYTICS.md#flows)): `customIdsFor(interaction)('lfg', 'interested', { p: post.id })` inside a handler (it calls `interaction.createCustomId`), or `customIdsForFlow(flowId)` in the worker, which has no interaction but carries the flow ID in the job.
 
 ---
 

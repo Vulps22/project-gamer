@@ -1,7 +1,7 @@
 import { Interaction } from 'discord.js';
 import { UserFacingError } from '../../errors';
 import { flushPromises, mockServices } from '../../tests/mocks';
-import { CommandHandler, Handler } from '../../types/Handler';
+import { CommandHandler } from '../../types/Handler';
 import { HandlerRegistry } from '../HandlerRegistry';
 import { InteractionDispatcher } from '../InteractionDispatcher';
 
@@ -31,7 +31,7 @@ function setup(command: Partial<CommandHandler>) {
         analytics: { record: jest.fn() },
     });
     const handler = { name: 'help', data: {} as CommandHandler['data'], execute: jest.fn().mockResolvedValue(undefined), ...command } as CommandHandler;
-    const registry = new HandlerRegistry({ commands: [handler], buttons: [], selects: [], modals: [] });
+    const registry = new HandlerRegistry([handler], new Map(), new Map(), new Map());
     return { services, handler, dispatcher: new InteractionDispatcher(services, registry) };
 }
 
@@ -91,7 +91,7 @@ describe('InteractionDispatcher', () => {
 
     it('records a zero-result autocomplete as a search', async () => {
         const { services } = setup({});
-        const registry = new HandlerRegistry({ commands: [{ name: 'lfg', data: {} as CommandHandler['data'], execute: jest.fn(), autocomplete: jest.fn().mockResolvedValue([]) }], buttons: [], selects: [], modals: [] });
+        const registry = new HandlerRegistry([{ name: 'lfg', data: {} as CommandHandler['data'], execute: jest.fn(), autocomplete: jest.fn().mockResolvedValue([]) }], new Map(), new Map(), new Map());
         const raw = rawAutocomplete('Half-Life 3');
         new InteractionDispatcher(services, registry).dispatch(raw as unknown as Interaction);
         await flushPromises();
@@ -101,7 +101,7 @@ describe('InteractionDispatcher', () => {
 
     it('does not record an autocomplete that found something', async () => {
         const { services } = setup({});
-        const registry = new HandlerRegistry({ commands: [{ name: 'lfg', data: {} as CommandHandler['data'], execute: jest.fn(), autocomplete: jest.fn().mockResolvedValue([{ name: 'Portal 2', value: 'g' }]) }], buttons: [], selects: [], modals: [] });
+        const registry = new HandlerRegistry([{ name: 'lfg', data: {} as CommandHandler['data'], execute: jest.fn(), autocomplete: jest.fn().mockResolvedValue([{ name: 'Portal 2', value: 'g' }]) }], new Map(), new Map(), new Map());
         new InteractionDispatcher(services, registry).dispatch(rawAutocomplete('port') as unknown as Interaction);
         await flushPromises();
         expect(services.analytics.record).not.toHaveBeenCalled();
@@ -109,8 +109,8 @@ describe('InteractionDispatcher', () => {
 });
 
 describe('HandlerRegistry', () => {
-    it('refuses two handlers with the same name', () => {
-        const twin: Handler<never> = { name: 'lfg_interested', execute: jest.fn() };
-        expect(() => new HandlerRegistry({ commands: [], buttons: [twin, twin], selects: [], modals: [] })).toThrow('lfg_interested');
+    it('refuses two commands with the same name', () => {
+        const twin = { name: 'lfg', data: {} as CommandHandler['data'], execute: jest.fn() };
+        expect(() => new HandlerRegistry([twin, twin], new Map(), new Map(), new Map())).toThrow('lfg');
     });
 });

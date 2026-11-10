@@ -88,13 +88,14 @@ No colon after the verb. Enforced by `validate-pr-title.yml`.
 ## Key Patterns
 
 ### Interactions
-- Handlers live in `src/_handlers/{commands,buttons,selects,modals}/` and export a `Handler<T>`. Components are registered by `baseId`.
+- Handlers live in `src/_handlers/{commands,buttons,selects,modals}/` and export a `Handler<T>`. **One handler per file.**
+- As PE: a component handler lives at `{buttons,selects,modals}/<prefix>/<action>.ts`, default-exports its handler with `name: '<action>'`, and answers `<prefix>_<action>`. Handlers are loaded from their folders; there's no list to update.
 - **Buttons and selects: `await interaction.deferUpdate()` first**, before any async work, then respond with `ephemeralFollowUp()`.
 - Commands that do I/O defer first.
 - Components V2 messages never carry `content`.
 
 ### Custom IDs and flows
-- **Always build custom IDs with `interaction.createCustomId(prefix, action, params)`**, using the `[prefix, action]` pairs in `src/constants/interactions.ts`. Never hand-write a custom ID string. This is what carries the flow ID that ties a user journey together in analytics.
+- **Always build custom IDs with `interaction.createCustomId(prefix, action, params)`** (or `customIdsFor` / `customIdsForFlow`), with the handler's folder as `prefix` and its name as `action`. Never hand-write a custom ID string. This is what carries the flow ID that ties a user journey together in analytics.
 - The `f` param key is reserved for the flow ID.
 
 ### Logging and analytics

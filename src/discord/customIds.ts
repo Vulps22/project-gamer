@@ -1,21 +1,17 @@
 import { BotInteraction, buildCustomId, CustomIdParams } from '@vulps22/bot-interactions';
-import { InteractionKey, Interactions } from '../constants/interactions';
 
-/** Builds the custom ID for one of the Interactions, tagged with a flow. */
-export type CustomIdFactory = (key: InteractionKey, params?: CustomIdParams) => string;
+/**
+ * Builds a component's custom ID: `prefix_action` plus params, tagged with a flow. `prefix` and `action` are
+ * the handler's folder and name, as in PE: _handlers/buttons/lfg/interested.ts answers ids('lfg', 'interested').
+ */
+export type CustomIdFactory = (prefix: string, action: string, params?: CustomIdParams) => string;
 
 /** Custom IDs that continue this interaction's flow. */
 export function customIdsFor(interaction: BotInteraction): CustomIdFactory {
-    return (key, params) => {
-        const [prefix, action] = Interactions[key];
-        return interaction.createCustomId(prefix, action, params);
-    };
+    return (prefix, action, params) => interaction.createCustomId(prefix, action, params);
 }
 
 /** Custom IDs that continue a flow, for code with no interaction to hand (the worker). */
 export function customIdsForFlow(flowId: string | null): CustomIdFactory {
-    return (key, params) => {
-        const [prefix, action] = Interactions[key];
-        return buildCustomId(prefix, action, params, flowId);
-    };
+    return (prefix, action, params) => buildCustomId(prefix, action, params, flowId);
 }

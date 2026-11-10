@@ -35,9 +35,9 @@ Every interaction the bot handles produces exactly one event, written when handl
 | `interaction_type` | Recorded when | `interaction_name` |
 |--------------------|---------------|--------------------|
 | `command` | Every slash command | Command name, including subcommand (`library add`) |
-| `button` | Every button click | Button `baseId` (`lfg_addGame`) |
-| `select` | Every select menu submission | Select `baseId` |
-| `modal` | Every modal submission | Modal `baseId` |
+| `button` | Every button click | Button `prefix_action` (`lfg_interested`) |
+| `select` | Every select menu submission | Select `prefix_action` |
+| `modal` | Every modal submission | Modal `prefix_action` |
 | `search` | An autocomplete that returned **zero results** | Command name; the search text goes in `detail` |
 
 Autocomplete fires on every keystroke, so successful searches aren't recorded. Zero-result searches are recorded because each one is a game a user wanted that the catalogue doesn't have.

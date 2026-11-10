@@ -31,7 +31,7 @@ export function pickPlayersView(game: Game, players: PlayerOption[], ids: Custom
         ));
         container.addActionRowComponents(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
             new StringSelectMenuBuilder()
-                .setCustomId(ids('LFG_PLAYER_SELECT', { g: game.id }))
+                .setCustomId(ids('lfg', 'playerSelect', { g: game.id }))
                 .setPlaceholder('Choose players')
                 .setMinValues(1)
                 .setMaxValues(shown.length)
@@ -40,7 +40,7 @@ export function pickPlayersView(game: Game, players: PlayerOption[], ids: Custom
     }
 
     container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(ids('LFG_OPEN_INVITE', { g: game.id })).setLabel('Open Invitation').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(ids('lfg', 'openInvite', { g: game.id })).setLabel('Open Invitation').setStyle(ButtonStyle.Success),
     ));
     return view(container);
 }
@@ -74,8 +74,8 @@ export function lfgPostView(details: LfgPostDetails, ids: CustomIdFactory | null
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Interested:** ${interested}`));
         if (isActive && ids) {
             container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(
-                new ButtonBuilder().setCustomId(ids('LFG_INTERESTED', { p: post.id })).setLabel('Interested').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId(ids('LFG_NOT_INTERESTED', { p: post.id })).setLabel('Not Interested').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId(ids('lfg', 'interested', { p: post.id })).setLabel('Interested').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId(ids('lfg', 'notInterested', { p: post.id })).setLabel('Not Interested').setStyle(ButtonStyle.Secondary),
             ));
         }
     }

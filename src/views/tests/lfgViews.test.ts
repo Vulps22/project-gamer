@@ -2,7 +2,7 @@ import { LfgPostDetails } from '../../services/LfgService';
 import { lfgPostView, pickPlayersView } from '../lfgViews';
 import { toRestBody } from '../MessageView';
 
-const ids = (key: string, params?: Record<string, string | number>): string => `${key}:${JSON.stringify(params)}`;
+const ids = (prefix: string, action: string, params?: Record<string, string | number>): string => `${prefix}_${action}:${JSON.stringify(params)}`;
 
 function details(overrides: Partial<LfgPostDetails> = {}, status: 'active' | 'expired' = 'active'): LfgPostDetails {
     return {
@@ -34,17 +34,17 @@ describe('lfgPostView', () => {
         const body = text(toRestBody(lfgPostView(details({ interestedDiscordIds: ['333'] }), ids)));
         expect(body).toContain('<#vc-1>');
         expect(body).toContain('<@333>');
-        expect(body).toContain('LFG_INTERESTED');
+        expect(body).toContain('lfg_interested');
     });
 
     it('shows the VC closed, without buttons, once the session ends', () => {
         const body = text(toRestBody(lfgPostView(details({}, 'expired'), ids)));
         expect(body).toContain('❌ CLOSED');
-        expect(body).not.toContain('LFG_INTERESTED');
+        expect(body).not.toContain('lfg_interested');
     });
 
     it('has no Interested buttons on a direct invitation', () => {
-        expect(text(toRestBody(lfgPostView(details({ inviteeDiscordIds: ['222'] }), ids)))).not.toContain('LFG_INTERESTED');
+        expect(text(toRestBody(lfgPostView(details({ inviteeDiscordIds: ['222'] }), ids)))).not.toContain('lfg_interested');
     });
 });
 
@@ -53,8 +53,8 @@ describe('pickPlayersView', () => {
 
     it('offers only an open invitation when nobody else has the game', () => {
         const body = text(toRestBody(pickPlayersView(game, [], ids)));
-        expect(body).toContain('LFG_OPEN_INVITE');
-        expect(body).not.toContain('LFG_PLAYER_SELECT');
+        expect(body).toContain('lfg_openInvite');
+        expect(body).not.toContain('lfg_playerSelect');
     });
 
     it('caps the player select at 25 options', () => {
