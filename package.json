@@ -1,34 +1,46 @@
 {
   "name": "project-gamer",
-  "version": "1.0.0",
-  "description": "This project is a complete rebuild of LFGameSync-bot.",
-  "main": "index.js",
+  "version": "2.0.0",
+  "private": true,
+  "description": "LFGameSync: find members who own the same games, and organise sessions to play them",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node .",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
+    "dev": "npm run build && node --env-file=.env.development --watch dist/index.js",
+    "stage": "npm run build && node --env-file=.env.staging dist/index.js",
+    "prod": "node --env-file=.env.production dist/index.js",
     "test": "jest",
-    "lint": "eslint .",
-    "db:apply": "node scripts/apply-schema.js",
-    "db:rollout": "node scripts/run-rollout.js",
-    "db:revert": "node scripts/run-revert.js"
+    "coverage": "jest --coverage",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "db:install": "node database/scripts/fresh-install.js",
+    "db:migrate": "node database/scripts/migrate.js",
+    "db:revert": "node database/scripts/revert.js"
   },
-
-  "author": "Vulps",
-  "license": "ISC",
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
-    "async-retry": "^1.3.3",
-    "axios": "^1.9.0",
-    "cheerio": "^1.0.0",
-    "discord.js": "^14.19.3",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "mysql2": "^3.14.1",
-    "puppeteer": "^24.10.1",
-    "topgg-autoposter": "^2.0.2"
+    "@vulps22/bot-interactions": "file:vendor/vulps22-bot-interactions-1.3.0-flow.0.tgz",
+    "@vulps22/logger": "^2.0.0",
+    "@vulps22/pathfinder": "https://registry.npmjs.org/@vulps22/pathfinder/-/pathfinder-2.0.0.tgz",
+    "bullmq": "^6.5.1",
+    "discord.js": "^14.27.0",
+    "express": "^5.3.0",
+    "ioredis": "^6.0.0",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.27.0",
-    "eslint": "^9.27.0",
-    "eslint-plugin-jsdoc": "^51.2.1",
-    "jest": "^29.7.0"
+    "@eslint/js": "^9.39.1",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.13.14",
+    "@types/pg": "^8.11.11",
+    "eslint": "^9.38.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.0"
   }
 }

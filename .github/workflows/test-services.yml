@@ -1,0 +1,41 @@
+name: Test Services
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/services/**'
+      - 'package*.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/services/**'
+      - 'package*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  test-services:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Configure npm for private packages
+        run: npm config set //npm.pkg.github.com/:_authToken ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- src/services
