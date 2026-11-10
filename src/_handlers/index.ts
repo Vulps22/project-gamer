@@ -1,5 +1,6 @@
 import { HandlerRegistry } from '../events/HandlerRegistry';
 import { lfgInterested, lfgNotInterested, lfgOpenInvite } from './buttons/lfgButtons';
+import { libraryHaveGame } from './buttons/libraryHaveGame';
 import { libraryPostGame } from './buttons/libraryPostGame';
 import { submissionApprove, submissionReject } from './buttons/submissionButtons';
 import { config } from './commands/config';
@@ -16,7 +17,7 @@ export const commands = [config, help, lfg, library, sharing, steam];
 export function createHandlerRegistry(): HandlerRegistry {
     return new HandlerRegistry({
         commands,
-        buttons: [lfgOpenInvite, lfgInterested, lfgNotInterested, libraryPostGame, submissionApprove, submissionReject],
+        buttons: [lfgOpenInvite, lfgInterested, lfgNotInterested, libraryPostGame, libraryHaveGame, submissionApprove, submissionReject],
         selects: [lfgPlayerSelect],
         modals: [submissionApproveModal],
     });

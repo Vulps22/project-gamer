@@ -88,7 +88,7 @@ Full schema in [`DATABASE.md`](./DATABASE.md).
 #### Library Management
 - `/library add <url>` — submit a store URL; bot responds immediately with "adding your game..." and enqueues a scrape job; worker scrapes and follows up via stored interaction token; if URL is unrecognised, goes to admin approval queue
 - `/library remove <game>` — remove a game (autocomplete)
-- `/library view [user]` — autocomplete list of all games in the library; selecting one shows an ephemeral embed with a "Post to Chat" button
+- `/library view [user]` — autocomplete list of all games in the library; selecting one shows an ephemeral embed with a "Post to Chat" button. The posted card carries an **"I have this game"** button: anyone who clicks it gets the game added to their library (as v1's shared card did)
 
 #### Sharing
 - `/sharing <on|off>` — toggle library visibility for the current server (per-server, per-user). Idempotent — "already sharing" if called when already on.
@@ -303,6 +303,7 @@ export const Interactions = {
   LFG_INTERESTED: ['lfg', 'interested'],
   LFG_NOT_INTERESTED: ['lfg', 'notInterested'],
   LIBRARY_POST_GAME: ['library', 'postGame'],
+  LIBRARY_HAVE_GAME: ['library', 'haveGame'],
   SUBMISSION_APPROVE: ['submission', 'approve'],
   SUBMISSION_REJECT: ['submission', 'reject'],
   SUBMISSION_APPROVE_MODAL: ['submission', 'approveModal'],

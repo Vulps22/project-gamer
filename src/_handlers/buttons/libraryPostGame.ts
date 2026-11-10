@@ -1,12 +1,13 @@
 import { BotButtonInteraction } from '@vulps22/bot-interactions';
 import { baseId } from '../../constants/interactions';
+import { customIdsFor } from '../../discord/customIds';
 import { Handler } from '../../types/Handler';
 import { gameView } from '../../views/gameView';
 import { successView } from '../../views/MessageView';
 import { needsPermission } from '../shared/permissions';
 import { requireGame } from '../shared/requireGame';
 
-/** Posts a game card from /library view into the channel, for everyone to see. */
+/** Posts a game card from /library view into the channel, for everyone to see, with an "I have this game" button. */
 export const libraryPostGame: Handler<BotButtonInteraction> = {
     name: baseId('LIBRARY_POST_GAME'),
     async execute(interaction, services) {
@@ -16,7 +17,10 @@ export const libraryPostGame: Handler<BotButtonInteraction> = {
         if (!channelId) {
             throw new Error('A guild button arrived without its channel');
         }
-        const card = gameView(game, await services.games.storeLinks(game.id), { subtitle: `Shared by <@${interaction.user.id}>` });
+        const card = gameView(game, await services.games.storeLinks(game.id), {
+            subtitle: `Shared by <@${interaction.user.id}>`,
+            haveButtonId: customIdsFor(interaction)('LIBRARY_HAVE_GAME', { g: game.id }),
+        });
         await needsPermission('Send Messages', () => services.discord.send(channelId, card));
         services.log.log(`${interaction.user.username} (${interaction.user.id}) posted ${game.name} in channel ${channelId}, server ${interaction.guildId ?? '?'}`);
         await interaction.ephemeralFollowUp(successView(`Posted **${game.name}** in chat.`));

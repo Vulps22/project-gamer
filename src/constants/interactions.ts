@@ -9,6 +9,7 @@ export const Interactions = {
     LFG_INTERESTED: ['lfg', 'interested'],
     LFG_NOT_INTERESTED: ['lfg', 'notInterested'],
     LIBRARY_POST_GAME: ['library', 'postGame'],
+    LIBRARY_HAVE_GAME: ['library', 'haveGame'],
     SUBMISSION_APPROVE: ['submission', 'approve'],
     SUBMISSION_REJECT: ['submission', 'reject'],
     SUBMISSION_APPROVE_MODAL: ['submission', 'approveModal'],

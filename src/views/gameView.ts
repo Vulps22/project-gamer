@@ -3,8 +3,11 @@ import { Game, StoreLink } from '../types/models';
 import { addCoverArt } from './coverArt';
 import { MessageView, view } from './MessageView';
 
-/** A game card: name, cover art and store links. With a post button, so the viewer can share it in chat. */
-export function gameView(game: Game, links: StoreLink[], options: { subtitle?: string; postButtonId?: string } = {}): MessageView {
+/**
+ * A game card: name, store links and cover art. On /library view it has a Post to Chat button; posted in
+ * chat it has an "I have this game" button, so anyone who sees it can add it to their library.
+ */
+export function gameView(game: Game, links: StoreLink[], options: { subtitle?: string; postButtonId?: string; haveButtonId?: string } = {}): MessageView {
     const lines = [`## ${game.name}`];
     if (options.subtitle) {
         lines.push(options.subtitle);
@@ -15,12 +18,15 @@ export function gameView(game: Game, links: StoreLink[], options: { subtitle?: s
 
     const container = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
     addCoverArt(container, game.cover_art, game.name);
+    const buttons: ButtonBuilder[] = [];
     if (options.postButtonId) {
-        container.addActionRowComponents(
-            new ActionRowBuilder<ButtonBuilder>().addComponents(
-                new ButtonBuilder().setCustomId(options.postButtonId).setLabel('Post to Chat').setStyle(ButtonStyle.Primary),
-            ),
-        );
+        buttons.push(new ButtonBuilder().setCustomId(options.postButtonId).setLabel('Post to Chat').setStyle(ButtonStyle.Primary));
+    }
+    if (options.haveButtonId) {
+        buttons.push(new ButtonBuilder().setCustomId(options.haveButtonId).setLabel('I have this game').setStyle(ButtonStyle.Success));
+    }
+    if (buttons.length > 0) {
+        container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(buttons));
     }
     return view(container);
 }
