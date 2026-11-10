@@ -6,4 +6,9 @@ export interface AppConfig {
     newGamesChannelId: string;
     /** Port for the pathfinder HTTP server. */
     httpPort: number;
+    /**
+     * How many shards to run. 'auto' takes Discord's recommendation. Discord, not the bot, decides which
+     * shard a server is on: (server ID >> 22) % totalShards.
+     */
+    totalShards: number | 'auto';
 }

@@ -9,7 +9,7 @@ export function registerGuildEvents(client: Client, services: Services): void {
     const report = (context: string) => (error: unknown): void => log.error(`${context}\n${describeError(error)}`);
 
     client.on(Events.GuildCreate, guild => {
-        log.log(`Joined server ${guild.name} (${guild.id}), ${guild.memberCount} members. Now in ${client.guilds.cache.size} server(s)`);
+        log.log(`Joined server ${guild.name} (${guild.id}), ${guild.memberCount} members. This shard is now in ${client.guilds.cache.size} server(s)`);
         void (async (): Promise<void> => {
             const server = await servers.ensure(guild.id);
             const roleId = await ensureLfgRole(guild, server, servers, log);
@@ -18,7 +18,7 @@ export function registerGuildEvents(client: Client, services: Services): void {
     });
 
     client.on(Events.GuildDelete, guild => {
-        log.log(`Left server ${guild.name ?? 'unknown'} (${guild.id}). Now in ${client.guilds.cache.size} server(s)`);
+        log.log(`Left server ${guild.name ?? 'unknown'} (${guild.id}). This shard is now in ${client.guilds.cache.size} server(s)`);
     });
 
     client.on(Events.GuildRoleDelete, role => {
