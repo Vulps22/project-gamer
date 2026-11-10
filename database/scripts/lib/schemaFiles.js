@@ -10,6 +10,21 @@ const SCHEMAS = ['system', 'store', 'games', 'users', 'servers', 'lfg', 'analyti
 /** Object kinds in a schema folder, in the order they are created. */
 const KINDS = ['functions', 'tables', 'views'];
 
+/**
+ * Files that must run before the rest of their folder, because others in it reference
+ * them. Everything else in a folder runs in alphabetical order.
+ */
+const RUN_FIRST = {
+  'lfg/tables': ['posts.sql'],
+};
+
+/** Orders a folder's files: its RUN_FIRST files in the order listed, then the rest alphabetically. */
+function orderFiles(folder, names) {
+  const first = RUN_FIRST[folder] ?? [];
+  const rest = names.filter(n => !first.includes(n)).sort();
+  return [...first.filter(n => names.includes(n)), ...rest];
+}
+
 /** A schema's source files, in creation order: functions, then tables, then views. */
 async function schemaFiles(schema) {
   const files = [];
@@ -22,7 +37,7 @@ async function schemaFiles(schema) {
       if (err.code === 'ENOENT') continue;
       throw err;
     }
-    for (const name of names.filter(n => n.endsWith('.sql')).sort()) {
+    for (const name of orderFiles(`${schema}/${kind}`, names.filter(n => n.endsWith('.sql')))) {
       files.push(path.join(dir, name));
     }
   }
@@ -38,4 +53,4 @@ function loadMigration(file) {
   return require(path.join(MIGRATIONS_DIR, file));
 }
 
-module.exports = { SCHEMAS, SCHEMAS_DIR, MIGRATIONS_DIR, schemaFiles, migrationFiles, loadMigration };
+module.exports = { orderFiles, SCHEMAS, SCHEMAS_DIR, MIGRATIONS_DIR, schemaFiles, migrationFiles, loadMigration };
