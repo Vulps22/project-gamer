@@ -54,7 +54,7 @@ export function lfgPostView(details: LfgPostDetails, ids: CustomIdFactory, ping 
     const isActive = post.status === 'active';
     const separator = (): SeparatorBuilder => new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
 
-    const status = [vcLine(details)];
+    const status = [`**Voice Channel:**\n${voiceChannel(details)}`];
     if (isOpen && details.lfgRoleId) {
         status.unshift(`<@&${details.lfgRoleId}> open invitation: anyone with the game, jump in!`);
     }
@@ -101,9 +101,12 @@ export function lfgPostView(details: LfgPostDetails, ids: CustomIdFactory, ping 
     return view(container, { users: details.inviteeDiscordIds, roles: isOpen && details.lfgRoleId ? [details.lfgRoleId] : [] });
 }
 
-function vcLine(details: LfgPostDetails): string {
+/** The post is only sent once its VC exists, so an active post without one is a VC the bot couldn't create. */
+function voiceChannel(details: LfgPostDetails): string {
     if (details.post.status !== 'active') {
-        return '**VC:** ❌ CLOSED';
+        return '❌ CLOSED';
     }
-    return details.post.vc_channel_id ? `**VC:** <#${details.post.vc_channel_id}>` : '**VC:** setting up…';
+    return details.post.vc_channel_id
+        ? `<#${details.post.vc_channel_id}>`
+        : 'I couldn\'t create a voice channel for this post because I don\'t have the `Manage Channels` permission.';
 }

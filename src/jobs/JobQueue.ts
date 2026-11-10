@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { JobNames, ScrapeJob, STEAM_AUTO_SYNC_EVERY_MS, SteamSyncJob, VC_EMPTY_DELAY_MS, VC_EXPIRE_DELAY_MS, VcJob } from './types';
+import { JobNames, LfgExpireJob, ScrapeJob, STEAM_AUTO_SYNC_EVERY_MS, SteamSyncJob, VC_EMPTY_DELAY_MS, VC_EXPIRE_DELAY_MS, VcJob } from './types';
 
 /** Enqueues work for the worker. The bot never runs these jobs itself. */
 export class JobQueue {
@@ -57,6 +57,16 @@ export class JobQueue {
     async scheduleVcExpire(channelId: string): Promise<void> {
         await this.queue.add(JobNames.VC_EXPIRE, { channelId } satisfies VcJob, {
             jobId: `vc-expire-${channelId}`,
+            delay: VC_EXPIRE_DELAY_MS,
+            removeOnComplete: true,
+            removeOnFail: 100,
+        });
+    }
+
+    /** The time limit for a session that has no VC, which would otherwise never close. */
+    async scheduleLfgExpire(postId: string): Promise<void> {
+        await this.queue.add(JobNames.LFG_EXPIRE, { postId } satisfies LfgExpireJob, {
+            jobId: `lfg-expire-${postId}`,
             delay: VC_EXPIRE_DELAY_MS,
             removeOnComplete: true,
             removeOnFail: 100,

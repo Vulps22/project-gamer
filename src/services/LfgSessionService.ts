@@ -28,12 +28,27 @@ export class LfgSessionService {
             return;
         }
         const existed = await this.discord.deleteChannel(channelId);
-        if (await this.lfg.expire(post.id)) {
-            this.log.log(`Closed LFG session ${post.id} (${reason === 'empty' ? 'VC sat empty' : 'reached its time limit'}). VC ${channelId} ${existed ? 'deleted' : 'was already gone'}`);
-            await this.refresh(post.id, customIdsForFlow(null)).catch((error: unknown) => {
-                // The post may have been deleted, or the LFG channel changed. The session is closed either way.
-                this.log.error(`Couldn't mark LFG post ${post.id} closed. The session is closed regardless.\n${describeError(error)}`);
-            });
+        await this.markClosed(post.id, `${reason === 'empty' ? 'VC sat empty' : 'reached its time limit'}. VC ${channelId} ${existed ? 'deleted' : 'was already gone'}`);
+    }
+
+    /** Closes a session that never got a VC (the bot lacked Manage Channels) once it reaches its time limit. */
+    async closeWithoutVc(postId: string): Promise<void> {
+        const post = await this.lfg.getById(postId);
+        if (!post || post.status !== 'active' || post.vc_channel_id) {
+            return;
         }
+        await this.markClosed(post.id, 'reached its time limit, with no VC');
+    }
+
+    /** Marks the post closed, if nothing else closed it first, and redraws it. */
+    private async markClosed(postId: string, why: string): Promise<void> {
+        if (!await this.lfg.expire(postId)) {
+            return;
+        }
+        this.log.log(`Closed LFG session ${postId} (${why})`);
+        await this.refresh(postId, customIdsForFlow(null)).catch((error: unknown) => {
+            // The post may have been deleted, or the LFG channel changed. The session is closed either way.
+            this.log.error(`Couldn't mark LFG post ${postId} closed. The session is closed regardless.\n${describeError(error)}`);
+        });
     }
 }

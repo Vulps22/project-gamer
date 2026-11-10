@@ -2,7 +2,7 @@ import { Job, Worker } from 'bullmq';
 import { describeError } from './errors';
 import { ScrapeProcessor } from './jobs/ScrapeProcessor';
 import { SteamSyncProcessor } from './jobs/SteamSyncProcessor';
-import { JobNames, QUEUE_NAME, ScrapeJob, SteamSyncJob, VcJob } from './jobs/types';
+import { JobNames, LfgExpireJob, QUEUE_NAME, ScrapeJob, SteamSyncJob, VcJob } from './jobs/types';
 import { reportProcessErrors, throttledErrorReporter } from './logging/discordLog';
 import { createRuntime, redisConnection } from './runtime';
 
@@ -27,6 +27,8 @@ async function run(job: Job): Promise<void> {
         case JobNames.VC_EMPTY:
         case JobNames.VC_EXPIRE:
             return services.lfgSessions.closeByVc((job.data as VcJob).channelId, job.name === JobNames.VC_EMPTY ? 'empty' : 'expired');
+        case JobNames.LFG_EXPIRE:
+            return services.lfgSessions.closeWithoutVc((job.data as LfgExpireJob).postId);
         default:
             throw new Error(`Unknown job ${job.name}`);
     }

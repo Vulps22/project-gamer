@@ -96,10 +96,11 @@ Full schema in [`DATABASE.md`](./DATABASE.md).
 #### LFG
 The LFG post embed is a **living record** — it is edited in place as session state changes.
 
-VC field states:
+The post's **Voice Channel** heading shows:
 - Scheduled, VC not yet created: `⚠️ <t:timestamp:R>` (Discord relative timestamp — "in 2 hours")
-- VC active: `VC: <#channel-link>`
-- VC closed: `VC: ❌ CLOSED`
+- VC active: `<#channel-link>`
+- VC closed: `❌ CLOSED`
+- The bot lacks **Manage Channels**: "I couldn't create a voice channel for this post because I don't have the `Manage Channels` permission." The session still runs without a VC, and closes after the 1hr cap (`lfg.expire`).
 
 The `message_id` stored on `lfg.posts` is what the bot uses to edit the post when state changes.
 
@@ -126,8 +127,8 @@ Only the creator can interact with these buttons (validated against `posted_by`)
   - Shows server members who have the game and are sharing
   - Select one or more players (v1's picker: "Who would you like to play **X** with?"), or open it up to **Anyone**
   - Anyone (an open invitation) pings `@lfg`
-  - The post is v1's LFG post ("@user is looking for players to play **X**", the invited players, **Available on** with the **I have this game** button, the cover art), plus v2's VC line and Interested list
-  - Bot creates a VC named after the game, edits post to show `VC: <#channel-link>`
+  - The post is v1's LFG post ("@user is looking for players to play **X**", the invited players, **Available on** with the **I have this game** button, the cover art), plus v2's Voice Channel heading and Interested list
+  - Bot creates a VC named after the game, shown under the post's **Voice Channel** heading (needs **Manage Channels**; without it the post says so and goes ahead without a VC)
   - Interested users pinged on VC creation
 
 **`/lfg <game> <time>`** — scheduled session: the same command with an optional `time` option, not a subcommand
@@ -226,6 +227,7 @@ BullMQ Worker Process (separate)
   └── scrape.fetch    — scrape a store URL (Cheerio or Puppeteer); follow up to user via stored Discord interaction token
   └── vc.empty        — delayed 10min job enqueued when last user leaves a VC; deletes VC if still empty
   └── vc.expire       — hard 1hr TTL job enqueued at VC creation; deletes VC regardless
+  └── lfg.expire      — hard 1hr TTL for a session the bot couldn't create a VC for
   └── lfg.scheduled   — spin up VC 10min before scheduled LFG, ping interested users
 ```
 

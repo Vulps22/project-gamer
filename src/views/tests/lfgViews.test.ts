@@ -38,6 +38,18 @@ describe('lfgPostView', () => {
         expect(body).toContain('lfg_interested');
     });
 
+    it('shows the VC under a Voice Channel heading', () => {
+        expect(text(toRestBody(lfgPostView(details(), ids)))).toContain('**Voice Channel:**\\n<#vc-1>');
+    });
+
+    it('says why there is no voice channel when the bot couldn\'t create one', () => {
+        const noVc = details();
+        noVc.post = { ...noVc.post, vc_channel_id: null };
+        expect(text(toRestBody(lfgPostView(noVc, ids)))).toContain(
+            '**Voice Channel:**\\nI couldn\'t create a voice channel for this post because I don\'t have the `Manage Channels` permission.',
+        );
+    });
+
     it('shows the VC closed, without buttons, once the session ends', () => {
         const body = text(toRestBody(lfgPostView(details({}, 'expired'), ids)));
         expect(body).toContain('❌ CLOSED');

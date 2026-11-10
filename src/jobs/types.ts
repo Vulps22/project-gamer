@@ -5,6 +5,7 @@ export const JobNames = {
     SCRAPE_FETCH: 'scrape.fetch',
     VC_EMPTY: 'vc.empty',
     VC_EXPIRE: 'vc.expire',
+    LFG_EXPIRE: 'lfg.expire',
     STEAM_SYNC: 'steam.sync',
     STEAM_AUTO_SYNC: 'steam.autoSync',
 } as const;
@@ -39,6 +40,11 @@ export interface VcJob {
     channelId: string;
 }
 
+/** Closes a session that has no VC to close it. */
+export interface LfgExpireJob {
+    postId: string;
+}
+
 /** How long a managed VC may sit empty before it is closed. */
 export const VC_EMPTY_DELAY_MS = 10 * 60 * 1000;
 /** How often auto-sync looks for users to sync, and how stale a sync must be to run again. */
@@ -47,5 +53,5 @@ export const STEAM_SYNC_STALE_HOURS = 24;
 /** Users queued per auto-sync run, so one run can't flood Steam's API. */
 export const STEAM_AUTO_SYNC_BATCH = 200;
 
-/** Hard cap on a managed VC's life. */
+/** Hard cap on a session's life, with or without a VC. */
 export const VC_EXPIRE_DELAY_MS = 60 * 60 * 1000;

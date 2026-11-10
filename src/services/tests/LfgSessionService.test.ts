@@ -7,6 +7,7 @@ const post = { id: 'post-1', server_id: 's', posted_by: 'u', game_id: 'g', type:
 function setup(active: typeof post | null, expired = true) {
     const lfg = {
         findActiveByVc: jest.fn().mockResolvedValue(active),
+        getById: jest.fn().mockResolvedValue(active),
         expire: jest.fn().mockResolvedValue(expired),
         details: jest.fn().mockResolvedValue({
             post: { ...post, status: 'expired' }, gameName: 'Portal 2', coverArt: null, storeLinks: [], posterDiscordId: '1',
@@ -46,5 +47,21 @@ describe('LfgSessionService.closeByVc', () => {
         discord.edit.mockRejectedValue(new Error('Unknown Message'));
         await sessions.closeByVc('vc-1', 'empty');
         expect(log.error).toHaveBeenCalledWith(expect.stringContaining('Unknown Message'));
+    });
+});
+
+describe('LfgSessionService.closeWithoutVc', () => {
+    it('closes an active session that never got a VC', async () => {
+        const { lfg, discord, sessions } = setup({ ...post, vc_channel_id: null } as unknown as typeof post);
+        await sessions.closeWithoutVc('post-1');
+        expect(lfg.expire).toHaveBeenCalledWith('post-1');
+        expect(discord.deleteChannel).not.toHaveBeenCalled();
+        expect(JSON.stringify(discord.edit.mock.calls[0][2])).toContain('CLOSED');
+    });
+
+    it('leaves a session with a VC to the VC jobs', async () => {
+        const { lfg, sessions } = setup(post);
+        await sessions.closeWithoutVc('post-1');
+        expect(lfg.expire).not.toHaveBeenCalled();
     });
 });
