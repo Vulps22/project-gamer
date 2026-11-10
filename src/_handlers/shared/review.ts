@@ -21,11 +21,9 @@ export async function requireSubmission(services: Services, id: string | undefin
     return submission;
 }
 
-/** The submitter's Discord ID, for the admin card and the approval DM. */
-export async function submitterDiscordId(services: Services, submission: Submission): Promise<string> {
-    const account = await services.users.getById(submission.submitted_by);
-    if (!account) {
-        throw new Error(`Submission ${submission.id} has no submitter`);
+export function requireParam(value: string | undefined, what: string): string {
+    if (!value) {
+        throw new Error(`Review interaction arrived without its ${what}`);
     }
-    return account.discord_id;
+    return value;
 }

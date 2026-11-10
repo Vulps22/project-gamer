@@ -27,6 +27,9 @@ export async function libraryAdd(interaction: PgCommandInteraction, services: Se
         const known = await services.games.findByStoreEntry(store.id, storeGameId);
         if (known) {
             const added = await services.library.add(account.id, known.id, 'manual');
+            if (added) {
+                services.log.log(`${interaction.user.username} (${interaction.user.id}) added ${known.name} (${known.id}) to their library`);
+            }
             await interaction.editReply(added ? successView(`Added **${known.name}** to your library.`) : noticeView(`**${known.name}** is already in your library.`));
             return;
         }
@@ -42,12 +45,19 @@ export async function libraryAdd(interaction: PgCommandInteraction, services: Se
             interactionToken: interaction.token,
             flowId: interaction.flowId,
         });
+        services.log.log(`${interaction.user.username} (${interaction.user.id}) is adding a new ${store.name} game: ${url.href}`);
         await interaction.editReply(noticeView('Adding your game…'));
         return;
     }
 
-    const submission = await services.submissions.create(account.id, url.href, store?.id ?? null);
-    await services.submissionNotifier.notify(submission, interaction.user.id, customIdsFor(interaction));
+    // All or nothing: if the card can't be posted, the submission isn't saved and the user is told to try again.
+    await services.reviewQueue.submit({
+        userId: account.id,
+        submitterDiscordId: interaction.user.id,
+        url: url.href,
+        storeId: store?.id ?? null,
+        ids: customIdsFor(interaction),
+    });
     await interaction.editReply(noticeView('I can\'t read that store automatically, so I\'ve sent it to our team to add. I\'ll DM you when it\'s approved.'));
 }
 

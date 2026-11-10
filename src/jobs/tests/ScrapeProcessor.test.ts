@@ -1,3 +1,4 @@
+import { UserFacingError } from '../../errors';
 import { mockServices } from '../../tests/mocks';
 import { ScrapeProcessor } from '../ScrapeProcessor';
 import { ScrapeJob } from '../types';
@@ -12,8 +13,7 @@ function setup(fetch: jest.Mock) {
         scrapers: { get: jest.fn().mockReturnValue({ fetch, parseId: jest.fn() }) },
         games: { create: jest.fn().mockResolvedValue({ id: 'game-1', name: 'Portal 2', cover_art: null }) },
         library: { add: jest.fn().mockResolvedValue(true) },
-        submissions: { create: jest.fn().mockResolvedValue({ id: 'sub-1' }) },
-        submissionNotifier: { notify: jest.fn().mockResolvedValue(undefined) },
+        reviewQueue: { submit: jest.fn().mockResolvedValue({ id: 'sub-1' }) },
         discord: { editInteractionReply: jest.fn().mockResolvedValue(undefined) },
     });
     return { services, processor: new ScrapeProcessor(services) };
@@ -34,9 +34,15 @@ describe('ScrapeProcessor', () => {
     it('sends a page the store doesn\'t recognise to review, continuing the flow', async () => {
         const { services, processor } = setup(jest.fn().mockResolvedValue(null));
         await processor.process(job, false);
-        expect(services.submissions.create).toHaveBeenCalledWith('acc-1', job.url, 'steam');
-        expect(services.submissionNotifier.notify).toHaveBeenCalled();
+        expect(services.reviewQueue.submit).toHaveBeenCalledWith(expect.objectContaining({ userId: 'acc-1', submitterDiscordId: '111', url: job.url, storeId: 'steam' }));
         expect(replyText(services)).toContain('sent it to our team');
+    });
+
+    it('tells the user to try again when the submission couldn\'t be saved and posted', async () => {
+        const { services, processor } = setup(jest.fn().mockResolvedValue(null));
+        (services.reviewQueue.submit as jest.Mock).mockRejectedValue(new UserFacingError('nothing was saved'));
+        await processor.process(job, false);
+        expect(replyText(services)).toContain('nothing was saved');
     });
 
     it('rethrows a scrape failure so BullMQ retries it', async () => {
@@ -47,7 +53,7 @@ describe('ScrapeProcessor', () => {
     it('sends the URL to review when the last retry fails', async () => {
         const { services, processor } = setup(jest.fn().mockRejectedValue(new Error('timeout')));
         await processor.process(job, true);
-        expect(services.submissions.create).toHaveBeenCalled();
+        expect(services.reviewQueue.submit).toHaveBeenCalled();
     });
 
     it('carries on if the reply can no longer be edited', async () => {

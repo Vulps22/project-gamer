@@ -1,4 +1,5 @@
 import { Database } from '../database/Database';
+import { UserFacingError } from '../errors';
 import { Game, Store, StoreLink } from '../types/models';
 
 export interface NewGame {
@@ -10,6 +11,7 @@ export interface NewGame {
 }
 
 const AUTOCOMPLETE_LIMIT = 25;
+const STORE_COLUMNS = 'id, name, slug, base_url, scraper';
 
 export class GameService {
     constructor(private readonly db: Database) {}
@@ -36,11 +38,38 @@ export class GameService {
     }
 
     async stores(): Promise<Store[]> {
-        return this.db.select<Store>('SELECT id, name, slug, base_url, scraper FROM store.stores ORDER BY name');
+        return this.db.select<Store>(`SELECT ${STORE_COLUMNS} FROM store.stores ORDER BY name`);
     }
 
-    async storeBySlug(slug: string): Promise<Store | null> {
-        return this.db.get<Store>('SELECT id, name, slug, base_url, scraper FROM store.stores WHERE slug = $1', [slug]);
+    /**
+     * The store an admin named, or a new one. Matches the name or short code, ignoring case. A new store
+     * takes the submitted page's site as its web address, unless another store already has that site,
+     * so later links from it are recognised. Runs in the caller's transaction.
+     */
+    async findOrCreateStoreIn(tx: Database, name: string, pageUrl: URL): Promise<{ store: Store; created: boolean }> {
+        const slug = slugify(name);
+        const existing = await findStoreByName(tx, name, slug);
+        if (existing) {
+            return { store: existing, created: false };
+        }
+        if (!slug) {
+            throw new UserFacingError('Give the store a name with at least one letter or number.');
+        }
+        const siteTaken = await this.storeForUrl(pageUrl) !== null;
+        const created = await tx.get<Store>(
+            `INSERT INTO store.stores (name, slug, base_url) VALUES ($1, $2, $3)
+             ON CONFLICT DO NOTHING RETURNING ${STORE_COLUMNS}`,
+            [name, slug, siteTaken ? null : pageUrl.origin],
+        );
+        if (created) {
+            return { store: created, created: true };
+        }
+        // Someone else created it at the same moment.
+        const raced = await findStoreByName(tx, name, slug);
+        if (!raced) {
+            throw new Error(`Store "${name}" neither inserted nor found`);
+        }
+        return { store: raced, created: false };
     }
 
     /** The known store a URL belongs to, matched on host, or null. */
@@ -77,6 +106,18 @@ export class GameService {
         );
         return created;
     }
+}
+
+function findStoreByName(db: Database, name: string, slug: string): Promise<Store | null> {
+    return db.get<Store>(
+        `SELECT ${STORE_COLUMNS} FROM store.stores WHERE lower(name) = lower($1) OR slug = lower($1) OR slug = $2 LIMIT 1`,
+        [name, slug],
+    );
+}
+
+/** A store's short code: "Robert Space Industries" → "robert-space-industries". */
+export function slugify(name: string): string {
+    return name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 function findByStoreEntry(db: Database, storeId: string, storeGameId: string): Promise<Game | null> {

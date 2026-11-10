@@ -23,6 +23,10 @@ export class DiscordApi {
         await this.rest.patch(Routes.channelMessage(channelId, messageId), { body: toRestBody(view) });
     }
 
+    async deleteMessage(channelId: string, messageId: string): Promise<void> {
+        await this.rest.delete(Routes.channelMessage(channelId, messageId));
+    }
+
     /** Edits the original reply to an interaction, from anywhere, for 15 minutes after it was received. */
     async editInteractionReply(applicationId: string, token: string, view: MessageView): Promise<void> {
         await this.rest.patch(Routes.webhookMessage(applicationId, token), { body: toRestBody(view), auth: false });

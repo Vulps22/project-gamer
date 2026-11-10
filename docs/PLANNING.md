@@ -148,22 +148,24 @@ Only the creator can interact with these buttons (validated against `posted_by`)
 
 #### Game Submission & Approval
 
-When `/library add <url>` is called with an unrecognised URL:
-1. Bot saves a `games.submissions` record with status `pending`
-2. Bot posts an embed to `#new-games` on the **admin/home server** (configured via env var)
-   - Embed shows: submitted by (user tag), URL (hyperlinked), timestamp
+When `/library add <url>` is called with a URL the bot can't add by itself (no scraper for its store, or the scraper couldn't read the page):
+1. Bot saves a `games.submissions` record with status `pending` **and** posts its review card to the new-games channel on the **admin/home server**, in one transaction. The transaction commits only once the card has posted. If the card can't be posted, or the save fails, nothing is kept (a card already posted is deleted), the user is told to try again, and the failure goes to the error channel.
+   - The card shows: submitted by, URL, store (or "Unrecognised")
    - Two buttons: **Approve** / **Reject**
-3. **Approve** opens a modal with three fields:
+2. **Approve** opens a modal with three fields:
    - Game title
-   - Store name (steam / meta / gog / other)
-   - Cover image URL
-4. On modal submit:
-   - Creates `games.catalogue` entry
-   - Creates `games.store_entries` entry
+   - Store: a store's name or short code, any case, pre-filled with the detected store's name. A name that matches no store creates a new one (see [`store.stores`](./DATABASE.md#storestores)).
+   - Cover image URL (optional)
+3. On modal submit, in one transaction that commits only once the card has been updated to "approved":
+   - Creates the store, if it's new
+   - Creates `games.catalogue` and `games.store_entries` entries
    - Sets `games.submissions.status = 'approved'`, links `result_game_id`
-   - Adds game to requesting user's `users.game_library`
-   - Notifies requesting user via Discord DM (this one we're actually building)
-5. **Reject** sets status to `rejected` — no further action (no DM for rejections in v2)
+   - Adds the game to the submitter's `users.game_library`
+
+   Then the submitter is DMed. A failed DM doesn't undo the approval; the reviewer is told instead.
+4. **Reject** sets status to `rejected` and updates the card, in one transaction on the same terms. No DM for rejections in v2.
+
+If a commit fails after the card has changed, the card is put back to pending, so the card always matches the database.
 
 Config required, in the typed config module for each environment (`src/config/<env>/Config.ts`), not env vars, since neither is a secret: `adminServerId` and `newGamesChannelId`. The bot refuses to start while either is blank.
 

@@ -16,8 +16,8 @@ import { GameService } from './GameService';
 import { LfgService } from './LfgService';
 import { LfgSessionService } from './LfgSessionService';
 import { LibraryService } from './LibraryService';
+import { ChannelReviewCards, ReviewQueue } from './ReviewQueue';
 import { ServerService } from './ServerService';
-import { SubmissionNotifier } from './SubmissionNotifier';
 import { SubmissionService } from './SubmissionService';
 import { UserService } from './UserService';
 
@@ -33,7 +33,7 @@ export interface Services {
     games: GameService;
     library: LibraryService;
     submissions: SubmissionService;
-    submissionNotifier: SubmissionNotifier;
+    reviewQueue: ReviewQueue;
     lfg: LfgService;
     lfgSessions: LfgSessionService;
 }
@@ -52,19 +52,22 @@ export function createServices({ config, log, db, rest, queue, http }: ServiceDe
     const games = new GameService(db);
     const library = new LibraryService(db);
     const lfg = new LfgService(db);
+    const users = new UserService(db);
+    const scrapers = new ScraperRegistry({ steam: new SteamScraper(http) });
+    const submissions = new SubmissionService(db, games, library);
     return {
         config,
         log,
         discord,
         jobs: new JobQueue(queue),
-        scrapers: new ScraperRegistry({ steam: new SteamScraper(http) }),
+        scrapers,
         analytics: new AnalyticsService(db, log),
-        users: new UserService(db),
+        users,
         servers: new ServerService(db),
         games,
         library,
-        submissions: new SubmissionService(db, games, library),
-        submissionNotifier: new SubmissionNotifier(discord, games, config),
+        submissions,
+        reviewQueue: new ReviewQueue(db, submissions, games, users, scrapers, new ChannelReviewCards(discord, config.newGamesChannelId), log),
         lfg,
         lfgSessions: new LfgSessionService(lfg, discord, log),
     };

@@ -1,44 +1,51 @@
 import { baseId } from '../../constants/interactions';
+import { customIdsFor } from '../../discord/customIds';
 import { PgModalInteraction } from '../../discord/interactions';
-import { UserFacingError } from '../../errors';
+import { describeError, UserFacingError } from '../../errors';
 import { Handler } from '../../types/Handler';
-import { approvedDmView, submissionView } from '../../views/submissionViews';
+import { approvedDmView } from '../../views/submissionViews';
 import { successView } from '../../views/MessageView';
 import { ModalFields } from '../buttons/submissionButtons';
-import { requireAdminServer, requireSubmission, submitterDiscordId } from '../shared/review';
+import { requireAdminServer, requireParam } from '../shared/review';
 import { EPHEMERAL } from '../shared/ephemeral';
 
-/** Approves a submission: adds the game, puts it in the submitter's library, updates the admin card and DMs them. */
+/**
+ * Approves a submission: adds the game (and its store, if new), puts it in the submitter's library and
+ * updates the admin card, all in one transaction. Then DMs the submitter.
+ */
 export const submissionApproveModal: Handler<PgModalInteraction> = {
     name: baseId('SUBMISSION_APPROVE_MODAL'),
     async execute(interaction, services) {
         await interaction.deferReply(EPHEMERAL);
         requireAdminServer(interaction, services);
-        const pending = await requireSubmission(services, interaction.params.get('s'));
 
-        const name = interaction.fields.getTextInputValue(ModalFields.TITLE).trim();
-        const slug = interaction.fields.getTextInputValue(ModalFields.STORE).trim().toLowerCase();
-        const coverArt = optionalUrl(interaction.fields.getTextInputValue(ModalFields.COVER));
-
-        const store = await services.games.storeBySlug(slug);
-        if (!store) {
-            const slugs = (await services.games.stores()).map(s => s.slug).join(', ');
-            throw new UserFacingError(`"${slug}" isn't a store I know. Use one of: ${slugs}`);
+        const storeName = interaction.fields.getTextInputValue(ModalFields.STORE).trim();
+        if (!storeName) {
+            throw new UserFacingError('Give the store a name.');
         }
-        const url = new URL(pending.url);
-        const storeGameId = services.scrapers.get(store.scraper)?.parseId(url) ?? url.href;
+        const { game, store, storeCreated, submitterDiscordId } = await services.reviewQueue.approve({
+            submissionId: requireParam(interaction.params.get('s'), 'submission'),
+            cardMessageId: requireParam(interaction.sourceMessageId ?? undefined, 'card message'),
+            reviewerDiscordId: interaction.user.id,
+            gameName: interaction.fields.getTextInputValue(ModalFields.TITLE).trim(),
+            storeName,
+            coverArt: optionalUrl(interaction.fields.getTextInputValue(ModalFields.COVER)),
+            ids: customIdsFor(interaction),
+        });
 
-        const { submission, game } = await services.submissions.approve(pending.id, { name, coverArt, storeId: store.id, storeGameId });
-        const submitter = await submitterDiscordId(services, submission);
-
-        if (interaction.sourceMessageId) {
-            await services.discord.edit(services.config.newGamesChannelId, interaction.sourceMessageId, submissionView(
-                submission, submitter, store.name, { status: 'approved', reviewerDiscordId: interaction.user.id, gameName: game.name },
-            ));
+        // The approval is saved. A DM that fails doesn't undo it; the reviewer is told instead.
+        const delivered = await services.discord.dm(submitterDiscordId, approvedDmView(game.name)).catch((error: unknown) => {
+            services.log.error(`Couldn't DM ${submitterDiscordId} that ${game.name} was approved\n${describeError(error)}`);
+            return false;
+        });
+        if (!delivered) {
+            services.log.log(`${submitterDiscordId} wasn't told ${game.name} was approved (DMs closed or failed)`);
         }
 
-        const delivered = await services.discord.dm(submitter, approvedDmView(game.name));
-        await interaction.editReply(successView(`Approved **${game.name}**.${delivered ? '' : ' The submitter has DMs closed, so they weren\'t told.'}`));
+        const newStore = storeCreated ? ` **${store.name}** is a new store, so links from ${store.base_url ?? 'its site'} will be recognised from now on.` : '';
+        await interaction.editReply(successView(
+            `Approved **${game.name}** on ${store.name}.${newStore}${delivered ? '' : ' The submitter couldn\'t be DMed, so they weren\'t told.'}`,
+        ));
     },
 };
 

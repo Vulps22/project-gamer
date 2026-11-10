@@ -4,8 +4,7 @@ import { baseId } from '../../constants/interactions';
 import { customIdsFor } from '../../discord/customIds';
 import { Handler } from '../../types/Handler';
 import { successView } from '../../views/MessageView';
-import { submissionView } from '../../views/submissionViews';
-import { requireAdminServer, requireSubmission, submitterDiscordId } from '../shared/review';
+import { requireAdminServer, requireParam, requireSubmission } from '../shared/review';
 
 export const ModalFields = {
     TITLE: 'title',
@@ -19,17 +18,17 @@ export const submissionApprove: Handler<BotButtonInteraction> = {
     async execute(interaction, services) {
         requireAdminServer(interaction, services);
         const submission = await requireSubmission(services, interaction.params.get('s'));
-        const stores = await services.games.stores();
-        const store = stores.find(s => s.id === submission.store_id);
+        const storeName = await services.reviewQueue.storeName(submission.store_id);
 
         const storeInput = new TextInputBuilder()
             .setCustomId(ModalFields.STORE)
             .setLabel('Store')
-            .setPlaceholder(stores.map(s => s.slug).join(', '))
+            .setPlaceholder('Store name (new stores are added automatically)')
             .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-        if (store) {
-            storeInput.setValue(store.slug);
+            .setRequired(true)
+            .setMaxLength(100);
+        if (storeName) {
+            storeInput.setValue(storeName);
         }
 
         const ids = customIdsFor(interaction);
@@ -53,12 +52,13 @@ export const submissionReject: Handler<BotButtonInteraction> = {
     async execute(interaction, services) {
         await interaction.deferUpdate();
         requireAdminServer(interaction, services);
-        const pending = await requireSubmission(services, interaction.params.get('s'));
-        const submission = await services.submissions.reject(pending.id);
-
-        const storeName = await services.submissionNotifier.storeName(submission.store_id);
-        const submitter = await submitterDiscordId(services, submission);
-        await interaction.editReply(submissionView(submission, submitter, storeName, { status: 'rejected', reviewerDiscordId: interaction.user.id }));
+        // Saved only once the card shows the rejection.
+        await services.reviewQueue.reject({
+            submissionId: requireParam(interaction.params.get('s'), 'submission'),
+            cardMessageId: interaction.messageId,
+            reviewerDiscordId: interaction.user.id,
+            ids: customIdsFor(interaction),
+        });
         await interaction.ephemeralFollowUp(successView('Rejected.'));
     },
 };

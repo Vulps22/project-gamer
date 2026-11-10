@@ -7,7 +7,7 @@ const steam = { id: 'steam-id', name: 'Steam', slug: 'steam', base_url: 'https:/
 
 function interaction(url: string) {
     return {
-        user: { id: '111' }, guildId: '9001', flowId: '1001', token: 'tok', applicationId: 'app',
+        user: { id: '111', username: 'tester' }, guildId: '9001', flowId: '1001', token: 'tok', applicationId: 'app',
         options: { getString: () => url },
         deferReply: jest.fn().mockResolvedValue(undefined),
         editReply: jest.fn().mockResolvedValue(undefined),
@@ -23,8 +23,7 @@ function setup(store: typeof steam | null, known: { id: string; name: string } |
         scrapers: { get: jest.fn((name: string | null) => (name === 'steam' ? { parseId: (u: URL) => /\/app\/(\d+)/.exec(u.pathname)?.[1] ?? null, fetch: jest.fn() } : null)) },
         library: { add: jest.fn().mockResolvedValue(true) },
         jobs: { enqueueScrape: jest.fn().mockResolvedValue(undefined) },
-        submissions: { create: jest.fn().mockResolvedValue({ id: 'sub-1' }) },
-        submissionNotifier: { notify: jest.fn().mockResolvedValue(undefined) },
+        reviewQueue: { submit: jest.fn().mockResolvedValue({ id: 'sub-1' }) },
     } as never);
 }
 
@@ -60,8 +59,17 @@ describe('/library add', () => {
         const services = setup(null);
         const i = interaction('https://www.gog.com/en/game/the_witcher');
         await libraryAdd(i, services);
-        expect(services.submissions.create).toHaveBeenCalledWith('acc-1', 'https://www.gog.com/en/game/the_witcher', null);
-        expect(services.submissionNotifier.notify).toHaveBeenCalled();
+        expect(services.reviewQueue.submit).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'acc-1', submitterDiscordId: '111', url: 'https://www.gog.com/en/game/the_witcher', storeId: null,
+        }));
         expect(reply(i)).toContain('DM you when it');
+    });
+
+    it('passes on a failed submission without claiming it was sent', async () => {
+        const services = setup(null);
+        (services.reviewQueue.submit as jest.Mock).mockRejectedValue(new UserFacingError('nothing was saved'));
+        const i = interaction('https://www.gog.com/en/game/the_witcher');
+        await expect(libraryAdd(i, services)).rejects.toThrow('nothing was saved');
+        expect(i.editReply).not.toHaveBeenCalled();
     });
 });
