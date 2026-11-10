@@ -31,8 +31,8 @@ export const submissionApproveModal: Handler<PgModalInteraction> = {
         const { submission, game } = await services.submissions.approve(pending.id, { name, coverArt, storeId: store.id, storeGameId });
         const submitter = await submitterDiscordId(services, submission);
 
-        if (interaction.sourceMessageId && interaction.channel) {
-            await services.discord.edit(interaction.channel.id, interaction.sourceMessageId, submissionView(
+        if (interaction.sourceMessageId) {
+            await services.discord.edit(services.config.newGamesChannelId, interaction.sourceMessageId, submissionView(
                 submission, submitter, store.name, { status: 'approved', reviewerDiscordId: interaction.user.id, gameName: game.name },
             ));
         }
