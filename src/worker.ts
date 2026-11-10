@@ -32,13 +32,18 @@ async function run(job: Job): Promise<void> {
     }
 }
 
+/** BullMQ leaves attempts unset, or 0 for scheduled jobs, when a job gets one try. */
+function maxAttempts(job: Job): number {
+    return Math.max(job.opts.attempts ?? 1, 1);
+}
+
 function isLastAttempt(job: Job): boolean {
-    return job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
+    return job.attemptsMade + 1 >= maxAttempts(job);
 }
 
 /** Never the job's data: a scrape job carries an interaction token. */
 function describeJob(job: Job | undefined): string {
-    return job ? `${job.name} (${job.id ?? '?'}, attempt ${job.attemptsMade + 1} of ${job.opts.attempts ?? 1})` : 'unknown job';
+    return job ? `${job.name} (${job.id ?? '?'}, attempt ${Math.max(job.attemptsStarted, 1)} of ${maxAttempts(job)})` : 'unknown job';
 }
 
 const worker = new Worker(QUEUE_NAME, run, { connection: redisConnection(), concurrency: 5 });
