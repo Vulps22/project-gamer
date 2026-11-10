@@ -28,7 +28,10 @@ export async function startSession(interaction: BotComponentInteraction, service
     // Take the picker away first, so it can't start a second session.
     await interaction.editReply(noticeView('Setting up your session…'));
 
-    const invitees = await Promise.all(inviteeDiscordIds.filter(id => id !== interaction.user.id).map(id => services.users.ensure(id)));
+    // Look invitees up rather than upserting them, so being invited doesn't count as using the bot.
+    // They were offered because they own the game, so they have accounts.
+    const found = await Promise.all(inviteeDiscordIds.filter(id => id !== interaction.user.id).map(id => services.users.findByDiscordId(id)));
+    const invitees = found.filter((invitee): invitee is NonNullable<typeof invitee> => invitee !== null);
     if (invitees.length === 0) {
         await ensureLfgRole(guild, server, services.servers, services.log);
     }
