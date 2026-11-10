@@ -1,0 +1,43 @@
+{
+  "name": "project-gamer",
+  "version": "2.0.0",
+  "private": true,
+  "description": "LFGameSync: find members who own the same games, and organise sessions to play them",
+  "main": "dist/index.js",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
+    "dev": "npm run build && node --env-file=.env.development --watch dist/index.js",
+    "stage": "npm run build && node --env-file=.env.staging dist/index.js",
+    "prod": "node --env-file=.env.production dist/index.js",
+    "test": "jest",
+    "coverage": "jest --coverage",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "db:install": "node database/scripts/fresh-install.js",
+    "db:migrate": "node database/scripts/migrate.js",
+    "db:revert": "node database/scripts/revert.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@vulps22/bot-interactions": "file:vendor/vulps22-bot-interactions-1.3.0-flow.0.tgz",
+    "@vulps22/logger": "^2.0.0",
+    "@vulps22/pathfinder": "https://registry.npmjs.org/@vulps22/pathfinder/-/pathfinder-2.0.0.tgz",
+    "bullmq": "^6.5.1",
+    "discord.js": "^14.27.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.13.14",
+    "@types/pg": "^8.11.11",
+    "eslint": "^9.38.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.0"
+  }
+}
