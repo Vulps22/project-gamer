@@ -1,7 +1,7 @@
 import { AppConfig } from '../AppConfig';
 
 export const config: AppConfig = {
-    adminServerId: '',
-    newGamesChannelId: '',
+    adminServerId: '1092491402111357051',
+    newGamesChannelId: '1569671245752967168',
     httpPort: 3000,
 };
