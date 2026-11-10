@@ -5,6 +5,7 @@ import { CommandHandler } from '../../types/Handler';
 import { MAX_PLAYER_OPTIONS, pickPlayersView, PlayerOption } from '../../views/lfgViews';
 import { guildContext } from '../context';
 import { requireGame } from '../shared/requireGame';
+import { EPHEMERAL } from '../shared/ephemeral';
 
 export const lfg: CommandHandler = {
     name: 'lfg',
@@ -19,7 +20,7 @@ export const lfg: CommandHandler = {
         .toJSON(),
 
     async execute(interaction, services) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply(EPHEMERAL);
         const { server } = await guildContext(interaction, services);
         if (!server.lfg_channel_id) {
             throw new UserFacingError('This server has no LFG channel yet. Ask an admin to run `/config lfg-channel`.');

@@ -4,13 +4,14 @@ import { UserFacingError } from '../../../errors';
 import { Services } from '../../../services';
 import { noticeView, successView } from '../../../views/MessageView';
 import { guildContext } from '../../context';
+import { EPHEMERAL } from '../../shared/ephemeral';
 
 /**
  * Adds a game from its store URL. A known game is added at once. A new game on a store we can
  * scrape is handed to the worker, which follows up on this reply. Anything else goes to admin review.
  */
 export async function libraryAdd(interaction: PgCommandInteraction, services: Services): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply(EPHEMERAL);
     const { account } = await guildContext(interaction, services);
     const url = parseUrl(interaction.options.getString('url', true));
 

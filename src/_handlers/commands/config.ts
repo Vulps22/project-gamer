@@ -2,6 +2,7 @@ import { ChannelType, InteractionContextType, PermissionFlagsBits, SlashCommandB
 import { CommandHandler } from '../../types/Handler';
 import { successView } from '../../views/MessageView';
 import { guildContext } from '../context';
+import { EPHEMERAL } from '../shared/ephemeral';
 
 export const config: CommandHandler = {
     name: 'config',
@@ -21,7 +22,7 @@ export const config: CommandHandler = {
         .toJSON(),
 
     async execute(interaction, services) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply(EPHEMERAL);
         const { server } = await guildContext(interaction, services);
         const channel = interaction.options.getChannel('channel', true);
         await services.servers.setLfgChannel(server.id, channel.id);

@@ -2,6 +2,7 @@ import { InteractionContextType, SlashCommandBuilder } from 'discord.js';
 import { CommandHandler } from '../../types/Handler';
 import { noticeView, successView } from '../../views/MessageView';
 import { guildContext } from '../context';
+import { EPHEMERAL } from '../shared/ephemeral';
 
 export const sharing: CommandHandler = {
     name: 'sharing',
@@ -17,7 +18,7 @@ export const sharing: CommandHandler = {
         .toJSON(),
 
     async execute(interaction, services) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply(EPHEMERAL);
         const { account, server } = await guildContext(interaction, services);
         const on = interaction.options.getString('state', true) === 'on';
         const changed = await services.servers.setSharing(server.id, account.id, on);

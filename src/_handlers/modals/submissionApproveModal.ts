@@ -6,12 +6,13 @@ import { approvedDmView, submissionView } from '../../views/submissionViews';
 import { successView } from '../../views/MessageView';
 import { ModalFields } from '../buttons/submissionButtons';
 import { requireAdminServer, requireSubmission, submitterDiscordId } from '../shared/review';
+import { EPHEMERAL } from '../shared/ephemeral';
 
 /** Approves a submission: adds the game, puts it in the submitter's library, updates the admin card and DMs them. */
 export const submissionApproveModal: Handler<PgModalInteraction> = {
     name: baseId('SUBMISSION_APPROVE_MODAL'),
     async execute(interaction, services) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply(EPHEMERAL);
         requireAdminServer(interaction, services);
         const pending = await requireSubmission(services, interaction.params.get('s'));
 

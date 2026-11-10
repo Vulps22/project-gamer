@@ -7,10 +7,11 @@ import { Account } from '../../../types/models';
 import { gameView, libraryListView } from '../../../views/gameView';
 import { guildContext } from '../../context';
 import { requireGame } from '../../shared/requireGame';
+import { EPHEMERAL } from '../../shared/ephemeral';
 
 /** Shows a library, or one game in it with a button to post it in chat. Other people's only if they share here. */
 export async function libraryView(interaction: PgCommandInteraction, services: Services): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply(EPHEMERAL);
     const { account, server } = await guildContext(interaction, services);
     const target: User = interaction.options.getUser('user') ?? interaction.user;
     const isOwn = target.id === interaction.user.id;
